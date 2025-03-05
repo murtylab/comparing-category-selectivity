@@ -10,6 +10,7 @@ class BaseModel():
     def __init__(self, **kwargs):
         self.transforms = None
         self.model, self.name = self._load_model()
+        self.cpu() # Move to device during intialization
         # Replace all in-place ReLU with out-of-place ReLU, so that pre-ReLU outputs are preserved
         layer_utils.replace_relu_with_out_of_place(self.model)
         # Check for in-place operations
