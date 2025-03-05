@@ -1,0 +1,91 @@
+"""
+Code to load Grill-Spector localizer
+Stigliani, A., Weiner, K. S., & Grill-Spector, K. (2015). Temporal processing capacity in high-level visual cortex is domain specific. Journal of Neuroscience, 35(36), 12412-12424.
+"""
+import os
+import glob
+from PIL import Image
+from torch.utils.data import Dataset
+
+class GrillSpectorLocalizerDataset(Dataset):
+    """
+    Dataset for Grill-Spector localizer
+    """
+    def __init__(self, root_dir, transform, image_class='all'):
+        self.root_dir = root_dir
+        self.transform = transform
+        image_class = image_class.strip().lower()
+        self.name = image_class
+        self.image_files = self._get_image_files(self.name, self.root_dir)
+
+    def _get_image_files(self, image_class, root_dir):
+        """Function to get paths to image files"""
+        all_classes = set([fl.split('-')[0] for fl in os.listdir(root_dir)])
+        if image_class == 'bodies':
+            # body, limb
+            image_files = sorted(
+                glob.glob(f'{root_dir}/body-*.jpg') + \
+                glob.glob(f'{root_dir}/limb-*.jpg')
+            )
+        elif image_class == 'faces':
+            # adult, child
+            image_files = sorted(
+                glob.glob(f'{root_dir}/adult-*.jpg') + \
+                glob.glob(f'{root_dir}/child-*.jpg')
+            )
+        elif image_class == 'characters':
+            # word, number
+            image_files = sorted(
+                glob.glob(f'{root_dir}/word-*.jpg') + \
+                glob.glob(f'{root_dir}/number-*.jpg')
+            )
+        elif image_class == 'places':
+            # house, corridor
+            image_files = sorted(
+                glob.glob(f'{root_dir}/corridor-*.jpg') + \
+                glob.glob(f'{root_dir}/house-*.jpg')
+            )
+        elif image_class == 'objects':
+            # car, instrument
+            image_files = sorted(
+                glob.glob(f'{root_dir}/instrument-*.jpg') + \
+                glob.glob(f'{root_dir}/car-*.jpg')
+            )
+        elif image_class == 'scrambled_objects':
+            # scrambled
+            image_files = sorted(
+                glob.glob(f'{root_dir}/scrambled-*.jpg')
+            )
+        elif image_class in all_classes:
+            image_files = sorted(
+                glob.glob(f'{root_dir}/{image_class}-*.jpg')
+            )
+        elif image_class == 'all':
+            image_files = sorted(
+                glob.glob(f'{root_dir}/*.jpg')
+            )
+        else:
+            raise ValueError(f'{image_class} images not implemented in localizer')
+        return image_files
+
+    def __len__(self):
+        return len(self.image_files)
+
+    def __getitem__(self, idx):
+        img_name = os.path.join(self.root_dir, self.image_files[idx])
+        image = Image.open(img_name)
+        # Convert grayscale image to RGB
+        image = image.convert("RGB")
+        if self.transform:
+            image = self.transform(image)
+        return image
+
+def get_localizer_dataset(root_dir, transform, image_class='all'):
+    """
+    Get Grill-Spector Localizer dataset
+    Args:
+        root_dir(str): Root directory
+        transform(torchvision.transforms): Image transformations
+    """
+    dataset = GrillSpectorLocalizerDataset(root_dir, transform=transform, image_class=image_class)
+    return dataset
