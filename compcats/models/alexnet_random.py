@@ -27,7 +27,6 @@ class AlexNetRandom(BaseModel):
         self.transforms = transform_utils.get_transforms(
             mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225], resize=(224, 224)
         )
-        self.all_layer_names = layer_utils.get_all_layer_names(self.model)
 
     def _load_model(self):
         """

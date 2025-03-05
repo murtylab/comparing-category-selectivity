@@ -17,7 +17,6 @@ class ViTB32OpenAICLIP(BaseModel):
     """
     def __init__(self, **kwargs):
         super().__init__()
-        self.all_layer_names = layer_utils.get_all_layer_names(self.model)
         # Transforms:
         # SquarePad(): Padding shorter side to make it square
         # Resize(): Resizing to 224x224

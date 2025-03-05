@@ -15,6 +15,8 @@ class BaseModel():
         layer_utils.replace_relu_with_out_of_place(self.model)
         # Check for in-place operations
         layer_utils.check_for_inplace_operations(self.model)
+        # Get all layer names
+        self.all_layer_names = layer_utils.get_all_layer_names(self.model)
 
     def to(self, device):
         """
