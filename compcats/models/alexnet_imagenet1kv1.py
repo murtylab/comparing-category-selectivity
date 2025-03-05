@@ -5,7 +5,7 @@ https://pytorch.org/vision/main/models/alexnet.html
 import torchvision
 
 from .basemodel import BaseModel
-from .utils import transform_utils, layer_utils
+from .utils import transform_utils
 
 def get_model(**kwargs):
     model = AlexNetImageNet1kv1(**kwargs)

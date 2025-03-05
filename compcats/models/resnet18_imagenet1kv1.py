@@ -5,7 +5,7 @@ https://pytorch.org/vision/main/models/generated/torchvision.models.resnet18.htm
 import torchvision
 
 from .basemodel import BaseModel
-from .utils import transform_utils, layer_utils
+from .utils import transform_utils
 
 def get_model(**kwargs):
     model = ResNet18ImageNet1kv1(**kwargs)

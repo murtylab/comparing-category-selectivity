@@ -5,7 +5,7 @@ https://github.com/openai/CLIP
 import clip
 
 from .basemodel import BaseModel
-from .utils import transform_utils, layer_utils
+from .utils import transform_utils
 
 def get_model(**kwargs):
     model = ViTL14OpenAICLIP(**kwargs)

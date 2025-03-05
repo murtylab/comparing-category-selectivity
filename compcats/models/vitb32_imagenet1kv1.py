@@ -5,7 +5,7 @@ https://pytorch.org/vision/main/models/generated/torchvision.models.vit_b_32.htm
 import torchvision
 
 from .basemodel import BaseModel
-from .utils import transform_utils, layer_utils
+from .utils import transform_utils
 
 def get_model(**kwargs):
     model = ViTB32ImageNet1kv1(**kwargs)
