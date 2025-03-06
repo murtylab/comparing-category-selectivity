@@ -28,7 +28,7 @@ class KanwisherLocalizerDataset(BaseLocalizerDataset):
             self.name = 'scenes'
             self.image_files = sorted(glob.glob(f'{root_dir}/Scenes/*.png'))
         elif image_class == 'scrambled_objects':
-            self.name = 'scrambled_objects'
+            self.name = 'scrambledobjects'
             self.image_files = sorted(glob.glob(f'{root_dir}/scrambled15G/*.png'))
         elif image_class == 'all':
             self.name = 'all'

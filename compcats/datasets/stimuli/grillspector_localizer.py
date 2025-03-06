@@ -22,19 +22,19 @@ class GrillSpectorLocalizerDataset(BaseLocalizerDataset):
         self.froi_contrasts = {
             'FFA': {
                 'preffered': 'faces',
-                'nonpreffered': ['bodies', 'places', 'objects', 'characters', 'scrambled_objects']
+                'nonpreffered': ['bodies', 'places', 'objects', 'characters', 'scrambledobjects']
             },
             'PPA': {
                 'preffered': 'places',
-                'nonpreffered': ['bodies', 'faces', 'objects', 'characters', 'scrambled_objects']
+                'nonpreffered': ['bodies', 'faces', 'objects', 'characters', 'scrambledobjects']
             },
             'EBA': {
                 'preffered': 'bodies',
-                'nonpreffered': ['faces', 'places', 'objects', 'characters', 'scrambled_objects']
+                'nonpreffered': ['faces', 'places', 'objects', 'characters', 'scrambledobjects']
             },
             'VWFA': {
                 'preffered': 'characters',
-                'nonpreffered': ['bodies', 'places', 'faces', 'objects', 'scrambled_objects']
+                'nonpreffered': ['bodies', 'places', 'faces', 'objects', 'scrambledobjects']
             }
         }
 
@@ -71,7 +71,7 @@ class GrillSpectorLocalizerDataset(BaseLocalizerDataset):
                 glob.glob(f'{root_dir}/instrument-*.jpg') + \
                 glob.glob(f'{root_dir}/car-*.jpg')
             )
-        elif image_class == 'scrambled_objects':
+        elif image_class == 'scrambledobjects':
             # scrambled
             image_files = sorted(
                 glob.glob(f'{root_dir}/scrambled-*.jpg')
