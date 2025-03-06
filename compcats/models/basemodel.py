@@ -27,10 +27,9 @@ class BaseModel(torch.nn.Module):
             self._initialize_model()
         # Get all layer names
         self.all_layer_names = layer_utils.get_all_layer_names(self.model)
-        # Store irrelevant layer names (e.g., dropout layers that are turned off)
-        self.irrelevant_layer_names = []
-        # Dropout
-        self.irrelevant_layer_names.extend(layer_utils.get_all_dropout_layer_names(self.model))
+        # Store irrelevant layer names, to be overridden in child classes
+        self.relevant_layer_names = None
+        self.irrelevant_layer_names = None
 
     def forward(self, x):
         return self.model(x)

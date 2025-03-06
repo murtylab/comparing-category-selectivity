@@ -2,10 +2,11 @@
 AlexNet
 https://pytorch.org/vision/main/models/alexnet.html
 """
+from torch import nn
 import torchvision
 
 from .basemodel import BaseModel
-from .utils import transform_utils
+from .utils import transform_utils, layer_utils
 
 def get_model(**kwargs):
     model = AlexNetImageNet1kv1(**kwargs)
@@ -27,11 +28,18 @@ class AlexNetImageNet1kv1(BaseModel):
             mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225], resize=(224, 224)
         )
         # Relevant layer names
-        # Layer names to ignore since they are duplicates
-        duplicate_layer_names = ['features', 'classifier']
+        # Layer names to ignore
+        irrelevant_layer_regexes = ['features$', 'classifier$']
+        # Layer types to ignore
+        irrelevant_layer_types = [nn.Dropout]
+        # irrelevant_layer_regexes = []
+        # irrelevant_layer_types = []
+        self.irrelevant_layer_names = layer_utils.get_layers_matching_regexes(
+            self.model, irrelevant_layer_regexes
+        ) + layer_utils.get_layers_matching_types(self.model, irrelevant_layer_types)
         self.relevant_layer_names = [
             layer for layer in self.all_layer_names
-            if layer not in duplicate_layer_names and layer not in self.irrelevant_layer_names
+            if layer not in self.irrelevant_layer_names
         ]
 
     def _load_model(self):

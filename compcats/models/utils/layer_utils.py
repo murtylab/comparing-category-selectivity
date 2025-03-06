@@ -1,3 +1,4 @@
+import re
 import torch.nn as nn
 
 def get_all_layer_names(model):
@@ -12,6 +13,30 @@ def get_all_dropout_layer_names(model):
     """
     return [name for name, module in model.named_modules() if isinstance(module, nn.Dropout)]
 
+def get_layers_matching_regexes(model, regex_list):
+    """
+    Get all layer names in a model that match any of the regex patterns in the provided list.
+    """
+    matching_layers = []
+    if len(regex_list) == 0:
+        return matching_layers
+    for name, _ in model.named_modules():
+        if any(re.match(pattern, name) for pattern in regex_list):
+            matching_layers.append(name)
+    return matching_layers
+
+def get_layers_matching_types(model, module_types):
+    """
+    Get all layer names in a model that are instances of any of the provided module types.
+    """
+    module_types = tuple(module_types)  # Convert to tuple if single type or list provided
+    matching_layers = []
+    if len(module_types) == 0:
+        return matching_layers
+    for name, module in model.named_modules():
+        if isinstance(module, module_types):
+            matching_layers.append(name)
+    return matching_layers
 
 def replace_relu_with_out_of_place(module):
     """
