@@ -4,14 +4,15 @@ Stigliani, A., Weiner, K. S., & Grill-Spector, K. (2015). Temporal processing ca
 """
 import os
 import glob
-from PIL import Image
-from torch.utils.data import Dataset
 
-class GrillSpectorLocalizerDataset(Dataset):
+from .base_localizer import BaseLocalizerDataset
+
+class GrillSpectorLocalizerDataset(BaseLocalizerDataset):
     """
     Dataset for Grill-Spector localizer
     """
     def __init__(self, root_dir, transform, image_class='all'):
+        super().__init__()
         self.root_dir = root_dir
         self.transform = transform
         image_class = image_class.strip().lower()
@@ -67,18 +68,6 @@ class GrillSpectorLocalizerDataset(Dataset):
         else:
             raise ValueError(f'{image_class} images not implemented in localizer')
         return image_files
-
-    def __len__(self):
-        return len(self.image_files)
-
-    def __getitem__(self, idx):
-        img_name = os.path.join(self.root_dir, self.image_files[idx])
-        image = Image.open(img_name)
-        # Convert grayscale image to RGB
-        image = image.convert("RGB")
-        if self.transform:
-            image = self.transform(image)
-        return image
 
 def get_localizer_dataset(root_dir, transform, image_class='all'):
     """

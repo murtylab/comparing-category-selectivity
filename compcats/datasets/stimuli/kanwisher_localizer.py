@@ -2,16 +2,16 @@
 Code to load Kanwisher localizer
 Julian, J. B., Fedorenko, E., Webster, J., & Kanwisher, N. (2012). An algorithmic method for functionally defining regions of interest in the ventral visual pathway. Neuroimage, 60(4), 2357-2364.
 """
-import os
 import glob
-from PIL import Image
-from torch.utils.data import Dataset
 
-class KanwisherLocalizerDataset(Dataset):
+from .base_localizer import BaseLocalizerDataset
+
+class KanwisherLocalizerDataset(BaseLocalizerDataset):
     """
     Dataset for Kanwisher localizer
     """
     def __init__(self, root_dir, transform, image_class='all'):
+        super().__init__()
         self.root_dir = root_dir
         self.transform = transform
         image_class = image_class.strip().lower()
@@ -35,16 +35,21 @@ class KanwisherLocalizerDataset(Dataset):
             self.image_files = sorted(glob.glob(f'{root_dir}/**/*.png'))
         else:
             raise ValueError(f'{image_class} images not implemented in localizer')
-
-    def __len__(self):
-        return len(self.image_files)
-
-    def __getitem__(self, idx):
-        img_name = os.path.join(self.root_dir, self.image_files[idx])
-        image = Image.open(img_name)
-        if self.transform:
-            image = self.transform(image)
-        return image
+        # Contrasts
+        self.froi_contrasts = {
+            'FFA': {
+                'preffered': 'faces',
+                'nonpreffered': ['bodies', 'scenes', 'objects']
+            },
+            'PPA': {
+                'preffered': 'scenes',
+                'nonpreffered': ['bodies', 'faces', 'objects']
+            },
+            'EBA': {
+                'preffered': 'bodies',
+                'nonpreffered': ['faces', 'scenes', 'objects']
+            },
+        }
 
 def get_localizer_dataset(root_dir, transform, image_class='all'):
     """
