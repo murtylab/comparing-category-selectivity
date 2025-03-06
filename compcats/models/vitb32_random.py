@@ -31,9 +31,9 @@ class ViTB32Random(BaseModel):
         """
         Load ViT-B/32 Untrained
         """
-        # Set seed to default seed if seed is not passed
-        if self.seed is None:
-            self.seed = self.DEFAULT_SEED
+        self._store_rng_states()
+        backbone_name = 'vitb32'
+        model_name = self._set_model_seed(backbone_name)
         model = torchvision.models.vit_b_32(weights=None)
-        model_name = f'vitb32random{self.seed}'
+        self._recover_rng_states()
         return model, model_name

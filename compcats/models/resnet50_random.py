@@ -44,9 +44,9 @@ class ResNet50Random(BaseModel):
         """
         Initialize ResNet50
         """
-        # Set seed to default seed if seed is not passed
-        if self.seed is None:
-            self.seed = self.DEFAULT_SEED
+        self._store_rng_states()
+        backbone_name = 'resnet50'
+        model_name = self._set_model_seed(backbone_name)
         model = torchvision.models.resnet50(weights=None)
-        model_name = f'resnet50random{self.seed}'
+        self._recover_rng_states()
         return model, model_name

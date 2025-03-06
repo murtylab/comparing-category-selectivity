@@ -44,9 +44,9 @@ class AlexNetRandom(BaseModel):
         """
         Load AlexNet
         """
-        # Set seed to default seed if seed is not passed
-        if self.seed is None:
-            self.seed = self.DEFAULT_SEED
+        self._store_rng_states()
+        backbone_name = 'alexnet'
+        model_name = self._set_model_seed(backbone_name)
         model = torchvision.models.alexnet(weights=None)
-        model_name = f'alexnetrandom{self.seed}'
+        self._recover_rng_states()
         return model, model_name

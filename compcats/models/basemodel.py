@@ -11,20 +11,29 @@ class BaseModel(torch.nn.Module):
     """
     def __init__(self, **kwargs):
         super().__init__()
+        # Seed
         # Default seed when untrained models are initialized without passing a seed
         self.DEFAULT_SEED = 42
         # Seed if passed
         self.seed = kwargs.get('seed', None)
+        # RNG states for seeding
+        self.cpu_rng_state = None
+        self.cuda_rng_state = None
+
+        # Transforms
         self.transforms = None
+
+        # Load model
         self.model, self.name = self._load_model()
         self.cpu() # Move to device during intialization
+
+        # Fixing models to ensure correct hook outputs
         # Replace all in-place ReLU with out-of-place ReLU, so that pre-ReLU outputs are preserved
         layer_utils.replace_relu_with_out_of_place(self.model)
         # Check for in-place operations
         layer_utils.check_for_inplace_operations(self.model)
-        # Initialize model if seed was set
-        if self.seed:
-            self._initialize_model()
+
+        # Layer names
         # Get all layer names
         self.all_layer_names = layer_utils.get_all_layer_names(self.model)
         # Store irrelevant layer names, to be overridden in child classes
@@ -55,42 +64,34 @@ class BaseModel(torch.nn.Module):
         """
         self.model.eval()
 
-    def _initialize_model(self):
+    def _set_model_seed(self, backbone_name):
         """
-        Initializes a model using its default initialization methods while 
-            preserving global randomness.
-        Raises an error if a module has weights but does not implement reset_parameters().
-        
-        Args:
-            model (nn.Module): The PyTorch model to initialize.
-            seed (int): Seed for deterministic weight initialization.
-        
-        Returns:
-            nn.Module: The initialized model.
+        Set seed for the model
         """
-        print(f"Initializing {self.name} with seed = {self.seed} after loading the model")
-        gen = torch.Generator(device = self.device())
-        gen.manual_seed(self.seed)  # Use a separate generator to avoid affecting global randomness
+        if self.seed is None:
+            self.seed = self.DEFAULT_SEED
+        torch.manual_seed(self.seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed(self.seed)
+        model_name = f"{backbone_name}random{self.seed}"
+        print(f'Initialized {model_name} with seed = {self.seed}')
+        return model_name
 
-        def init_weights(m):
-            if hasattr(m, 'reset_parameters'):
-                with torch.no_grad():
-                    m.reset_parameters()  # Use the default initialization
-            elif any(p.requires_grad for p in m.parameters()):  # Check if module has weights
-                raise ValueError(f"Module {m} has weights but does not implement 'reset_parameters', \
-                                 intialization will not consistent")
+    def _store_rng_states(self):
+        """
+        Store the current RNG states for both CPU and CUDA devices.
+        """
+        self.cpu_rng_state = torch.get_rng_state()
+        if torch.cuda.is_available():
+            self.cuda_rng_state = torch.cuda.get_rng_state_all()
 
-        # Apply the initialization recursively to all submodules in the model
-        def apply_recursive(m):
-            # Initialize the current module's weights
-            if isinstance(m, torch.nn.Module):  # Check if it's a container module (like nn.Sequential)
-                for child in m.children():
-                    apply_recursive(child)  # Apply recursively to submodules
-            else:
-                if not not isinstance(m, torch.nn.Sequential):
-                    init_weights(m)
-
-        apply_recursive(self.model) # Apply initialization to all layers recursively
+    def _recover_rng_states(self):
+        """
+        Recover the stored RNG states for both CPU and CUDA devices.
+        """
+        torch.set_rng_state(self.cpu_rng_state)
+        if torch.cuda.is_available():
+            torch.cuda.set_rng_state_all(self.cuda_rng_state)
 
     def _load_model(self):
         """
