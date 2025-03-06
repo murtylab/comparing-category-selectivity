@@ -26,6 +26,13 @@ class AlexNetImageNet1kv1(BaseModel):
         self.transforms = transform_utils.get_transforms(
             mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225], resize=(224, 224)
         )
+        # Relevant layer names
+        # Layer names to ignore since they are duplicates
+        duplicate_layer_names = ['features', 'classifier']
+        self.relevant_layer_names = [
+            layer for layer in self.all_layer_names
+            if layer not in duplicate_layer_names and layer not in self.irrelevant_layer_names
+        ]
 
     def _load_model(self):
         """

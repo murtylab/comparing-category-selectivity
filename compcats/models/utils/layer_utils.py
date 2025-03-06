@@ -6,6 +6,12 @@ def get_all_layer_names(model):
     """
     return [name for name, _ in model.named_modules() if name != ""]
 
+def get_all_dropout_layer_names(model):
+    """
+    Get all dropout layer names in a model
+    """
+    return [name for name, module in model.named_modules() if isinstance(module, nn.Dropout)]
+
 
 def replace_relu_with_out_of_place(module):
     """

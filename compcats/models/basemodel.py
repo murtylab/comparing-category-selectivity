@@ -27,10 +27,14 @@ class BaseModel(torch.nn.Module):
             self._initialize_model()
         # Get all layer names
         self.all_layer_names = layer_utils.get_all_layer_names(self.model)
-    
+        # Store irrelevant layer names (e.g., dropout layers that are turned off)
+        self.irrelevant_layer_names = []
+        # Dropout
+        self.irrelevant_layer_names.extend(layer_utils.get_all_dropout_layer_names(self.model))
+
     def forward(self, x):
         return self.model(x)
-    
+
     def train_step(self, x, target, criterion, optimizer):
         raise NotImplementedError("train_step method should be updated: only boilerplate code is provided")
         optimizer.zero_grad()
@@ -69,10 +73,11 @@ class BaseModel(torch.nn.Module):
         Turn on Evaluation mode
         """
         self.model.eval()
-    
+
     def _initialize_model(self):
         """
-        Initializes a model using its default initialization methods while preserving global randomness.
+        Initializes a model using its default initialization methods while 
+            preserving global randomness.
         Raises an error if a module has weights but does not implement reset_parameters().
         
         Args:
@@ -93,7 +98,7 @@ class BaseModel(torch.nn.Module):
             elif any(p.requires_grad for p in m.parameters()):  # Check if module has weights
                 raise ValueError(f"Module {m} has weights but does not implement 'reset_parameters', \
                                  intialization will not consistent")
-        
+
         # Apply the initialization recursively to all submodules in the model
         def apply_recursive(m):
             # Initialize the current module's weights
@@ -119,6 +124,7 @@ class BaseModel(torch.nn.Module):
             layer_name(str or list): Number of layer after which activations needed
         """
         # Turn on evaluation mode
+        # Very important to turn on evaluation mode to avoid any dropout
         self.eval()
         # Storing activations
         activations = {}
@@ -143,7 +149,7 @@ class BaseModel(torch.nn.Module):
         if isinstance(layers, str):
             activations = activations[layers]
         return activations
-    
+
     def generate_dataset_activations(self, layers, dataset, save_dir=None, batch_size=768, device='cuda'):
         """
         Function to generate activations for a dataset
@@ -164,7 +170,7 @@ class BaseModel(torch.nn.Module):
             last_folder_name = save_dir.split('/')[-1]
             if last_folder_name == layers[0]:
                 save_dir = '/'.join(save_dir.split('/')[:-1])
-        
+
         # Check which layers to generate, and load already generated activations
         layers_to_generate = []
         if save_dir:
@@ -190,7 +196,7 @@ class BaseModel(torch.nn.Module):
             if len(layers) == 1:
                 activations = activations[layers[0]]
             return activations
-        
+
         # Start generating activations
         # Setup
         # Set device
@@ -213,7 +219,7 @@ class BaseModel(torch.nn.Module):
                         activations[layer] = torch.vstack((activations[layer], layer_output))
                     else:
                         activations[layer] = layer_output
-        
+
         # Store activations
         if save_dir:
             for layer in layers_to_generate:
@@ -221,12 +227,12 @@ class BaseModel(torch.nn.Module):
                 # Layer dir should already exist
                 activations_file_name = f'{self.name}_{layer}_{dataset.name}.pt'
                 torch.save(activations[layer].cpu(), f'{layer_dir}/{activations_file_name}')
-        
+
         # Return activations
         if len(layers) == 1:
             activations = activations[layers[0]]
         return activations
-        
+
 
     def get_froi_activations(self, img, layer_name, froi_mask):
         """
