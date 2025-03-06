@@ -15,7 +15,7 @@ class ViTB16ImageNet21k(BaseModel):
     class for the model ViT-B/16 trained on ImageNet-21K
     """
     def __init__(self, **kwargs):
-        super().__init__()
+        super().__init__(**kwargs)
         # Transforms:
         # SquarePad(): Padding shorter side to make it square
         # Resize(): Resizing to 224x224

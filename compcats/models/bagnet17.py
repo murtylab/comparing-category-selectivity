@@ -14,7 +14,7 @@ class BagNet17(BaseModel):
     class for the model BagNet17
     """
     def __init__(self, **kwargs):
-        super().__init__()
+        super().__init__(**kwargs)
         # Assuming resize & crop size based on https://github.com/wielandbrendel/bag-of-local-features-models?tab=readme-ov-file#image-preprocessing
         # Transforms:
         # SquarePad(): Padding shorter side to make it square

@@ -14,7 +14,7 @@ class ResNet50SINandIN(BaseModel):
     class for the model ResNet50 trained on Stylized-ImageNet and ImageNet
     """
     def __init__(self, **kwargs):
-        super().__init__()
+        super().__init__(**kwargs)
         # Transforms:
         # SquarePad(): Padding shorter side to make it square
         # Resize(): Resizing to 224x224

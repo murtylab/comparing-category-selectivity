@@ -16,7 +16,7 @@ class ResNet50OpenAICLIP(BaseModel):
     class for the model ResNet50 trained using CLIP
     """
     def __init__(self, **kwargs):
-        super().__init__()
+        super().__init__(**kwargs)
         # Transforms:
         # SquarePad(): Padding shorter side to make it square
         # Resize(): Resizing to 224x224

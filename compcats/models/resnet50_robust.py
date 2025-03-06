@@ -34,7 +34,7 @@ class ResNet50Robust(BaseModel):
     class for the model ResNet50 trained on ImageNet with adversarial robustness
     """
     def __init__(self, **kwargs):
-        super().__init__()
+        super().__init__(**kwargs)
         # ResNet50-Robust does not need normalized inputs
         # Transforms:
         # SquarePad(): Padding shorter side to make it square
