@@ -18,6 +18,21 @@ class KonkleLocalizerDataset(BaseLocalizerDataset):
         image_class = image_class.strip().lower()
         self.name = image_class
         self.image_files = self._get_image_files(self.name, self.root_dir)
+        # Contrasts
+        self.froi_contrasts = {
+            'FFA': {
+                'preffered': 'faces',
+                'nonpreffered': ['bodies', 'scenes', 'objects']
+            },
+            'PPA': {
+                'preffered': 'scenes',
+                'nonpreffered': ['bodies', 'faces', 'objects']
+            },
+            'EBA': {
+                'preffered': 'bodies',
+                'nonpreffered': ['faces', 'scenes', 'objects']
+            },
+        }
 
     def _get_image_files(self, image_class, root_dir):
         """Function to get paths to image files"""
