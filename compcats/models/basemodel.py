@@ -75,7 +75,9 @@ class BaseModel(torch.nn.Module):
             batch (torch.Tensor): Image batch
             layer_name(str or list): Number of layer after which activations needed
         """
-        # Storign activations
+        # Turn on evaluation mode
+        self.eval()
+        # Storing activations
         activations = {}
         # If only one layer is requested, convert it to a list
         if isinstance(layers, str):
