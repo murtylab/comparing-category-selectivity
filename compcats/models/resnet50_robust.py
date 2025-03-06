@@ -1,6 +1,7 @@
 """
 ResNet-50 adversarially robust
 https://github.com/bethgelab/model-vs-human/blob/master/modelvshuman/models/pytorch/adversarially_robust/robust_models.py
+https://huggingface.co/madrylab/robust-imagenet-models
 """
 import torch
 from torch.hub import load_state_dict_from_url
