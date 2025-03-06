@@ -5,11 +5,12 @@ import torch
 
 from compcats.models.utils import hook_utils, layer_utils
 
-class BaseModel():
+class BaseModel(torch.nn.Module):
     """
     class for the Base model
     """
     def __init__(self, **kwargs):
+        super().__init__()
         self.transforms = None
         self.model, self.name = self._load_model()
         self.cpu() # Move to device during intialization
@@ -19,6 +20,18 @@ class BaseModel():
         layer_utils.check_for_inplace_operations(self.model)
         # Get all layer names
         self.all_layer_names = layer_utils.get_all_layer_names(self.model)
+    
+    def forward(self, x):
+        return self.model(x)
+    
+    def train_step(self, x, target, criterion, optimizer):
+        raise NotImplementedError("train_step method should be updated: only boilerplate code is provided")
+        optimizer.zero_grad()
+        output = self.forward(x)
+        loss = criterion(output, target)
+        loss.backward()
+        optimizer.step()
+        return loss.item()
 
     def to(self, device):
         """
