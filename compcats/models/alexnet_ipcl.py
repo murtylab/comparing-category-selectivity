@@ -38,8 +38,6 @@ class AlexNetIPCL(BaseModel):
         irrelevant_layer_regexes = ['conv_block_[0-9]$', 'fc[0-9]$']
         # Layer types to ignore
         irrelevant_layer_types = [nn.Dropout]
-        # irrelevant_layer_regexes = []
-        # irrelevant_layer_types = []
         self.irrelevant_layer_names = layer_utils.get_layers_matching_regexes(
             self.model, irrelevant_layer_regexes
         ) + layer_utils.get_layers_matching_types(self.model, irrelevant_layer_types)

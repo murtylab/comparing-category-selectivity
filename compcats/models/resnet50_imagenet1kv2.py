@@ -2,10 +2,11 @@
 ResNet-50
 https://pytorch.org/vision/main/models/generated/torchvision.models.resnet50.html
 """
+from torch import nn
 import torchvision
 
 from .basemodel import BaseModel
-from .utils import transform_utils
+from .utils import transform_utils, layer_utils
 
 def get_model(**kwargs):
     model = ResNet50ImageNet1kv2(**kwargs)
@@ -26,6 +27,18 @@ class ResNet50ImageNet1kv2(BaseModel):
         self.transforms = transform_utils.get_transforms(
             mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225], resize=(224, 224)
         )
+        # Relevant layer names
+        # Layer names to ignore
+        irrelevant_layer_regexes = ['layer[0-9]$', r'layer[0-9]\.[0-9]$', '.*downsample$']
+        # Layer types to ignore
+        irrelevant_layer_types = [nn.Dropout]
+        self.irrelevant_layer_names = layer_utils.get_layers_matching_regexes(
+            self.model, irrelevant_layer_regexes
+        ) + layer_utils.get_layers_matching_types(self.model, irrelevant_layer_types)
+        self.relevant_layer_names = [
+            layer for layer in self.all_layer_names
+            if layer not in self.irrelevant_layer_names
+        ]
 
     def _load_model(self):
         """
