@@ -1,4 +1,6 @@
 """Base Model"""
+import os
+from tqdm import tqdm
 import torch
 
 from compcats.models.utils import hook_utils, layer_utils
@@ -83,6 +85,86 @@ class BaseModel():
         if isinstance(layers, str):
             activations = activations[layers]
         return activations
+    
+    def generate_dataset_activations(self, layers, dataset, save_dir=None, batch_size=768, device='cuda'):
+        """
+        Function to generate activations for a dataset
+        Args:
+            layer(str): Layer name
+            dataset(torch.utils.data.Dataset): Dataset
+            save_dir(str): Directory to save activations without the layer name
+        """
+        if isinstance(layers, str):
+            layers = [layers]
+        # init activations
+        activations = {}
+
+        # Error handling for path for compatibility with multiple layers
+        # If only one layer is requested and save_dir is provided with layer name as the last folder
+        # then remove the layer name from the save_dir
+        if save_dir and len(layers) == 1:
+            last_folder_name = save_dir.split('/')[-1]
+            if last_folder_name == layers[0]:
+                save_dir = ''.join(save_dir.split('/')[:-1])
+        
+        # Check which layers to generate, and load already generated activations
+        layers_to_generate = []
+        if save_dir:
+            os.makedirs(save_dir, exist_ok=True)
+            for layer in layers:
+                layer_dir = f'{save_dir}/{layer}'
+                activations_file_name = f'{self.name}_{layer}_{dataset.name}.pt'
+                if os.path.isdir(layer_dir):
+                    if activations_file_name not in os.listdir(layer_dir):
+                        layers_to_generate.append(layer)
+                    else:
+                        layer_activations = torch.load(f'{layer_dir}/{activations_file_name}')
+                        layer_activations = layer_activations.to(device)
+                        activations[layer] = layer_activations
+                else:
+                    os.makedirs(layer_dir)
+                    layers_to_generate.append(layer)
+        else:
+            layers_to_generate = layers
+
+        # If all activations are already generated, load them and return
+        if len(layers_to_generate) == 0:
+            if len(layers) == 1:
+                activations = activations[layers[0]]
+            return activations
+        
+        # Start generating activations
+        # Setup
+        # Set device
+        self.to(device)
+        # Create a DataLoader to iterate over the dataset
+        dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=False)
+        # Turn on evaluation mode
+        self.eval()
+        # Generate activations
+        with torch.no_grad():
+            for batch in tqdm(dataloader):
+                # Send images to device
+                batch = batch.to(device)
+                # Forward pass
+                outputs_batch_layers = self.get_activations(batch, layers_to_generate)
+                # Store activations
+                for layer in layers_to_generate:
+                    layer_output = outputs_batch_layers[layer]
+                    if layer in activations:
+                        activations[layer] = torch.vstack((activations[layer], layer_output))
+                    else:
+                        activations[layer] = layer_output
+        
+        # Store activations
+        if save_dir:
+            for layer in layers_to_generate:
+                layer_dir = f'{save_dir}/{layer}'
+                # Layer dir should already exist
+                activations_file_name = f'{self.name}_{layer}_{dataset.name}.pt'
+                torch.save(activations[layer], f'{layer_dir}/{activations_file_name}')
+        
+        # Return activations
         if len(layers) == 1:
             activations = activations[layers[0]]
         return activations
