@@ -11,27 +11,29 @@ def t_statistic(tensor1: torch.Tensor, tensor2: torch.Tensor) -> torch.Tensor:
     Assumes the first dimension represents samples.
     
     Args:
-        tensor1 (torch.Tensor): A tensor of shape (n_samples, ...).
-        tensor2 (torch.Tensor): A tensor of shape (n_samples, ...).
+        tensor1 (torch.Tensor): A tensor of shape (n_samples1, ...).
+        tensor2 (torch.Tensor): A tensor of shape (n_samples2, ...).
     
     Returns:
         torch.Tensor: The t-statistic tensor of shape (...).
     """
-    n = tensor1.shape[0]
+    n1 = tensor1.shape[0]
+    n2 = tensor2.shape[0]
     mean_diff = tensor1.mean(dim=0) - tensor2.mean(dim=0)
     var1 = tensor1.var(dim=0, unbiased=True)
     var2 = tensor2.var(dim=0, unbiased=True)
     
-    pooled_se = torch.sqrt(var1 / n + var2 / n)
+    pooled_se = torch.sqrt(var1 / n1 + var2 / n2)
     t_stat = mean_diff / pooled_se
 
     # p-values not being calculated for computational efficiency
     calculate_pvalues = False
     if calculate_pvalues:
+        raise NotImplementedError("P-value calculations have not been verified")
         # Degrees of freedom using Welch-Satterthwaite equation
-        df = (var1 / n + var2 / n) ** 2 / ((var1 / n) ** 2 / (n - 1) + (var2 / n) ** 2 / (n - 1))
+        df = (var1 / n1 + var2 / n2) ** 2 / ((var1 / n1) ** 2 / (n1 - 1) + (var2 / n2) ** 2 / (n2 - 1))
         # Calculate p-value (two-tailed)
-        p_values = 2 * (1 - torch.distributions.dist.StudentT(df).cdf(torch.abs(t_stat)))
+        p_values = 2 * (1 - torch.distributions.StudentT(df).cdf(torch.abs(t_stat)))
     
     return t_stat
 
@@ -39,11 +41,11 @@ def compare_activations(tensor1, tensor2, tthreshold):
     """
     Function to calculate t-values for all elements using samples in dimension 0 of both tensors
     Args:
-        tensor1(torch.Tensor): Tensor 1, shape: (n_samples, ...)
-        tensor2(torch.Tensor): Tensor 2, shape: (n_samples, ...)
+        tensor1(torch.Tensor): Tensor 1, shape: (n_samples1, ...)
+        tensor2(torch.Tensor): Tensor 2, shape: (n_samples2, ...)
         tthreshold(float): t-threshold
     """
-    assert tensor1.shape == tensor2.shape, "Tensor dimensions do not match"
+    assert tensor1.shape[1:] == tensor2.shape[1:], "Tensor dimensions do not match"
     t_values = t_statistic(tensor1, tensor2)
     mask = t_values >= tthreshold
     return mask, t_values
