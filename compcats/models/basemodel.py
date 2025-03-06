@@ -44,24 +44,6 @@ class BaseModel(torch.nn.Module):
         optimizer.step()
         return loss.item()
 
-    def to(self, device):
-        """
-        Send model to GPU or CPU
-        """
-        self.model = self.model.to(device)
-
-    def cpu(self):
-        """
-        Send model to CPU
-        """
-        self.to("cpu")
-    
-    def cuda(self):
-        """
-        Send model to CPU
-        """
-        self.to("cuda")
-    
     def device(self):
         """
         Get device
