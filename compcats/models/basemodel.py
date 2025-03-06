@@ -105,7 +105,7 @@ class BaseModel():
         if save_dir and len(layers) == 1:
             last_folder_name = save_dir.split('/')[-1]
             if last_folder_name == layers[0]:
-                save_dir = ''.join(save_dir.split('/')[:-1])
+                save_dir = '/'.join(save_dir.split('/')[:-1])
         
         # Check which layers to generate, and load already generated activations
         layers_to_generate = []
@@ -162,14 +162,15 @@ class BaseModel():
                 layer_dir = f'{save_dir}/{layer}'
                 # Layer dir should already exist
                 activations_file_name = f'{self.name}_{layer}_{dataset.name}.pt'
-                torch.save(activations[layer], f'{layer_dir}/{activations_file_name}')
+                torch.save(activations[layer].cpu(), f'{layer_dir}/{activations_file_name}')
         
         # Return activations
         if len(layers) == 1:
             activations = activations[layers[0]]
         return activations
+        
 
-    def get_froi_activations(self, img, layer_name, unit_indices):
+    def get_froi_activations(self, img, layer_name, froi_mask):
         """
         Args:
             img(torch.Tensor): Image
