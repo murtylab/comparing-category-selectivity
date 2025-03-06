@@ -57,14 +57,14 @@ class KonkleLocalizerDataset(BaseLocalizerDataset):
                 glob.glob(f'{root_dir}/buildings/buildings*.jpg')
             )
         elif image_class == 'objects':
-            # cars 
-            # Other available options: chairs, hammers, phones
-            # Choosing only cars for consistency with other localizers (specifically Grill-Spector)
+            # cars, chairs, hammers, phones
+            # One option is to choose only cars for consistency with 
+            # Grill-Spector localizer, but this is not implemented here
             image_files = sorted(
-                glob.glob(f'{root_dir}/cars/cars*.jpg')
-                # glob.glob(f'{root_dir}/chairs/chairs*.jpg') + \
-                # glob.glob(f'{root_dir}/hammers/hammers*.jpg') + \
-                # glob.glob(f'{root_dir}/phones/phones*.jpg')
+                glob.glob(f'{root_dir}/cars/cars*.jpg') + \
+                glob.glob(f'{root_dir}/chairs/chairs*.jpg') + \
+                glob.glob(f'{root_dir}/hammers/hammers*.jpg') + \
+                glob.glob(f'{root_dir}/phones/phones*.jpg')
             )
         elif image_class in all_classes:
             image_files = sorted(
