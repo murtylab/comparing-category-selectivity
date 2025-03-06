@@ -1,0 +1,159 @@
+"""Localize fROIs"""
+import os
+import json
+import torch
+
+from . import utils
+
+def t_statistic(tensor1: torch.Tensor, tensor2: torch.Tensor) -> torch.Tensor:
+    """
+    Computes the t-statistic for the difference between two tensors.
+    Assumes the first dimension represents samples.
+    
+    Args:
+        tensor1 (torch.Tensor): A tensor of shape (n_samples, ...).
+        tensor2 (torch.Tensor): A tensor of shape (n_samples, ...).
+    
+    Returns:
+        torch.Tensor: The t-statistic tensor of shape (...).
+    """
+    n = tensor1.shape[0]
+    mean_diff = tensor1.mean(dim=0) - tensor2.mean(dim=0)
+    var1 = tensor1.var(dim=0, unbiased=True)
+    var2 = tensor2.var(dim=0, unbiased=True)
+    
+    pooled_se = torch.sqrt(var1 / n + var2 / n)
+    t_stat = mean_diff / pooled_se
+
+    # p-values not being calculated for computational efficiency
+    calculate_pvalues = False
+    if calculate_pvalues:
+        # Degrees of freedom using Welch-Satterthwaite equation
+        df = (var1 / n + var2 / n) ** 2 / ((var1 / n) ** 2 / (n - 1) + (var2 / n) ** 2 / (n - 1))
+        # Calculate p-value (two-tailed)
+        p_values = 2 * (1 - torch.distributions.dist.StudentT(df).cdf(torch.abs(t_stat)))
+    
+    return t_stat
+
+def compare_activations(tensor1, tensor2, tthreshold):
+    """
+    Function to calculate t-values for all elements using samples in dimension 0 of both tensors
+    Args:
+        tensor1(torch.Tensor): Tensor 1, shape: (n_samples, ...)
+        tensor2(torch.Tensor): Tensor 2, shape: (n_samples, ...)
+        tthreshold(float): t-threshold
+    """
+    assert tensor1.shape == tensor2.shape, "Tensor dimensions do not match"
+    t_values = t_statistic(tensor1, tensor2)
+    mask = t_values >= tthreshold
+    return mask, t_values
+
+def localize(model, layer, pref_dataset, nonpref_datasets, froi, dataset_name, \
+             activations_dir, froi_dir, tthreshold, return_tvals=False):
+    """
+    Localize units in a layer that respond to 
+    a preferred category more than non-preferred categories
+    Args:
+        model():
+        layer_num(int): Layer number
+        pref_dataset():
+        nonpref_datasets():
+    """
+    # Generate all activations
+    # preferred category
+    pref_activations = model.generate_dataset_activations(
+        layer, pref_dataset, activations_dir
+    )
+    # non-preferred categories
+    nonpref_activations = {}
+    for nonpref_dataset in nonpref_datasets:
+        nonpref_img_class = nonpref_dataset.name
+        nonpref_activation_ = model.generate_dataset_activations(
+            layer, nonpref_dataset, activations_dir
+        )
+        nonpref_activations[nonpref_img_class] = nonpref_activation_
+    # Compare activations
+    froi_mask = None
+    all_contrast_tvals = {}
+    for nonpref_dataset in nonpref_datasets:
+        pref_img_class = pref_dataset.name
+        nonpref_img_class = nonpref_dataset.name
+        key = (pref_img_class, nonpref_img_class)
+        # Get contrast mask and t-values
+        contrast_mask, contrast_tvals = compare_activations(pref_activations, \
+                                                            nonpref_activations[nonpref_img_class], \
+                                                            tthreshold)
+        if froi_mask is None:
+            froi_mask = contrast_mask
+        else:
+            froi_mask = froi_mask & contrast_mask
+        all_contrast_tvals[key] = contrast_tvals
+    # Store fROI mask
+    froi_file_name = f'{model.name}_{layer}_{dataset_name}_{froi}_{tthreshold:.2f}.pt'
+    torch.save(froi_mask.cpu(), f'{froi_dir}/{froi_file_name}')
+    print(f'Saving fROI {froi_dir}/{froi_file_name}')
+    # Store results
+    mean_tvals = []
+    for key, tvals in all_contrast_tvals.items():
+        froi_tvals = tvals[froi_mask]
+        mean_tvals.append([key, froi_tvals.mean().item()])
+    json_file = f'results_{model.name}_{layer}_{froi}_{dataset_name}_{froi}_{tthreshold:.2f}.json'
+    json_file_path = f'{froi_dir}/{json_file}'
+    results = {
+        'model_name': model.name,
+        'layer': layer,
+        'preferred_category': pref_dataset.name,
+        'nonpreferred_categories': [npds.name for npds in nonpref_datasets],
+        'froi': froi,
+        'localizer': dataset_name,
+        'tthreshold': tthreshold,
+        'total_units_len': froi_mask.numel(),
+        'selected_units_len': int(froi_mask.sum().item()),
+        'mean_t_values': mean_tvals,
+        'unit_indices': froi_mask.flatten().nonzero(as_tuple=False).flatten().tolist()
+    }
+    # Save JSON
+    with open(json_file_path, "w", encoding='utf-8') as json_file:
+        json.dump(results, json_file, indent=4)
+    if return_tvals:
+        return froi_mask, all_contrast_tvals
+    return froi_mask
+
+def get_froi_mask(dataset_dir, dataset_name, models_dir, model, layer, froi, tthreshold, return_tvals=False):
+    """
+    Get indices for neurons corresponding to froi, localized
+    Args:
+        localizer_type(str): grillspector, kanwisher or konkle
+    """
+    # Error handling
+    froi = froi.upper()
+    dataset_name = dataset_name.lower()
+    # assert dataset name
+    # assert froi name
+    # Mask file name
+    mask_file = f'{model.name}_{layer}_{dataset_name}_{froi}_{tthreshold:.2f}.pt'
+    # Set dirs
+    root_dir = f'{models_dir}/{model.name}/{dataset_name}'
+    froi_dir = f'{root_dir}/{froi}/{layer}'
+    os.makedirs(froi_dir, exist_ok=True)
+    # Check if mask file is present
+    if mask_file in os.listdir(froi_dir):
+        mask = torch.load(f'{froi_dir}/{mask_file}')
+        return mask
+
+    # Generate fROI mask if not present
+    activations_dir = f'{root_dir}/activations/{layer}'
+    os.makedirs(activations_dir, exist_ok=True)
+    # Get localizer dataset module
+    dataset_module = utils.get_localizerdataset_module(dataset_name)
+    # Get preferred & non-preferred datasets
+    pref_dataset, nonpref_datasets = utils.get_pref_nonpref_datasets(
+        dataset_dir, dataset_module, froi, model.transforms
+    )
+    # Localize the units in the layer
+    result = localize(model, layer, pref_dataset, nonpref_datasets, froi, \
+                                     dataset_name, activations_dir, froi_dir, tthreshold, \
+                                     return_tvals=return_tvals)
+    # result is froi_mask if return_tvals=False
+    # result is froi_mask, all_contrast_tvals if return_tvals=True
+    return result
