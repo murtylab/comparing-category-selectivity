@@ -22,19 +22,19 @@ class GrillSpectorLocalizerDataset(BaseLocalizerDataset):
         self.froi_contrasts = {
             'FFA': {
                 'preffered': 'faces',
-                'nonpreffered': ['bodies', 'places', 'objects']
+                'nonpreffered': ['bodies', 'places', 'objects', 'characters', 'scrambled_objects']
             },
             'PPA': {
                 'preffered': 'places',
-                'nonpreffered': ['bodies', 'faces', 'objects']
+                'nonpreffered': ['bodies', 'faces', 'objects', 'characters', 'scrambled_objects']
             },
             'EBA': {
                 'preffered': 'bodies',
-                'nonpreffered': ['faces', 'places', 'objects']
+                'nonpreffered': ['faces', 'places', 'objects', 'characters', 'scrambled_objects']
             },
             'VWFA': {
                 'preffered': 'characters',
-                'nonpreffered': ['bodies', 'places', 'faces', 'objects']
+                'nonpreffered': ['bodies', 'places', 'faces', 'objects', 'scrambled_objects']
             }
         }
 
