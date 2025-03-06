@@ -29,7 +29,7 @@ class AlexNetBarlowTwins(BaseModel):
         )
         # Relevant layer names
         # Layer names to ignore
-        irrelevant_layer_regexes = ['backbone$', 'backbone.[0-4]$', 'projector$']
+        irrelevant_layer_regexes = ['backbone$', r'backbone\.[0-4]$', 'projector$']
         # Layer types to ignore
         irrelevant_layer_types = [nn.Flatten]
         # irrelevant_layer_regexes = []
