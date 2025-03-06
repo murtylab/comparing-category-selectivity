@@ -2,7 +2,6 @@
 AlexNet
 https://pytorch.org/vision/main/models/alexnet.html
 """
-import torch
 import torchvision
 
 from .basemodel import BaseModel
@@ -32,10 +31,9 @@ class AlexNetRandom(BaseModel):
         """
         Load AlexNet
         """
-        seed = 42
-        torch.manual_seed(seed)
-        if torch.cuda.is_available():
-            torch.cuda.manual_seed(seed)
+        # Set seed to default seed if seed is not passed
+        if self.seed is None:
+            self.seed = self.DEFAULT_SEED
         model = torchvision.models.alexnet(weights=None)
-        model_name = f'alexnetrandom{seed}'
+        model_name = f'alexnetrandom{self.seed}'
         return model, model_name

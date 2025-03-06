@@ -11,6 +11,10 @@ class BaseModel(torch.nn.Module):
     """
     def __init__(self, **kwargs):
         super().__init__()
+        # Default seed when untrained models are initialized without passing a seed
+        self.DEFAULT_SEED = 42
+        # Seed if passed
+        self.seed = kwargs.get('seed', None)
         self.transforms = None
         self.model, self.name = self._load_model()
         self.cpu() # Move to device during intialization
@@ -18,6 +22,9 @@ class BaseModel(torch.nn.Module):
         layer_utils.replace_relu_with_out_of_place(self.model)
         # Check for in-place operations
         layer_utils.check_for_inplace_operations(self.model)
+        # Initialize model if seed was set
+        if self.seed:
+            self._initialize_model()
         # Get all layer names
         self.all_layer_names = layer_utils.get_all_layer_names(self.model)
     
@@ -62,6 +69,42 @@ class BaseModel(torch.nn.Module):
         Turn on Evaluation mode
         """
         self.model.eval()
+    
+    def _initialize_model(self):
+        """
+        Initializes a model using its default initialization methods while preserving global randomness.
+        Raises an error if a module has weights but does not implement reset_parameters().
+        
+        Args:
+            model (nn.Module): The PyTorch model to initialize.
+            seed (int): Seed for deterministic weight initialization.
+        
+        Returns:
+            nn.Module: The initialized model.
+        """
+        print(f"Initializing {self.name} with seed = {self.seed} after loading the model")
+        gen = torch.Generator(device = self.device())
+        gen.manual_seed(self.seed)  # Use a separate generator to avoid affecting global randomness
+
+        def init_weights(m):
+            if hasattr(m, 'reset_parameters'):
+                with torch.no_grad():
+                    m.reset_parameters()  # Use the default initialization
+            elif any(p.requires_grad for p in m.parameters()):  # Check if module has weights
+                raise ValueError(f"Module {m} has weights but does not implement 'reset_parameters', \
+                                 intialization will not consistent")
+        
+        # Apply the initialization recursively to all submodules in the model
+        def apply_recursive(m):
+            # Initialize the current module's weights
+            if isinstance(m, torch.nn.Module):  # Check if it's a container module (like nn.Sequential)
+                for child in m.children():
+                    apply_recursive(child)  # Apply recursively to submodules
+            else:
+                if not not isinstance(m, torch.nn.Sequential):
+                    init_weights(m)
+
+        apply_recursive(self.model) # Apply initialization to all layers recursively
 
     def _load_model(self):
         """

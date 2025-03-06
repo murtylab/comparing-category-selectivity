@@ -2,7 +2,6 @@
 ViT-B/32 Untrained
 https://pytorch.org/vision/main/models/generated/torchvision.models.vit_b_32.html
 """
-import torch
 import torchvision
 
 from .basemodel import BaseModel
@@ -32,10 +31,9 @@ class ViTB32Random(BaseModel):
         """
         Load ViT-B/32 Untrained
         """
-        seed = 42
-        torch.manual_seed(seed)
-        if torch.cuda.is_available():
-            torch.cuda.manual_seed(seed)
+        # Set seed to default seed if seed is not passed
+        if self.seed is None:
+            self.seed = self.DEFAULT_SEED
         model = torchvision.models.vit_b_32(weights=None)
-        model_name = f'vitb32random{seed}'
+        model_name = f'vitb32random{self.seed}'
         return model, model_name
