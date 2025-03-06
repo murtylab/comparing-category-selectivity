@@ -1,3 +1,10 @@
+# Ignore torch files
+*.pt
+*.pth
+
+# Ignore results jsons
+**/results_*.json
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
