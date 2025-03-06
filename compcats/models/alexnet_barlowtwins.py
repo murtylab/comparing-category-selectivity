@@ -2,8 +2,6 @@
 AlexNet: Barlow Twins
 https://github.com/jacob-prince/jsputils/blob/main/jsputils/models.py
 """
-from collections import OrderedDict
-import torch
 from torch import nn
 
 from .basemodel import BaseModel
