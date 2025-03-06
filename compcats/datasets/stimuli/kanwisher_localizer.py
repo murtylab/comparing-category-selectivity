@@ -39,15 +39,15 @@ class KanwisherLocalizerDataset(BaseLocalizerDataset):
         self.froi_contrasts = {
             'FFA': {
                 'preffered': 'faces',
-                'nonpreffered': ['bodies', 'scenes', 'objects']
+                'nonpreffered': ['bodies', 'scenes', 'objects', 'scrambledobjects']
             },
             'PPA': {
                 'preffered': 'scenes',
-                'nonpreffered': ['bodies', 'faces', 'objects']
+                'nonpreffered': ['bodies', 'faces', 'objects', 'scrambledobjects']
             },
             'EBA': {
                 'preffered': 'bodies',
-                'nonpreffered': ['faces', 'scenes', 'objects']
+                'nonpreffered': ['faces', 'scenes', 'objects', 'scrambledobjects']
             },
         }
 
