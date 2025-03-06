@@ -3,7 +3,7 @@
 *.pth
 
 # Ignore results jsons
-**/results_*.json
+**/*results_*.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
