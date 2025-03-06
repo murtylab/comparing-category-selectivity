@@ -49,8 +49,8 @@ class ResNet50Robust(BaseModel):
         """
         Load ResNet50
         """
-        model = resnet50_l2_eps0_5()
-        model_name = 'resnet50robustl2eps05'
+        model = resnet50_l2_eps3()
+        model_name = 'resnet50robustl2eps3'
         return model, model_name
 
 def _model(arch, model_fn, pretrained, progress, use_data_parallel, **kwargs):
