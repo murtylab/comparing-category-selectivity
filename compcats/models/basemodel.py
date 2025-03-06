@@ -57,27 +57,32 @@ class BaseModel():
     def get_activations(self, batch, layers):
         """
         Args:
-            img(torch.Tensor): Image
+            batch (torch.Tensor): Image batch
             layer_name(str or list): Number of layer after which activations needed
         """
         # Storign activations
         activations = {}
         # If only one layer is requested, convert it to a list
         if isinstance(layers, str):
-            layers = [layers]
+            layers_list = [list]
+        else:
+            layers_list = layers
         # Register hooks
         hooks = {}
-        for layer in layers:
+        for layer in layers_list:
             hook = hook_utils.ForwardHook(self.model, layer)
             hooks[layer] = hook
         # Forward pass
         with torch.no_grad():
             _ = self.model(batch)
         # Get activations for all layers requested
-        for layer in layers:
+        for layer in layers_list:
             activations[layer] = hooks[layer].output
             hooks[layer].close()
         # If only one layer is requested, return only the activations
+        if isinstance(layers, str):
+            activations = activations[layers]
+        return activations
         if len(layers) == 1:
             activations = activations[layers[0]]
         return activations
