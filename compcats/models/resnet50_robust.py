@@ -3,12 +3,13 @@ ResNet-50 adversarially robust
 https://github.com/bethgelab/model-vs-human/blob/master/modelvshuman/models/pytorch/adversarially_robust/robust_models.py
 https://huggingface.co/madrylab/robust-imagenet-models
 """
+from torch import nn
 import torch
 from torch.hub import load_state_dict_from_url
 from torchvision.models import resnet50
 
 from .basemodel import BaseModel
-from .utils import transform_utils
+from .utils import transform_utils, layer_utils, resnet_utils
 
 __all__ = ['resnet50_l2_eps0', 'resnet50_l2_eps0_01', 'resnet50_l2_eps0_03',
            'resnet50_l2_eps0_05', 'resnet50_l2_eps0_1', 'resnet50_l2_eps0_25',
@@ -44,12 +45,25 @@ class ResNet50Robust(BaseModel):
         self.transforms = transform_utils.get_transforms(
             mean=None, std=None, resize=(224, 224)
         )
+        # Relevant layer names
+        # Layer names to ignore
+        irrelevant_layer_regexes = ['layer[0-9]$', r'layer[0-9]\.[0-9]$', '.*downsample']
+        # Layer types to ignore
+        irrelevant_layer_types = [nn.Dropout]
+        self.irrelevant_layer_names = layer_utils.get_layers_matching_regexes(
+            self.model, irrelevant_layer_regexes
+        ) + layer_utils.get_layers_matching_types(self.model, irrelevant_layer_types)
+        self.relevant_layer_names = [
+            layer for layer in self.all_layer_names
+            if layer not in self.irrelevant_layer_names
+        ]
 
     def _load_model(self):
         """
         Load ResNet50
         """
         model = resnet50_l2_eps3()
+        resnet_utils.fix_resnet_blocks_name_relus(model)
         model_name = 'resnet50robustl2eps3'
         return model, model_name
 

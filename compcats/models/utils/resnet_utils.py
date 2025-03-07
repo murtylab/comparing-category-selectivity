@@ -98,7 +98,6 @@ def fix_resnet_blocks_name_relus(model, custom_basicblock=None, custom_bottlenec
         None
     """
     for name, module in model.named_children():
-        print(name, type(module))
         if isinstance(module, torchvision.models.resnet.Bottleneck):
             new_block = Bottleneck_NamedReLU(
                 conv1=module.conv1,
