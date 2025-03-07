@@ -49,7 +49,9 @@ def get_all_imageclass_datasets(dataset_dir, dataset_module, transforms):
         dataset_module(compcats module): Localizer dataset Module
         transforms(torchvision.transforms): Image transformations
     """
-    imageclasses = dataset_module.imageclasses
+    # Get all stimuli names
+    dataset_obj = dataset_module.get_localizer_dataset(dataset_dir, transforms, image_class='all')
+    imageclasses = dataset_obj.imageclasses
     imageclass_datasets = {}
     for image_class in imageclasses:
         imageclass_datasets[image_class] = dataset_module.get_localizer_dataset(
