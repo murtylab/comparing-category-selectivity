@@ -6,7 +6,7 @@ from torch import nn
 import torchvision
 
 from .basemodel import BaseModel
-from .utils import transform_utils, layer_utils
+from .utils import transform_utils, layer_utils, resnet_utils
 
 def get_model(**kwargs):
     model = ResNet50Random(**kwargs)
@@ -48,5 +48,6 @@ class ResNet50Random(BaseModel):
         backbone_name = 'resnet50'
         model_name = self._set_model_seed(backbone_name)
         model = torchvision.models.resnet50(weights=None)
+        resnet_utils.fix_resnet_blocks_name_relus(model)
         self._recover_rng_states()
         return model, model_name

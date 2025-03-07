@@ -46,5 +46,6 @@ class ResNet50ImageNet1kv2(BaseModel):
         """
         # IMAGENET1K_V2
         model = torchvision.models.resnet50(weights='IMAGENET1K_V2')
+        resnet_utils.fix_resnet_blocks_name_relus(model)
         model_name = 'resnet50imagenet1kv2'
         return model, model_name

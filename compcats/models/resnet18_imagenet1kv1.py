@@ -5,7 +5,7 @@ https://pytorch.org/vision/main/models/generated/torchvision.models.resnet18.htm
 import torchvision
 
 from .basemodel import BaseModel
-from .utils import transform_utils
+from .utils import transform_utils, resnet_utils
 
 def get_model(**kwargs):
     model = ResNet18ImageNet1kv1(**kwargs)
@@ -33,5 +33,6 @@ class ResNet18ImageNet1kv1(BaseModel):
         """
         # IMAGENET1K_V1
         model = torchvision.models.resnet18(weights='DEFAULT')
+        resnet_utils.fix_resnet_blocks_name_relus(model)
         model_name = 'resnet18imagenet1kv1'
         return model, model_name
