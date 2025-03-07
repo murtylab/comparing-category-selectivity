@@ -17,7 +17,7 @@ class GrillSpectorLocalizerDataset(BaseLocalizerDataset):
         self.transform = transform
         image_class = image_class.strip().lower()
         self.name = f'grillspector_{image_class}'
-        self.image_files = self._get_image_files(self.name, self.root_dir)
+        self.image_files = self._get_image_files(image_class)
         # Contrasts
         self.froi_contrasts = {
             'FFA': {
@@ -38,8 +38,9 @@ class GrillSpectorLocalizerDataset(BaseLocalizerDataset):
             }
         }
 
-    def _get_image_files(self, image_class, root_dir):
+    def _get_image_files(self, image_class):
         """Function to get paths to image files"""
+        root_dir = self.root_dir
         all_classes = set([fl.split('-')[0] for fl in os.listdir(root_dir)])
         if image_class == 'bodies':
             # body, limb
