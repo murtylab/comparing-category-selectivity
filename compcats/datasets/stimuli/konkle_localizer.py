@@ -16,7 +16,7 @@ class KonkleLocalizerDataset(BaseLocalizerDataset):
         self.root_dir = root_dir
         self.transform = transform
         image_class = image_class.strip().lower()
-        self.name = image_class
+        self.name = f'konkle_{image_class}'
         self.image_files = self._get_image_files(self.name, self.root_dir)
         # Contrasts
         self.froi_contrasts = {

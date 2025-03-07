@@ -15,23 +15,18 @@ class KanwisherLocalizerDataset(BaseLocalizerDataset):
         self.root_dir = root_dir
         self.transform = transform
         image_class = image_class.strip().lower()
+        self.name = f'kanwisher_{image_class}'
         if image_class == 'bodies':
-            self.name = 'bodies'
             self.image_files = sorted(glob.glob(f'{root_dir}/Bodies/*.png'))
         elif image_class == 'faces':
-            self.name = 'faces'
             self.image_files = sorted(glob.glob(f'{root_dir}/Faces/*.png'))
         elif image_class == 'objects':
-            self.name = 'objects'
             self.image_files = sorted(glob.glob(f'{root_dir}/Objects/*.png'))
         elif image_class == 'scenes':
-            self.name = 'scenes'
             self.image_files = sorted(glob.glob(f'{root_dir}/Scenes/*.png'))
-        elif image_class == 'scrambled_objects':
-            self.name = 'scrambledobjects'
+        elif image_class == 'scrambledobjects':
             self.image_files = sorted(glob.glob(f'{root_dir}/scrambled15G/*.png'))
         elif image_class == 'all':
-            self.name = 'all'
             self.image_files = sorted(glob.glob(f'{root_dir}/**/*.png'))
         else:
             raise ValueError(f'{image_class} images not implemented in localizer')
