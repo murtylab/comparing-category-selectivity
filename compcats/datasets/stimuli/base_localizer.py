@@ -14,12 +14,14 @@ class BaseLocalizerDataset(Dataset):
         self.name = None
         self.transform = None
         self.froi_contrasts = None
-    
+
     def get_pref_nonpref_categories(self, froi):
         """
         Get preferred & non-preferred
         """
         froi = froi.upper()
+        if froi not in self.froi_contrasts:
+            raise ValueError(f'fROI {froi} not found in localizer dataset {self.name}')
         pref_category = self.froi_contrasts[froi]['preffered']
         nonpref_categories = self.froi_contrasts[froi]['nonpreffered']
         return pref_category, nonpref_categories
