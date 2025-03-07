@@ -6,9 +6,10 @@ import os
 import numpy as np
 import scipy
 from PIL import Image
-from torch.utils.data import Dataset
 
-class Vinkenetal2023Dataset(Dataset):
+from .base_localizer import BaseLocalizerDataset
+
+class Vinkenetal2023Dataset(BaseLocalizerDataset):
     """
     Dataset for Vinken et al 2023 localizer
     data/images.mat:
@@ -38,6 +39,24 @@ class Vinkenetal2023Dataset(Dataset):
         image_class = image_class.strip().lower()
         self.name = image_class
         self.images = self._get_images(self.name, self.image_labels, self.all_images)
+        # Contrasts
+        self.froi_contrasts = {
+            'FFA': {
+                'preffered': ['humanfaces', 'monkeyfaces'],
+                'nonpreffered': ['nonfaces']
+            },
+            'hFFA': {
+                'preffered': 'humanfaces',
+                'nonpreffered': ['monkeyfaces', 'nonfaces']
+            },
+            'mFFA': {
+                'preffered': 'monkeyfaces',
+                'nonpreffered': ['humanfaces', 'nonfaces']
+            },
+        }
+        self.imageclasses = [
+            'humanfaces', 'monkeyfaces', 'nonfaces'
+        ]
 
     def _get_images(self, image_class, image_labels, all_images):
         """Function to get paths to image files"""
@@ -71,7 +90,7 @@ class Vinkenetal2023Dataset(Dataset):
             image = self.transform(image)
         return image
 
-def get_stimuli_dataset(root_dir, transform, image_class='all'):
+def get_localizer_dataset(root_dir, transform, image_class='all'):
     """
     Get Vinken et al 2023 dataset
     Args:

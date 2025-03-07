@@ -1,4 +1,5 @@
-from compcats.datasets.stimuli import grillspector_localizer, kanwisher_localizer, konkle_localizer
+from compcats.datasets.stimuli import grillspector_localizer, \
+    kanwisher_localizer, konkle_localizer, vinken23_localizer
 
 def get_localizerdataset_module(dataset_name):
     """
@@ -10,6 +11,8 @@ def get_localizerdataset_module(dataset_name):
         dataset_module = grillspector_localizer
     elif dataset_name == 'konkle':
         dataset_module = konkle_localizer
+    elif dataset_name == 'vinken23':
+        dataset_module = vinken23_localizer
     else:
         raise ValueError(f'{dataset_name} unknown localizer type')
     return dataset_module
