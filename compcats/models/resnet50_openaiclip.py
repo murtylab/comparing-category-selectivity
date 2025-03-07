@@ -2,10 +2,11 @@
 ResNet-50 CLIP
 https://github.com/openai/CLIP
 """
+from torch import nn
 import clip
 
 from .basemodel import BaseModel
-from .utils import transform_utils
+from .utils import transform_utils, layer_utils
 
 def get_model(**kwargs):
     model = ResNet50OpenAICLIP(**kwargs)
@@ -24,6 +25,19 @@ class ResNet50OpenAICLIP(BaseModel):
         # ToImage(): Convert to Image (subclass of Tensor)
         # ToDtype(): Convert to FloatTensor and scale to [0, 1]
         # Normalize(): mean=(0.48145466, 0.4578275, 0.40821073), std=(0.26862954, 0.26130258, 0.27577711)
+        # Relevant layer names
+        # Layer names to ignore
+        irrelevant_layer_regexes = ['layer[0-9]$', r'layer[0-9]\.[0-9]$', '.*downsample', \
+                                    r'attnpool\..*']
+        # Layer types to ignore
+        irrelevant_layer_types = [nn.Dropout]
+        self.irrelevant_layer_names = layer_utils.get_layers_matching_regexes(
+            self.model, irrelevant_layer_regexes
+        ) + layer_utils.get_layers_matching_types(self.model, irrelevant_layer_types)
+        self.relevant_layer_names = [
+            layer for layer in self.all_layer_names
+            if layer not in self.irrelevant_layer_names
+        ]
 
     def _load_model(self):
         """
