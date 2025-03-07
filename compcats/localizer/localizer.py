@@ -22,7 +22,7 @@ def t_statistic(tensor1: torch.Tensor, tensor2: torch.Tensor) -> torch.Tensor:
     mean_diff = tensor1.mean(dim=0) - tensor2.mean(dim=0)
     var1 = tensor1.var(dim=0, unbiased=True)
     var2 = tensor2.var(dim=0, unbiased=True)
-    
+
     pooled_se = torch.sqrt(var1 / n1 + var2 / n2)
     t_stat = mean_diff / pooled_se
 
@@ -34,7 +34,7 @@ def t_statistic(tensor1: torch.Tensor, tensor2: torch.Tensor) -> torch.Tensor:
         df = (var1 / n1 + var2 / n2) ** 2 / ((var1 / n1) ** 2 / (n1 - 1) + (var2 / n2) ** 2 / (n2 - 1))
         # Calculate p-value (two-tailed)
         p_values = 2 * (1 - torch.distributions.StudentT(df).cdf(torch.abs(t_stat)))
-    
+
     return t_stat
 
 def compare_activations(tensor1, tensor2, tthreshold):
@@ -121,7 +121,7 @@ def localize(model, layer, pref_dataset, nonpref_datasets, froi, dataset_name, \
         return froi_mask, all_contrast_tvals
     return froi_mask
 
-def get_froi_mask(dataset_dir, dataset_name, models_dir, model, layer, froi, tthreshold, return_tvals=False):
+def get_froi_mask(dataset_dir, dataset_name, models_dir, model, layers, froi, tthreshold, return_tvals=False):
     """
     Get indices for neurons corresponding to froi, localized
     Args:
@@ -130,32 +130,63 @@ def get_froi_mask(dataset_dir, dataset_name, models_dir, model, layer, froi, tth
     # Error handling
     froi = froi.upper()
     dataset_name = dataset_name.lower()
-    # assert dataset name
-    # assert froi name
-    # Mask file name
-    mask_file = f'{model.name}_{layer}_{dataset_name}_{froi}_{tthreshold:.2f}.pt'
-    # Set dirs
-    root_dir = f'{models_dir}/{model.name}/{dataset_name}'
-    froi_dir = f'{root_dir}/{froi}/{layer}'
-    os.makedirs(froi_dir, exist_ok=True)
-    # Check if mask file is present
-    if mask_file in os.listdir(froi_dir):
-        mask = torch.load(f'{froi_dir}/{mask_file}')
-        return mask
+    if isinstance(layers, str):
+        layers_list = [layers]
+    elif isinstance(layers, list):
+        layers_list = layers
+    else:
+        raise ValueError("layers should be a string or a list of strings")
 
-    # Generate fROI mask if not present
-    activations_dir = f'{root_dir}/activations/{layer}'
+    # Results
+    results = {}
+
+    # Dirs
+    root_dir = f'{models_dir}/{model.name}/{dataset_name}'
+    activations_dir = f'{root_dir}/activations'
     os.makedirs(activations_dir, exist_ok=True)
+
     # Get localizer dataset module
     dataset_module = utils.get_localizerdataset_module(dataset_name)
     # Get preferred & non-preferred datasets
     pref_dataset, nonpref_datasets = utils.get_pref_nonpref_datasets(
         dataset_dir, dataset_module, froi, model.transforms
     )
-    # Localize the units in the layer
-    result = localize(model, layer, pref_dataset, nonpref_datasets, froi, \
-                                     dataset_name, activations_dir, froi_dir, tthreshold, \
-                                     return_tvals=return_tvals)
-    # result is froi_mask if return_tvals=False
-    # result is froi_mask, all_contrast_tvals if return_tvals=True
-    return result
+
+    # Generate all layer activations together in one foward pass
+    model.generate_dataset_activations(layers_list, pref_dataset, activations_dir)
+    for nonpref_dataset in nonpref_datasets:
+        model.generate_dataset_activations(layers_list, nonpref_dataset, activations_dir)
+
+    for layer in layers_list:
+        # Mask file name
+        mask_file = f'{model.name}_{layer}_{dataset_name}_{froi}_{tthreshold:.2f}.pt'
+        froi_dir = f'{root_dir}/{froi}/{layer}'
+        os.makedirs(froi_dir, exist_ok=True)
+        # Check if mask file is present
+        if mask_file in os.listdir(froi_dir):
+            mask = torch.load(f'{froi_dir}/{mask_file}')
+            if return_tvals:
+                raise Warning("fROI mask already present, not returning t-values")
+            return mask
+
+        # Generate fROI mask if not present
+        # Localize the units in the layer
+        result = localize(model, layer, pref_dataset, nonpref_datasets, froi, \
+                                        dataset_name, activations_dir, froi_dir, tthreshold, \
+                                        return_tvals=return_tvals)
+        # result is froi_mask if return_tvals=False
+        # result is froi_mask, all_contrast_tvals if return_tvals=True
+        if return_tvals:
+            mask, all_contrast_tvals = result
+            results[layer] = {
+                'mask': mask,
+                'all_contrast_tvals': all_contrast_tvals
+            }
+        else:
+            results[layer] = result
+
+    # Error handling
+    if isinstance(layers, str):
+        results = results[layers]
+
+    return results
