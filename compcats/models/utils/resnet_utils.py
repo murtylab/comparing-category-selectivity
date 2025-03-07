@@ -82,7 +82,7 @@ class BasicBlock_NamedReLU(nn.Module):
 
         return out
 
-def fix_resnet_blocks_name_relus(model):
+def fix_resnet_blocks_name_relus(model, custom_basicblock=None, custom_bottleneck=None):
     """
     Replaces the ReLU activations in the ResNet blocks of a given model with NamedReLU activations.
 
@@ -98,7 +98,20 @@ def fix_resnet_blocks_name_relus(model):
         None
     """
     for name, module in model.named_children():
+        print(name, type(module))
         if isinstance(module, torchvision.models.resnet.Bottleneck):
+            new_block = Bottleneck_NamedReLU(
+                conv1=module.conv1,
+                bn1=module.bn1,
+                conv2=module.conv2,
+                bn2=module.bn2,
+                conv3=module.conv3,
+                bn3=module.bn3,
+                downsample=module.downsample
+            )
+            new_block.load_state_dict(module.state_dict())
+            setattr(model, name, new_block)
+        elif custom_bottleneck and isinstance(module, custom_bottleneck):
             new_block = Bottleneck_NamedReLU(
                 conv1=module.conv1,
                 bn1=module.bn1,
@@ -120,5 +133,19 @@ def fix_resnet_blocks_name_relus(model):
             )
             new_block.load_state_dict(module.state_dict())
             setattr(model, name, new_block)
+        elif custom_basicblock and isinstance(module, custom_basicblock):
+            new_block = BasicBlock_NamedReLU(
+                conv1=module.conv1,
+                bn1=module.bn1,
+                conv2=module.conv2,
+                bn2=module.bn2,
+                downsample=module.downsample
+            )
+            new_block.load_state_dict(module.state_dict())
+            setattr(model, name, new_block)
         else:
-            fix_resnet_blocks_name_relus(module)
+            fix_resnet_blocks_name_relus(
+                module, \
+                custom_basicblock = custom_basicblock, \
+                custom_bottleneck = custom_bottleneck
+            )
