@@ -23,9 +23,14 @@ class BaseLocalizerDataset(Dataset):
         froi = froi.upper()
         if froi not in self.froi_contrasts:
             raise ValueError(f'fROI {froi} not found in localizer dataset {self.name}')
-        pref_category = self.froi_contrasts[froi]['preffered']
+        pref_categories = self.froi_contrasts[froi]['preffered']
         nonpref_categories = self.froi_contrasts[froi]['nonpreffered']
-        return pref_category, nonpref_categories
+        # Error handling
+        if not isinstance(pref_categories, list):
+            pref_categories = [pref_categories]
+        if not isinstance(nonpref_categories, list):
+            nonpref_categories = [nonpref_categories]
+        return pref_categories, nonpref_categories
 
     def __len__(self):
         return len(self.image_files)

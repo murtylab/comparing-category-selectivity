@@ -132,7 +132,8 @@ class BaseModel(torch.nn.Module):
             activations = activations[layers]
         return activations
 
-    def generate_dataset_activations(self, layers, dataset, save_dir=None, batch_size=768, device='cuda'):
+    def generate_dataset_activations(self, layers, dataset, save_dir=None, \
+                                     batch_size=768, device='cuda'):
         """
         Function to generate activations for a dataset
         Args:

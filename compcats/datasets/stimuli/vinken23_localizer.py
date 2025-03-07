@@ -23,6 +23,7 @@ class Vinkenetal2023Dataset(BaseLocalizerDataset):
     The images are 224x224x3
     """
     def __init__(self, root_dir, transform, image_class='all'):
+        super().__init__()
         self.root_dir = root_dir
         # Load the mat
         self.mat = scipy.io.loadmat(os.path.join(root_dir, 'images.mat'))
@@ -45,11 +46,11 @@ class Vinkenetal2023Dataset(BaseLocalizerDataset):
                 'preffered': ['humanfaces', 'monkeyfaces'],
                 'nonpreffered': ['nonfaces']
             },
-            'hFFA': {
+            'HFFA': {
                 'preffered': 'humanfaces',
                 'nonpreffered': ['monkeyfaces', 'nonfaces']
             },
-            'mFFA': {
+            'MFFA': {
                 'preffered': 'monkeyfaces',
                 'nonpreffered': ['humanfaces', 'nonfaces']
             },

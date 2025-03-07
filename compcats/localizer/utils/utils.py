@@ -26,13 +26,20 @@ def get_pref_nonpref_datasets(dataset_dir, dataset_module, froi, transforms):
     """
     # Get preferred & non-preferred stimuli names
     dataset_obj = dataset_module.get_localizer_dataset(dataset_dir, transforms, image_class='all')
-    pref_category, nonpref_categories = dataset_obj.get_pref_nonpref_categories(froi)
+    pref_categories, nonpref_categories = dataset_obj.get_pref_nonpref_categories(froi)
     # Get preferred & non-preferred datasets
-    pref_dataset = dataset_module.get_localizer_dataset(dataset_dir, transforms, image_class=pref_category)
-    nonpref_datasets = [
-        dataset_module.get_localizer_dataset(dataset_dir, transforms, image_class=nonpref_category) \
-        for nonpref_category in nonpref_categories
+    pref_datasets = [
+        dataset_module.get_localizer_dataset(
+            dataset_dir, transforms, image_class=pref_category
+        ) for pref_category in pref_categories
     ]
+    # pref_dataset = dataset_module.get_localizer_dataset(dataset_dir, transforms, image_class=pref_category)
+    nonpref_datasets = [
+        dataset_module.get_localizer_dataset(
+            dataset_dir, transforms, image_class=nonpref_category
+        ) for nonpref_category in nonpref_categories
+    ]
+    return pref_datasets, nonpref_datasets
 
 def get_all_imageclass_datasets(dataset_dir, dataset_module, transforms):
     """

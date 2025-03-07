@@ -50,7 +50,7 @@ def compare_activations(tensor1, tensor2, tthreshold):
     mask = t_values >= tthreshold
     return mask, t_values
 
-def localize(model, layer, pref_dataset, nonpref_datasets, froi, dataset_name, \
+def localize(model, layer, pref_datasets, nonpref_datasets, froi, dataset_name, \
              activations_dir, froi_dir, tthreshold, return_tvals=False):
     """
     Localize units in a layer that respond to 
@@ -58,14 +58,24 @@ def localize(model, layer, pref_dataset, nonpref_datasets, froi, dataset_name, \
     Args:
         model():
         layer_num(int): Layer number
-        pref_dataset():
-        nonpref_datasets():
+        pref_datasets(list): List of preferred datasets
+        nonpref_datasets(list): List of non-preferred datasets
+        froi(str): fROI name
+        dataset_name(str): Localizer dataset name
+        activations_dir(str): Directory to store activations
+        froi_dir(str): Directory to store fROI masks
+        tthreshold(float): t-threshold
+        return_tvals(bool): Return t-values
     """
     # Generate all activations
-    # preferred category
-    pref_activations = model.generate_dataset_activations(
-        layer, pref_dataset, activations_dir
-    )
+    # preferred categories
+    pref_activations = {}
+    for pref_dataset in pref_datasets:
+        pref_img_class = pref_dataset.name
+        pref_activation_ = model.generate_dataset_activations(
+            layer, pref_dataset, activations_dir
+        )
+        pref_activations[pref_img_class] = pref_activation_
     # non-preferred categories
     nonpref_activations = {}
     for nonpref_dataset in nonpref_datasets:
@@ -77,19 +87,22 @@ def localize(model, layer, pref_dataset, nonpref_datasets, froi, dataset_name, \
     # Compare activations
     froi_mask = None
     all_contrast_tvals = {}
-    for nonpref_dataset in nonpref_datasets:
-        pref_img_class = pref_dataset.name
-        nonpref_img_class = nonpref_dataset.name
-        key = (pref_img_class, nonpref_img_class)
-        # Get contrast mask and t-values
-        contrast_mask, contrast_tvals = compare_activations(pref_activations, \
-                                                            nonpref_activations[nonpref_img_class], \
-                                                            tthreshold)
-        if froi_mask is None:
-            froi_mask = contrast_mask
-        else:
-            froi_mask = froi_mask & contrast_mask
-        all_contrast_tvals[key] = contrast_tvals
+    for pref_dataset in pref_datasets:
+        for nonpref_dataset in nonpref_datasets:
+            pref_img_class = pref_dataset.name
+            nonpref_img_class = nonpref_dataset.name
+            key = (pref_img_class, nonpref_img_class)
+            # Get contrast mask and t-values
+            contrast_mask, contrast_tvals = compare_activations(
+                pref_activations[pref_img_class], \
+                nonpref_activations[nonpref_img_class], \
+                tthreshold
+            )
+            if froi_mask is None:
+                froi_mask = contrast_mask
+            else:
+                froi_mask = froi_mask & contrast_mask
+            all_contrast_tvals[key] = contrast_tvals
     # Store fROI mask
     froi_file_name = f'{model.name}_{layer}_{dataset_name}_{froi}_{tthreshold:.2f}.pt'
     torch.save(froi_mask.cpu(), f'{froi_dir}/{froi_file_name}')
@@ -104,7 +117,7 @@ def localize(model, layer, pref_dataset, nonpref_datasets, froi, dataset_name, \
     results = {
         'model_name': model.name,
         'layer': layer,
-        'preferred_category': pref_dataset.name,
+        'preferred_categories': [pds.name for pds in pref_datasets],
         'nonpreferred_categories': [npds.name for npds in nonpref_datasets],
         'froi': froi,
         'localizer': dataset_name,
@@ -121,7 +134,9 @@ def localize(model, layer, pref_dataset, nonpref_datasets, froi, dataset_name, \
         return froi_mask, all_contrast_tvals
     return froi_mask
 
-def get_froi_mask(dataset_dir, dataset_name, models_dir, model, layers, froi, tthreshold, return_tvals=False):
+def get_froi_mask(
+        dataset_dir, dataset_name, models_dir, model, layers, froi, tthreshold, return_tvals=False
+):
     """
     Get indices for neurons corresponding to froi, localized
     Args:
@@ -148,12 +163,13 @@ def get_froi_mask(dataset_dir, dataset_name, models_dir, model, layers, froi, tt
     # Get localizer dataset module
     dataset_module = utils.get_localizerdataset_module(dataset_name)
     # Get preferred & non-preferred datasets
-    pref_dataset, nonpref_datasets = utils.get_pref_nonpref_datasets(
+    pref_datasets, nonpref_datasets = utils.get_pref_nonpref_datasets(
         dataset_dir, dataset_module, froi, model.transforms
     )
 
     # Generate all layer activations together in one foward pass
-    model.generate_dataset_activations(layers_list, pref_dataset, activations_dir)
+    for pref_dataset in pref_datasets:
+        model.generate_dataset_activations(layers_list, pref_dataset, activations_dir)
     for nonpref_dataset in nonpref_datasets:
         model.generate_dataset_activations(layers_list, nonpref_dataset, activations_dir)
 
@@ -171,7 +187,7 @@ def get_froi_mask(dataset_dir, dataset_name, models_dir, model, layers, froi, tt
 
         # Generate fROI mask if not present
         # Localize the units in the layer
-        result = localize(model, layer, pref_dataset, nonpref_datasets, froi, \
+        result = localize(model, layer, pref_datasets, nonpref_datasets, froi, \
                                         dataset_name, activations_dir, froi_dir, tthreshold, \
                                         return_tvals=return_tvals)
         # result is froi_mask if return_tvals=False
