@@ -33,4 +33,19 @@ def get_pref_nonpref_datasets(dataset_dir, dataset_module, froi, transforms):
         dataset_module.get_localizer_dataset(dataset_dir, transforms, image_class=nonpref_category) \
         for nonpref_category in nonpref_categories
     ]
-    return pref_dataset, nonpref_datasets
+
+def get_all_imageclass_datasets(dataset_dir, dataset_module, transforms):
+    """
+    Function to get all image class datasets
+    Args:
+        dataset_dir(str): Directory where dataset is stored
+        dataset_module(compcats module): Localizer dataset Module
+        transforms(torchvision.transforms): Image transformations
+    """
+    imageclasses = dataset_module.imageclasses
+    imageclass_datasets = {}
+    for image_class in imageclasses:
+        imageclass_datasets[image_class] = dataset_module.get_localizer_dataset(
+            dataset_dir, transforms, image_class=image_class
+        )
+    return imageclass_datasets

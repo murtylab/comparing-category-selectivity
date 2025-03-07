@@ -45,6 +45,9 @@ class KanwisherLocalizerDataset(BaseLocalizerDataset):
                 'nonpreffered': ['faces', 'scenes', 'objects', 'scrambledobjects']
             },
         }
+        self.imageclasses = [
+            'faces', 'bodies', 'scenes', 'objects', 'scrambledobjects'
+        ]
 
 def get_localizer_dataset(root_dir, transform, image_class='all'):
     """

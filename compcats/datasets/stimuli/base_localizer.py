@@ -14,6 +14,7 @@ class BaseLocalizerDataset(Dataset):
         self.name = None
         self.transform = None
         self.froi_contrasts = None
+        self.imageclasses = None
 
     def get_pref_nonpref_categories(self, froi):
         """

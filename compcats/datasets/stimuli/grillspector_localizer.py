@@ -37,6 +37,9 @@ class GrillSpectorLocalizerDataset(BaseLocalizerDataset):
                 'nonpreffered': ['bodies', 'places', 'faces', 'objects', 'scrambledobjects']
             }
         }
+        self.imageclasses = [
+            'bodies', 'faces', 'places', 'objects', 'characters', 'scrambledobjects'
+        ]
 
     def _get_image_files(self, image_class):
         """Function to get paths to image files"""

@@ -33,6 +33,9 @@ class KonkleLocalizerDataset(BaseLocalizerDataset):
                 'nonpreffered': ['faces', 'scenes', 'objects']
             },
         }
+        self.imageclasses = [
+            'faces', 'bodies', 'scenes', 'objects'
+        ]
 
     def _get_image_files(self, image_class, root_dir):
         """Function to get paths to image files"""
