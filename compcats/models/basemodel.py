@@ -1,5 +1,6 @@
 """Base Model"""
 import os
+import warnings
 from tqdm import tqdm
 import torch
 
@@ -99,6 +100,37 @@ class BaseModel(torch.nn.Module):
         """
         raise NotImplementedError("_load_model method should be overridden")
 
+    def _hook_error_handling(self, hook_output, batch_size):
+        """
+        Error handling for hooks
+        """
+        # If the output is a tuple, only store the first element
+        # This will be the case for example with MultiHeadAttention
+        if isinstance(hook_output, tuple):
+            hook_output = hook_output[0]
+        # If batch size does not match hook output dim = 0, the switch dimensions
+        if hook_output.size(0) != batch_size:
+            if hook_output.size(0) == hook_output.size(1):
+                error_message = \
+                    f'Hook output size: {hook_output.size()}, dim=0' + \
+                    f' does not match batch size: {batch_size}. ' + \
+                    ' But hook dim=0 and dim=1 are equal. Unsure how to switch, check the outputs.'
+                raise ValueError(error_message)
+            if hook_output.size(1) != batch_size:
+                error_message = \
+                    f'Hook output size: {hook_output.size()}, dim=0' + \
+                    f' does not match batch size: {batch_size}. ' + \
+                    ' But hook dim=1 also does not match. Unsure how to switch, check the outputs.'
+                raise ValueError(error_message)
+            # Switch dimensions if dim=0 does not match batch size
+            hook_output = hook_output.transpose(0, 1)
+            warning_message = \
+                f'Hook output size: {hook_output.size()}, dim=0' + \
+                f' does not match batch size: {batch_size}. Switching dimensions.' + \
+                ' Make sure this is intended.'
+            warnings.warn(warning_message, RuntimeWarning)
+        return hook_output
+
     def get_activations(self, batch, layers):
         """
         Args:
@@ -115,6 +147,8 @@ class BaseModel(torch.nn.Module):
             layers_list = [list]
         else:
             layers_list = layers
+        # batch size to ensure that it is dim = 0
+        batch_size = batch.size(0)
         # Register hooks
         hooks = {}
         for layer in layers_list:
@@ -125,7 +159,9 @@ class BaseModel(torch.nn.Module):
             _ = self.model(batch)
         # Get activations for all layers requested
         for layer in layers_list:
-            activations[layer] = hooks[layer].output
+            output = hooks[layer].output
+            # Error handling
+            activations[layer] = self._hook_error_handling(output, batch_size)
             hooks[layer].close()
         # If only one layer is requested, return only the activations
         if isinstance(layers, str):
