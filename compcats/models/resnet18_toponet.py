@@ -50,8 +50,9 @@ class ResNet18TopoNet(BaseModel):
         Load ResNet18 Toponet trained on ImageNet
         """
         # Default tau value = 10
+        self.DEFAULT_TAU = 10
         # Forcing integer value
-        self.tau = int(self.kwargs.get('tau', 10))
+        self.tau = int(self.kwargs.get('tau', self.DEFAULT_TAU))
         model = toponets.resnet18(tau=self.tau, checkpoint_path = f"resnet18_tau_{self.tau}.pt")
         resnet_utils.fix_resnet_blocks_name_relus(model)
         model_name = f'resnet18toponettau{self.tau}'
