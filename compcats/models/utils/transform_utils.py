@@ -77,7 +77,7 @@ def get_clip_transforms(mean=None, std=None, resize=None):
     assert isinstance(resize, int), "Only int resize is supported for CLIP models"
     transforms.transforms.append(v2.Resize((resize, resize),
                                            interpolation=v2.InterpolationMode.BICUBIC))
-    
+
     # RGB: Convert to RGB
     transforms.transforms.append(v2.RGB())
 
@@ -91,7 +91,7 @@ def get_clip_transforms(mean=None, std=None, resize=None):
 
     # Normalize: Normalize with mean and std
     # https://github.com/openai/CLIP/blob/main/clip/clip.py#L85C19-L85C92
-    if mean is not None and std is not None:
+    if mean is None and std is None:
         transforms.transforms.append(v2.Normalize(
             (0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)
         ))
