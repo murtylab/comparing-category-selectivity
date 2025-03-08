@@ -32,7 +32,7 @@ class ResNet18TopoNet(BaseModel):
         # Relevant layer names
         # Layer names to ignore
         irrelevant_layer_regexes = [
-            'layer[0-9]$', r'layer[0-9]\.[0-9]$', '.*downsample$', r'.*downsample\.[0-9]\..*$', \
+            'layer[0-9]$', r'layer[0-9]\.[0-9]$', '.*downsample', \
             r'.*conv[0-9]\.conv$'
         ]
         # Layer types to ignore
