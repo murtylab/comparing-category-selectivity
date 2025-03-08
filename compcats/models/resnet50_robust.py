@@ -62,6 +62,14 @@ class ResNet50Robust(BaseModel):
         """
         Load ResNet50
         """
+        self.DEFAULT_EPS = 3
+        self.eps = int(self.kwargs.get('eps', self.DEFAULT_EPS))
+        if self.eps != self.DEFAULT_EPS:
+            raise ValueError(f"Only epsilon = {self.DEFAULT_EPS} is implemented for ResNet50-Robust")
+            # Steps to update:
+            # Select appropriate class
+            # Take eps kwargs as float, not int
+            # Also update model name based on epsilon
         model = resnet50_l2_eps3()
         resnet_utils.fix_resnet_blocks_name_relus(model)
         model_name = 'resnet50robustl2eps3'
