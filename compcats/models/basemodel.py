@@ -12,6 +12,9 @@ class BaseModel(torch.nn.Module):
     """
     def __init__(self, **kwargs):
         super().__init__()
+        # Store kwargs
+        self.kwargs = kwargs
+
         # Seed
         # Default seed when untrained models are initialized without passing a seed
         self.DEFAULT_SEED = 42
