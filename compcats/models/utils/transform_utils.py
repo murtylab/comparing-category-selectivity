@@ -65,8 +65,6 @@ def get_clip_transforms(mean=None, std=None, resize=None):
     https://github.com/openai/CLIP/blob/main/clip/clip.py#L79
     mean, std are not used in CLIP models, but added for consistency
     """
-    assert mean is None, "Mean is not used in CLIP models"
-    assert std is None, "Std is not used in CLIP models"
     # Init Compose
     # Square Padding: Pad shorter side to longer side
     transforms = v2.Compose([
@@ -95,5 +93,9 @@ def get_clip_transforms(mean=None, std=None, resize=None):
         transforms.transforms.append(v2.Normalize(
             (0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)
         ))
+    elif mean is not None and std is not None:
+        transforms.transforms.append(v2.Normalize(mean, std))
+    else:
+        raise ValueError("Both mean and std should be provided or None")
     
     return transforms
