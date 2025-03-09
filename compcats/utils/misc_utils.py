@@ -11,8 +11,10 @@ def check_row_present(row_params, results_list):
     Returns:
         row_present (bool): True if row is present, False otherwise.
     """
-    row_present = False
+    row_present = None
     # Skip if row is already present
-    if any(all(row_params[key] == d.get(key, None) for key in row_params) for d in results_list):
-        row_present = True
+    for row in results_list:
+        if all(row_params[key] == row.get(key, None) for key in row_params):
+            row_present = row
+            break
     return row_present
