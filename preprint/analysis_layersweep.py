@@ -133,19 +133,3 @@ def get_model_best_layer(results_df, model_name, frois):
             best_row = rows.loc[rows['pearsonr_median'].idxmax(skipna=True)]
             best_layers[froi_] = best_row.to_dict()
     return best_layers
-
-def delete_activations(activations_dir, layers):
-    """
-    Delete saved activations except for the specified layers to save space
-    Args:
-        model (Model): Model instance
-        layers (list): List of layers
-    """
-    num_layers_found = 0
-    for layer in layers:
-        layer_activations_dir = f'{activations_dir}/{layer}'
-        if os.path.exists(layer_activations_dir):
-            os.system(f'rm -rf {layer_activations_dir}')
-            num_layers_found += 1
-    if num_layers_found > 0:
-        print(f'Deleted activations for {num_layers_found} layers in {activations_dir}')
