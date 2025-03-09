@@ -1,8 +1,15 @@
 from compcats.datasets.fmri import nsd, murty185
+from compcats.localizer import localizer
 from compcats.localizer import utils as localizer_utils
 
 
-def get_dataset_activations(models_dir, dataset_dir, model, layers, dataset='nsd', **kwargs):
+def get_dataset_activations(
+    models_dir, dataset_dir, \
+    model, layers, dataset='nsd', \
+    froi = None, tthreshold = None, \
+    froi_localizer = None, localizer_dir = None, \
+    **kwargs
+):
     """
     Function to generate model activations of a particular layer for different datasets
     Args:
@@ -60,9 +67,26 @@ def get_dataset_activations(models_dir, dataset_dir, model, layers, dataset='nsd
             imgclass_activations[imageclass] = model.generate_dataset_activations(
                 layers_list, imageclass_dataset, save_dir, batch_size, device
             )
-        dataset_activations = imgclass_activations
+        for layer in layers_list:
+            dataset_activations[layer] = {}
+            for imgclass, imgclass_activation in imgclass_activations.items():
+                dataset_activations[layer][imgclass] = imgclass_activation[layer]
     else:
         raise ValueError(f'{dataset} unknown dataset')
+
+    # Get fROI activations if froi is provided
+    if froi is not None and tthreshold is not None and froi_localizer is not None:
+        froi_masks = localizer.get_froi_mask(
+            localizer_dir, froi_localizer, models_dir, \
+            model, layers_list, froi, tthreshold
+        )
+        for layer in layers_list:
+            if isinstance(dataset_activations[layer], dict):
+                for imgclass in dataset_activations[layer].keys():
+                    dataset_activations[layer][imgclass] = \
+                        dataset_activations[layer][imgclass][:, froi_masks[layer]]
+            else:
+                dataset_activations[layer] = dataset_activations[layer][:, froi_masks[layer]]
 
     # Error handling
     if isinstance(layers, str):
