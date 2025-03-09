@@ -2,17 +2,14 @@
 import os
 import time
 import argparse
-import pandas as pd
-import numpy as np
-import scipy
-from tqdm import tqdm
 import torch
 
 from compcats.models import *
 from compcats.datasets.fmri import nsd
-from compcats.localizer import localizer
-from compcats.utils import model_utils, seed_utils, misc_utils
-from compcats.utils import responsecomparison_utils as rcutils
+from compcats.utils import seed_utils
+
+# Analysis files
+import analysis_layersweep
 
 # Variables
 # Directories
@@ -28,43 +25,35 @@ KANWISHER_LOCALIZER_DIR = '/net/vast-storage/scratch/vast/sinha/alishd/datasets/
 localizer_kanwisher/images'
 KONKLE_LOCALIZER_DIR = '/net/vast-storage/scratch/vast/sinha/alishd/datasets/\
 localizer_konkle/CompSearch'
-def get_localizer_dir(localizer_name):
-    if localizer_name == 'grillspector':
-        return GRILLSPECTOR_LOCALIZER_DIR
-    elif localizer_name == 'kanwisher':
-        return KANWISHER_LOCALIZER_DIR
-    elif localizer_name == 'konkle':
-        return KONKLE_LOCALIZER_DIR
-    else:
-        raise ValueError('Localizer not implemented')
+
 # Seed
 SEED = 42
 seed_utils.seed_everything(SEED)
 
 # Models
 MODELS = {
-    'alexnetimagenet1kv1': alexnet_imagenet1kv1,
-    'alexnetipclref01': alexnet_ipcl,
-    'alexnetbarlowtwins': alexnet_barlowtwins,
-    'alexnetrandom42': alexnet_random,
+    # 'alexnetimagenet1kv1': alexnet_imagenet1kv1, # Done
+    # 'alexnetipclref01': alexnet_ipcl, # Done
+    # 'alexnetbarlowtwins': alexnet_barlowtwins, # Done
+    # 'alexnetrandom42': alexnet_random, # Done
+    # 'resnet18imagenet1kv1': resnet18_imagenet1kv1, # Done
+    # 'resnet50imagenet1kv2': resnet50_imagenet1kv2, # Done
+    # 'resnet50imagenet21k': resnet50_imagenet21k, # Done
+    # 'resnet50openaiclip': resnet50_openaiclip, # Done
+    # 'resnet50simclr': resnet50_simclr, # Done
+    # 'resnet50robustl2eps3': resnet50_robust, # Done
+    # 'resnet50sin': resnet50_sin, # Done
+    # 'resnet50faceobfuscation': resnet50_faceobfuscation, # Done
+    # 'resnet50toponettau30': resnet50_toponet, # Done
+    # 'resnet50random42': resnet50_random, # Done
+    # 'vitb32imagenet1kv1': vitb32_imagenet1kv1, # Done
+    # 'vitb32openaiclip': vitb32_openaiclip, # Done
+    # 'vitb32random42': vitb32_random, # Done
+    # 'vitb16imagenet21k': vitb16_imagenet21k, # Done
+    # 'vitb16openaiclip': vitb16_openaiclip, # Done
+    # 'vitb16siglip2res224': vitb16_siglip2, # Done
+    # 'vitl14openaiclip': vitl14_openaiclip, # Done
     'vgg16imagenet1kv1': vgg16_imagenet1kv1,
-    'resnet18imagenet1kv1': resnet18_imagenet1kv1,
-    'resnet50imagenet1kv2': resnet50_imagenet1kv2,
-    'resnet50imagenet21k': resnet50_imagenet21k,
-    'resnet50openaiclip': resnet50_openaiclip,
-    'resnet50simclr': resnet50_simclr,
-    'resnet50robustl2eps3': resnet50_robust,
-    'resnet50sin': resnet50_sin,
-    'resnet50faceobfuscation': resnet50_faceobfuscation,
-    'resnet50toponettau30': resnet50_toponet,
-    'resnet50random42': resnet50_random,
-    'vitb32imagenet1kv1': vitb32_imagenet1kv1,
-    'vitb32openaiclip': vitb32_openaiclip,
-    'vitb32random42': vitb32_random,
-    'vitb16imagenet21k': vitb16_imagenet21k,
-    'vitb16openaiclip': vitb16_openaiclip,
-    'vitb16siglip2res224': vitb16_siglip2,
-    'vitl14openaiclip': vitl14_openaiclip,
 }
 
 def get_num_models():
@@ -79,18 +68,48 @@ def get_model_names():
     """
     return list(MODELS.keys())
 
-def get_models():
+def get_model(model_name):
+    """
+    Import model module
+    Args:
+        model_module (str): Model name
+    Returns:
+        model_module (module): Model module
+    """
+    model_module = MODELS[model_name]
+    model = model_module.get_model()
+    assert model.name == model_name, 'Model name mismatch'
+    return model
+
+def get_all_models():
     """
     Get list of models used for the analysis
     """
     models = {}
-    for model_name, model_module in MODELS.items():
-        model = model_module.get_model()
-        assert model.name == model_name, 'Model name mismatch'
+    model_names = get_model_names()
+    for model_name in model_names:
+        model = get_model(model_name)
         models[model_name] = model
     return models
 
 # Utils
+def get_localizer_dir(localizer_name):
+    """
+    Get localizer directory from global directories
+    Args:
+        localizer_name (str): Localizer name
+    Returns:
+        localizer_dir (str): Localizer directory
+    """
+    if localizer_name == 'grillspector':
+        return GRILLSPECTOR_LOCALIZER_DIR
+    elif localizer_name == 'kanwisher':
+        return KANWISHER_LOCALIZER_DIR
+    elif localizer_name == 'konkle':
+        return KONKLE_LOCALIZER_DIR
+    else:
+        raise ValueError('Localizer not implemented')
+
 def get_allsubjects_nsd515_meanrep_voxel_data():
     subjects = [1, 2, 3, 4, 5, 6, 7, 8]
     subset = 515
@@ -122,99 +141,6 @@ def get_humandata_layersweep(subjects, frois, tthreshold, subset):
             subjects_data[froi][subject] = subject_data.cuda()
     return subjects_data
 
-def model_layer_sweep(
-        subjects_data, model, subset, frois, tthreshold, model_localizer
-):
-    """
-    Generate model-human univariate comparison results to select best layer
-    NSD 485 images, 4 subjects, FFA, PPA, EBA, t>7
-    Args:
-        subjects_data (dict): Dictionary of subject data
-        model (Model): Model instance
-        subset (int): Subset of NSD dataset
-        frois (list): List of frois
-        tthreshold (float): Threshold for t-values
-        model_localizer (str): Model localizer
-    """
-    # Load already computed results
-    csv_pth = f'{MODELS_DIR}/{model.name}/nsd485_pearsonr_layersweep.csv'
-    if os.path.exists(csv_pth):
-        results_csv = pd.read_csv(csv_pth)
-        results_list = results_csv.to_dict('records')
-    else:
-        results_list = []
-
-    # Variables
-    model_data = None
-    model_froi_masks = None
-    # Layers to test
-    relevant_layers = model.relevant_layer_names
-
-    # Internal functions
-    # Generate NSD data for models
-    def _get_model_data():
-        return model_utils.get_dataset_activations(
-            MODELS_DIR, NSD_DIR, model, relevant_layers, dataset='nsd', subset=485
-        )
-    def _get_model_froi_masks(froi):
-        return localizer.get_froi_mask(
-            get_localizer_dir(model_localizer), model_localizer, MODELS_DIR, \
-            model, relevant_layers, froi, tthreshold
-        )
-    # Loop over frois
-    for froi in frois:
-        # Reset model froi masks
-        model_froi_masks = None
-        print(f'Running layer sweep: {model.name}, {froi}')
-        for layer in tqdm(relevant_layers):
-            # Check if row is present
-            row_params = {
-                'model_name': model.name,
-                'model_layer': layer,
-                'model_froi': froi,
-                'model_tthreshold': tthreshold,
-                'model_localizer': model_localizer,
-                'fmri_dataset': f'nsd{subset}',
-                'fmri_froi': froi,
-                'fmri_tthreshold': tthreshold
-            }
-            if misc_utils.check_row_present(row_params, results_list):
-                continue
-            # Correlations
-            subject_pearsonrs = []
-            for subject, subject_froi_data in subjects_data[froi].items():
-                # Get model froi masks
-                model_froi_masks = _get_model_froi_masks(froi) if model_froi_masks is None \
-                    else model_froi_masks
-                # Get model data
-                model_data = _get_model_data() if model_data is None else model_data
-                # Get model data for the layer
-                layer_froi_data = model_data[layer][
-                    :, model_froi_masks[layer]
-                ].mean(axis=-1)
-                # Get model-human comparison results
-                pearsonr_ = rcutils.pearsonr(
-                    layer_froi_data, subject_froi_data
-                )
-                subject_pearsonrs.append(pearsonr_)
-            # Save results
-            results_list.append({
-                **row_params,
-                'pearsonr': subject_pearsonrs,
-                'pearsonr_mean': np.nanmean(subject_pearsonrs),
-                'pearsonr_median': np.nanmedian(subject_pearsonrs),
-                'pearsonr_sem': scipy.stats.sem(subject_pearsonrs, nan_policy='omit')
-            })
-            # Save to CSV
-            results_df = pd.DataFrame(results_list)
-            results_df.to_csv(csv_pth, index=False)
-        # Empty CUDA cache
-        del model_froi_masks
-
-    # Empty CUDA cache
-    del model_data
-    torch.cuda.empty_cache()
-
 def run_allmodels_layer_sweeps():
     """
     Generate model-human univariate comparison results to select best layer
@@ -231,16 +157,22 @@ def run_allmodels_layer_sweeps():
     subjects_data = get_humandata_layersweep(
         subjects, frois, tthreshold, subset
     )
-    models = get_models()
-    for model_name, model in models.items():
+    for model_name in get_model_names():
+        model = get_model(model_name)
+        relevant_layers = model.get_relevant_layers()
         start_time = time.time()
         print(f'Starting layer sweep for model: {model_name}')
-        model_layer_sweep(
-            subjects_data, model, subset, frois, tthreshold, model_localizer
+        analysis_layersweep.model_layer_sweep(
+            MODELS_DIR, NSD_DIR, get_localizer_dir(model_localizer), \
+            subjects_data, model, relevant_layers, subset, frois, tthreshold, model_localizer
         )
         end_time = time.time()
         elapsed_time = (end_time - start_time) / 60  # Convert to minutes
         print(f'Layer sweep for model {model_name} completed in {elapsed_time:.2f} minutes')
+
+        # Empty cache
+        del model
+        torch.cuda.empty_cache()
 
 
 # Get best layer
