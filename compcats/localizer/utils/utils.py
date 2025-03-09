@@ -58,3 +58,12 @@ def get_all_imageclass_datasets(dataset_dir, dataset_module, transforms):
             dataset_dir, transforms, image_class=image_class
         )
     return imageclass_datasets
+
+def get_localizer_pref_nonpref_categories(dataset_name, froi):
+    """
+    Get preferred & non-preferred image classes
+    """
+    localizer_module = get_localizerdataset_module(dataset_name)
+    localizer_obj = localizer_module.get_localizer_dataset('', None)
+    pref_categories, nonpref_categories = localizer_obj.get_pref_nonpref_categories(froi)
+    return pref_categories, nonpref_categories
