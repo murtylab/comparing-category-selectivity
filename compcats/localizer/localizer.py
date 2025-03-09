@@ -180,10 +180,11 @@ def get_froi_mask(
         os.makedirs(froi_dir, exist_ok=True)
         # Check if mask file is present
         if mask_file in os.listdir(froi_dir):
-            mask = torch.load(f'{froi_dir}/{mask_file}')
             if return_tvals:
                 raise Warning("fROI mask already present, not returning t-values")
-            return mask
+            mask = torch.load(f'{froi_dir}/{mask_file}')
+            results[layer] = mask
+            continue
 
         # Generate fROI mask if not present
         # Localize the units in the layer
