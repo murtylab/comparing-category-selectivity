@@ -18,6 +18,7 @@ RESULTS_DIR = 'results'
 os.makedirs(RESULTS_DIR, exist_ok=True)
 MODELS_DIR = 'models'
 os.makedirs(MODELS_DIR, exist_ok=True)
+BEST_LAYERS_CSV_PATH = f'{MODELS_DIR}/best_layers_nsd485_median_pearsonr.csv'
 NSD_DIR = '/weka/scratch/weka/sinha/alishd/datasets/nsd'
 # Directories
 GRILLSPECTOR_LOCALIZER_DIR = '/net/vast-storage/scratch/vast/sinha/alishd/datasets/\
@@ -93,6 +94,33 @@ def get_all_models():
         models[model_name] = model
     return models
 
+def get_models_layers(froi):
+    """
+    Get layers of all models used for the analysis
+    Args:
+        froi (str): Froi
+    Returns:
+        models_layers (dict): Dictionary of model layers
+    """
+    models_layers = {}
+    # Get all model names
+    model_names = get_model_names()
+    # Load best layers csv
+    best_layers_csv = pd.read_csv(BEST_LAYERS_CSV_PATH)
+    for model_name in model_names:
+        # Get best layer
+        model_best_layer = best_layers_csv[
+            (best_layers_csv['model_name'] == model_name) &
+            (best_layers_csv['model_froi'] == froi) &
+            (best_layers_csv['fmri_froi'] == froi)
+        ]['model_layer']
+        # Check if best layer is found
+        assert len(model_best_layer) == 1, 'Best layer not found'
+        model_best_layer = model_best_layer.values[0]
+        # Save best layer
+        models_layers[model_name] = model_best_layer
+    return models_layers
+
 # Utils
 def get_localizer_dir(localizer_name):
     """
@@ -151,7 +179,7 @@ def run_allmodels_layer_sweeps():
         subjects_data (dict): Dictionary of subject data
     """
     # Variables
-    best_layers_csv_path = f'{MODELS_DIR}/best_layers_nsd485_median_pearsonr.csv'
+    best_layers_csv_path = BEST_LAYERS_CSV_PATH
     if os.path.exists(best_layers_csv_path):
         best_layers_csv = pd.read_csv(best_layers_csv_path)
         best_layers_csv_list = best_layers_csv.to_dict('records')
@@ -170,14 +198,14 @@ def run_allmodels_layer_sweeps():
         model = get_model(model_name)
         relevant_layers = model.get_relevant_layers()
         start_time = time.time()
-        print(f'Starting layer sweep for model: {model_name}')
+        print(f'\nStarting layer sweep for model: {model_name}')
         model_layersweep_csv = analysis_layersweep.model_layer_sweep(
             MODELS_DIR, NSD_DIR, get_localizer_dir(model_localizer), \
             subjects_data, model, relevant_layers, subset, frois, tthreshold, model_localizer
         )
         end_time = time.time()
         elapsed_time = (end_time - start_time) / 60  # Convert to minutes
-        print(f'Layer sweep for model {model_name} completed in {elapsed_time:.2f} minutes')
+        print(f'Layer sweep for model {model_name} completed in {elapsed_time:.2f} minutes\n')
 
         # assert layersweep is complete
         assert model_layersweep_csv is not None, 'Layer sweep not complete'
