@@ -6,6 +6,7 @@ import pandas as pd
 import numpy as np
 import scipy
 from tqdm import tqdm
+import torch
 
 from compcats.models import *
 from compcats.datasets.fmri import nsd
@@ -169,6 +170,8 @@ def model_layer_sweep(
         )
     # Loop over frois
     for froi in frois:
+        # Reset model froi masks
+        model_froi_masks = None
         print(f'Running layer sweep: {model.name}, {froi}')
         for layer in tqdm(relevant_layers):
             # Check if row is present
@@ -187,11 +190,11 @@ def model_layer_sweep(
             # Correlations
             subject_pearsonrs = []
             for subject, subject_froi_data in subjects_data[froi].items():
-                # Get model data
-                model_data = _get_model_data() if model_data is None else model_data
                 # Get model froi masks
                 model_froi_masks = _get_model_froi_masks(froi) if model_froi_masks is None \
                     else model_froi_masks
+                # Get model data
+                model_data = _get_model_data() if model_data is None else model_data
                 # Get model data for the layer
                 layer_froi_data = model_data[layer][
                     :, model_froi_masks[layer]
@@ -212,6 +215,12 @@ def model_layer_sweep(
             # Save to CSV
             results_df = pd.DataFrame(results_list)
             results_df.to_csv(csv_pth, index=False)
+        # Empty CUDA cache
+        del model_froi_masks
+
+    # Empty CUDA cache
+    del model_data
+    torch.cuda.empty_cache()
 
 def run_allmodels_layer_sweeps():
     """
