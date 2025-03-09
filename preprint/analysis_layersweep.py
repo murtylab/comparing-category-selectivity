@@ -49,6 +49,7 @@ def model_layer_sweep(
             localizer_dir, model_localizer, models_dir, \
             model, layers, froi, tthreshold
         )
+
     # Loop over frois
     for froi in frois:
         # Reset model froi masks
@@ -102,3 +103,49 @@ def model_layer_sweep(
     # Empty CUDA cache
     del model_data
     torch.cuda.empty_cache()
+
+    return pd.DataFrame(results_list)
+
+def get_model_best_layer(results_df, model_name, frois):
+    """
+    Get best layer for a model-froi pair
+    Args:
+        results_df (pd.DataFrame): Results DataFrame
+        model_name (str): Model name
+        frois (list): List of frois
+    Returns:
+        best_layers (dict): Dictionary of best layers
+    """
+    best_layers = {}
+    for froi_ in frois:
+        rows = results_df[
+            (results_df['model_name'] == model_name) &
+            (results_df['model_froi'] == froi_) &
+            (results_df['fmri_froi'] == froi_)
+        ]
+        if rows.empty:
+            raise ValueError(f'No rows found for {model_name}, {froi_}')
+        if rows['pearsonr_median'].isnull().all():
+            tmp_row = rows.iloc[0]
+            tmp_row['model_layer'] = None
+            best_layers[froi_] = tmp_row
+        else:
+            best_row = rows.loc[rows['pearsonr_median'].idxmax(skipna=True)]
+            best_layers[froi_] = best_row.to_dict()
+    return best_layers
+
+def delete_activations(activations_dir, layers):
+    """
+    Delete saved activations except for the specified layers to save space
+    Args:
+        model (Model): Model instance
+        layers (list): List of layers
+    """
+    num_layers_found = 0
+    for layer in layers:
+        layer_activations_dir = f'{activations_dir}/{layer}'
+        if os.path.exists(layer_activations_dir):
+            os.system(f'rm -rf {layer_activations_dir}')
+            num_layers_found += 1
+    if num_layers_found > 0:
+        print(f'Deleted activations for {num_layers_found} layers in {activations_dir}')
