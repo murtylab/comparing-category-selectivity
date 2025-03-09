@@ -2,8 +2,9 @@
 *.pt
 *.pth
 
-# Ignore results jsons
+# Ignore results
 **/*results_*.json
+*.csv
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
