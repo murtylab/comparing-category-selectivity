@@ -180,10 +180,14 @@ class BaseModel(torch.nn.Module):
             dataset(torch.utils.data.Dataset): Dataset
             save_dir(str): Directory to save activations without the layer name
         """
+        # Error handling
         if isinstance(layers, str):
             layers_list = [layers]
         else:
             layers_list = layers
+        if not torch.cuda.is_available():
+            warnings.warn('CUDA not available but was specified. Moving to CPU.')
+            device = 'cpu'
         # init activations
         activations = {}
 
