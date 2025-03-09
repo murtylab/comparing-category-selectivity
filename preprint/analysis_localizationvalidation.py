@@ -6,7 +6,7 @@ import compcats.localizer.utils as localizer_utils
 
 def model_layer_froi_localization_validation(
     model, layer, froi, tthreshold, froi_localizer, froi_localizer_dir, models_dir, \
-    validation_localizer, validation_localizer_dir
+    validation_localizer, validation_localizer_dir, batch_size=768, generate_layers=None
 ):
     """
     Run localization validation for a model layer and froi
@@ -20,17 +20,26 @@ def model_layer_froi_localization_validation(
         models_dir(str): Models directory
         validation_localizer(str): Validation localizer name
         validation_localizer_dir(str): Validation localizer directory
+        batch_size(int): Batch size
+        generate_layers(list): List of layers to generate activations to improve efficiency
     Returns:
         tvalue(float): T-value
         pvalue(float): P-value
     """
+    layers_list = None
+    if generate_layers:
+        layers_list = generate_layers
+    else:
+        layers_list = [layer]
     # Get froi activations for validation localizer
     validation_localizer_activations = model_utils.get_dataset_activations(
-        models_dir, validation_localizer_dir, model, layer, dataset='localizer', \
+        models_dir, validation_localizer_dir, model, layers_list, dataset='localizer', \
         localizer_type=validation_localizer, \
         froi=froi, tthreshold=tthreshold, froi_localizer=froi_localizer,\
-        froi_localizer_dir=froi_localizer_dir
+        froi_localizer_dir=froi_localizer_dir, batch_size=batch_size
     )
+    # Get required layer activations
+    validation_localizer_activations = validation_localizer_activations[layer]
     # Take mean of froi units
     # Also move to cpu and convert to numpy
     validation_localizer_activations_mean = {}

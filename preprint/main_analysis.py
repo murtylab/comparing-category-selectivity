@@ -32,6 +32,9 @@ localizer_konkle/CompSearch'
 SEED = 42
 seed_utils.seed_everything(SEED)
 
+# Batch size
+BATCH_SIZE = 2048
+
 # Results dirs
 BEST_LAYERS_CSV_PATH = f'{MODELS_DIR}/best_layers_nsd485_median_pearsonr.csv'
 LOCALIZATION_VALIDATION_CSV_PATH = f'{RESULTS_DIR}/localization_validation.csv'
@@ -291,6 +294,7 @@ def run_analysis_localizationvalidation():
 
     for model_name in get_model_names():
         model = get_model(model_name)
+        model_all_layers = list({frois_models_layers[froi][model_name] for froi in frois})
         for froi in frois:
             row_params = {
                 'model_name': model_name,
@@ -309,7 +313,8 @@ def run_analysis_localizationvalidation():
             tvalue, pvalue = \
                 analysis_localizationvalidation.model_layer_froi_localization_validation(
                     model, model_froi_layer, froi, tthreshold, froi_localizer, froi_localizer_dir, \
-                    MODELS_DIR, validation_localizer, validation_localizer_dir
+                    MODELS_DIR, validation_localizer, validation_localizer_dir, \
+                    batch_size=BATCH_SIZE, generate_layers=model_all_layers
                 )
             # Save results
             localization_validation_csv_list.append({
@@ -321,9 +326,8 @@ def run_analysis_localizationvalidation():
             localization_validation_csv.to_csv(localization_validation_csv_path, index=False)
 
         # Delete validation localizer activations to save space
-        delete_layers = {frois_models_layers[froi][model_name] for froi in frois}
         misc_utils.delete_activations(
-            f'{MODELS_DIR}/{model_name}/{validation_localizer}/activations', delete_layers
+            f'{MODELS_DIR}/{model_name}/{validation_localizer}/activations', model_all_layers
         )
 
 # Analysis: subject-subject correlations (univariate)
