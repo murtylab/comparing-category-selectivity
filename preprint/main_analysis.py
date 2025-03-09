@@ -144,6 +144,9 @@ def get_localizer_dir(localizer_name):
         raise ValueError('Localizer not implemented')
 
 def get_allsubjects_nsd515_meanrep_voxel_data():
+    """
+    TODO
+    """
     subjects = [1, 2, 3, 4, 5, 6, 7, 8]
     subset = 515
     subjects_data = {}
@@ -226,7 +229,7 @@ def run_analysis_layersweep():
             model_layersweep_csv, model_name, frois
         )
         # Get best layers
-        best_layers = list(set([info['model_layer'] for froi, info in best_layer_info.items()]))
+        best_layers = {info['model_layer'] for froi, info in best_layer_info.items()}
         # Save best layers
         # If already present, check if best layer is same
         for froi, froi_best_layer_info in best_layer_info.items():
@@ -253,11 +256,11 @@ def run_analysis_layersweep():
         # Delete activations of all layers except best layers to save space
         delete_layers = [layer for layer in relevant_layers if layer not in best_layers]
         # Delete localizer activations
-        analysis_layersweep.delete_activations(
+        misc_utils.delete_activations(
             f'{MODELS_DIR}/{model_name}/{model_localizer}/activations', delete_layers
         )
         # Delete NSD activations
-        analysis_layersweep.delete_activations(
+        misc_utils.delete_activations(
             f'{MODELS_DIR}/{model_name}/nsd', delete_layers
         )
 
@@ -317,29 +320,53 @@ def run_analysis_localizationvalidation():
             localization_validation_csv = pd.DataFrame(localization_validation_csv_list)
             localization_validation_csv.to_csv(localization_validation_csv_path, index=False)
 
+        # Delete validation localizer activations to save space
+        delete_layers = {frois_models_layers[froi][model_name] for froi in frois}
+        misc_utils.delete_activations(
+            f'{MODELS_DIR}/{model_name}/{validation_localizer}/activations', delete_layers
+        )
+
 # Analysis: subject-subject correlations (univariate)
 def run_analysis_subjectsubjectunivariate():
+    """
+    TODO
+    """
     pass
 
 # Analysis: model-subject correlations (univariate)
 def run_analysis_modelsubjectunivariate():
+    """
+    TODO
+    """
     pass
 
 # MDS (univariate)
 def run_analysis_mdsunivariate():
+    """
+    TODO
+    """
     pass
-
 
 def main():
     """
     Main function
     """
     parser = argparse.ArgumentParser(description='Run analysis')
-    parser.add_argument('--layersweep', action='store_true', help='Run layer sweep')
-    parser.add_argument('--localizationvalidation', action='store_true', help='Run localization validation')
-    parser.add_argument('--subjectsubjectcorrelations', action='store_true', help='Run subject-subject correlations')
-    parser.add_argument('--modelsubjectcorrelations', action='store_true', help='Run model-subject correlations')
-    parser.add_argument('--mds', action='store_true', help='Run MDS')
+    parser.add_argument(
+        '--layersweep', action='store_true', help='Run layer sweep'
+    )
+    parser.add_argument(
+        '--localizationvalidation', action='store_true', help='Run localization validation'
+    )
+    parser.add_argument(
+        '--subjectsubjectcorrelations', action='store_true', help='Run subject-subject correlations'
+    )
+    parser.add_argument(
+        '--modelsubjectcorrelations', action='store_true', help='Run model-subject correlations'
+    )
+    parser.add_argument(
+        '--mds', action='store_true', help='Run MDS'
+    )
     args = parser.parse_args()
 
     if args.layersweep:
