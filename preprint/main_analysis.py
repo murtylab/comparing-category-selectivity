@@ -11,6 +11,7 @@ from compcats.utils import seed_utils, misc_utils
 
 # Analysis files
 import analysis_layersweep
+import analysis_localizationvalidation
 
 # Variables
 # Directories
@@ -18,7 +19,6 @@ RESULTS_DIR = 'results'
 os.makedirs(RESULTS_DIR, exist_ok=True)
 MODELS_DIR = 'models'
 os.makedirs(MODELS_DIR, exist_ok=True)
-BEST_LAYERS_CSV_PATH = f'{MODELS_DIR}/best_layers_nsd485_median_pearsonr.csv'
 NSD_DIR = '/weka/scratch/weka/sinha/alishd/datasets/nsd'
 # Directories
 GRILLSPECTOR_LOCALIZER_DIR = '/net/vast-storage/scratch/vast/sinha/alishd/datasets/\
@@ -32,7 +32,11 @@ localizer_konkle/CompSearch'
 SEED = 42
 seed_utils.seed_everything(SEED)
 
-# Models, Status of Layer sweeps
+# Results dirs
+BEST_LAYERS_CSV_PATH = f'{MODELS_DIR}/best_layers_nsd485_median_pearsonr.csv'
+LOCALIZATION_VALIDATION_CSV_PATH = f'{RESULTS_DIR}/localization_validation.csv'
+
+# Models, Info Log
 MODELS = {
     'alexnetimagenet1kv1': alexnet_imagenet1kv1, # Done
     'alexnetipclref01': alexnet_ipcl, # Done
@@ -40,13 +44,13 @@ MODELS = {
     'alexnetrandom42': alexnet_random, # Done
     'resnet18imagenet1kv1': resnet18_imagenet1kv1, # Done
     'resnet50imagenet1kv2': resnet50_imagenet1kv2, # Done
-    'resnet50imagenet21k': resnet50_imagenet21k, # Done
+    # 'resnet50imagenet21k': resnet50_imagenet21k, # Check best layer
     'resnet50openaiclip': resnet50_openaiclip, # Done
-    'resnet50simclr': resnet50_simclr, # Done
+    # 'resnet50simclr': resnet50_simclr, # Check best layer
     'resnet50robustl2eps3': resnet50_robust, # Done
     'resnet50sin': resnet50_sin, # Done
     'resnet50faceobfuscation': resnet50_faceobfuscation, # Done
-    'resnet50toponettau30': resnet50_toponet, # Done
+    # 'resnet50toponettau30': resnet50_toponet, # Check best layer
     'resnet50random42': resnet50_random, # Done
     'vitb32imagenet1kv1': vitb32_imagenet1kv1, # Done
     'vitb32openaiclip': vitb32_openaiclip, # Done
@@ -94,7 +98,7 @@ def get_all_models():
         models[model_name] = model
     return models
 
-def get_models_layers(froi):
+def get_froi_models_layers(froi):
     """
     Get layers of all models used for the analysis
     Args:
@@ -170,7 +174,8 @@ def get_humandata_layersweep(subjects, frois, tthreshold, subset):
             subjects_data[froi][subject] = subject_data.cuda()
     return subjects_data
 
-def run_allmodels_layer_sweeps():
+# Layer sweeps
+def run_analysis_layersweep():
     """
     Generate model-human univariate comparison results to select best layer
     NSD 485 images, 4 subjects, FFA, PPA, EBA, t>7
@@ -261,12 +266,68 @@ def run_allmodels_layer_sweeps():
     torch.cuda.empty_cache()
 
 # Analysis: Held-out z-scoring for category selective units
+def run_analysis_localizationvalidation():
+    """
+    Analysis: Held-out z-scoring for category selective units to validate localization
+    """
+    # Variables
+    localization_validation_csv_path = LOCALIZATION_VALIDATION_CSV_PATH
+    if os.path.exists(localization_validation_csv_path):
+        localization_validation_csv = pd.read_csv(localization_validation_csv_path)
+        localization_validation_csv_list = localization_validation_csv.to_dict('records')
+    else:
+        localization_validation_csv_list = []
 
-# Analysis: subject-subject correlations
+    frois = ['FFA', 'PPA', 'EBA']
+    tthreshold = 7
+    froi_localizer = 'grillspector'
+    validation_localizer = 'kanwisher'
+    frois_models_layers = {
+        froi: get_froi_models_layers(froi) for froi in frois
+    }
 
-# Analysis: model-subject correlations
+    for model_name in get_model_names():
+        model = get_model(model_name)
+        for froi in frois:
+            row_params = {
+                'model_name': model_name,
+                'model_froi': froi,
+                'model_froi_tthreshold': tthreshold,
+                'model_froi_localizer': froi_localizer,
+                'model_validation_localizer': validation_localizer,
+            }
+            # Check if row is present
+            if misc_utils.check_row_present(row_params, localization_validation_csv_list):
+                continue
+            # Run localization validation
+            froi_localizer_dir = get_localizer_dir(froi_localizer)
+            validation_localizer_dir = get_localizer_dir(validation_localizer)
+            model_froi_layer = frois_models_layers[froi][model_name]
+            tvalue, pvalue = \
+                analysis_localizationvalidation.model_layer_froi_localization_validation(
+                    model, model_froi_layer, froi, tthreshold, froi_localizer, froi_localizer_dir, \
+                    MODELS_DIR, validation_localizer, validation_localizer_dir
+                )
+            # Save results
+            localization_validation_csv_list.append({
+                **row_params,
+                'tvalue': tvalue,
+                'pvalue': pvalue
+            })
+            localization_validation_csv = pd.DataFrame(localization_validation_csv_list)
+            localization_validation_csv.to_csv(localization_validation_csv_path, index=False)
 
-# MDS
+# Analysis: subject-subject correlations (univariate)
+def run_analysis_subjectsubjectunivariate():
+    pass
+
+# Analysis: model-subject correlations (univariate)
+def run_analysis_modelsubjectunivariate():
+    pass
+
+# MDS (univariate)
+def run_analysis_mdsunivariate():
+    pass
 
 
 def main():
@@ -275,10 +336,22 @@ def main():
     """
     parser = argparse.ArgumentParser(description='Run analysis')
     parser.add_argument('--layersweep', action='store_true', help='Run layer sweep')
+    parser.add_argument('--localizationvalidation', action='store_true', help='Run localization validation')
+    parser.add_argument('--subjectsubjectcorrelations', action='store_true', help='Run subject-subject correlations')
+    parser.add_argument('--modelsubjectcorrelations', action='store_true', help='Run model-subject correlations')
+    parser.add_argument('--mds', action='store_true', help='Run MDS')
     args = parser.parse_args()
 
     if args.layersweep:
-        run_allmodels_layer_sweeps()
+        run_analysis_layersweep()
+    if args.localizationvalidation:
+        run_analysis_localizationvalidation()
+    if args.subjectsubjectcorrelations:
+        run_analysis_subjectsubjectunivariate()
+    if args.modelsubjectcorrelations:
+        run_analysis_modelsubjectunivariate()
+    if args.mds:
+        run_analysis_mdsunivariate()
 
 if __name__ == '__main__':
     main()
