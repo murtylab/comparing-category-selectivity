@@ -7,7 +7,7 @@ def get_dataset_activations(
     models_dir, dataset_dir, \
     model, layers, dataset='nsd', \
     froi = None, tthreshold = None, \
-    froi_localizer = None, localizer_dir = None, \
+    froi_localizer = None, froi_localizer_dir = None, \
     **kwargs
 ):
     """
@@ -77,7 +77,7 @@ def get_dataset_activations(
     # Get fROI activations if froi is provided
     if froi is not None and tthreshold is not None and froi_localizer is not None:
         froi_masks = localizer.get_froi_mask(
-            localizer_dir, froi_localizer, models_dir, \
+            froi_localizer_dir, froi_localizer, models_dir, \
             model, layers_list, froi, tthreshold
         )
         for layer in layers_list:
