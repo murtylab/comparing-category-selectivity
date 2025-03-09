@@ -126,7 +126,7 @@ def get_model_best_layer(results_df, model_name, frois):
         if rows.empty:
             raise ValueError(f'No rows found for {model_name}, {froi_}')
         if rows['pearsonr_median'].isnull().all():
-            tmp_row = rows.iloc[0]
+            tmp_row = rows.iloc[0].copy()
             tmp_row['model_layer'] = None
             best_layers[froi_] = tmp_row
         else:
