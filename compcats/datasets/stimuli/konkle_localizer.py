@@ -17,7 +17,7 @@ class KonkleLocalizerDataset(BaseLocalizerDataset):
         self.transform = transform
         image_class = image_class.strip().lower()
         self.name = f'konkle_{image_class}'
-        self.image_files = self._get_image_files(self.name, self.root_dir)
+        self.image_files = self._get_image_files(image_class)
         # Contrasts
         self.froi_contrasts = {
             'FFA': {
@@ -37,14 +37,22 @@ class KonkleLocalizerDataset(BaseLocalizerDataset):
             'faces', 'bodies', 'scenes', 'objects'
         ]
 
-    def _get_image_files(self, image_class, root_dir):
+    def _get_image_files(self, image_class):
         """Function to get paths to image files"""
-        all_classes = []
-        for stim_class in os.listdir(root_dir):
-            if not stim_class.startswith('.'): # Ignore files that start with .
-                all_classes.append(stim_class)
-        all_classes = set(all_classes)
-        if image_class == 'bodies':
+        root_dir = self.root_dir
+        image_class = image_class.strip().lower()
+        # Get all classes if not all images requested
+        if image_class not in ['all', 'bodies', 'faces', 'scenes', 'objects']:
+            all_classes = []
+            for stim_class in os.listdir(root_dir):
+                if not stim_class.startswith('.'): # Ignore files that start with .
+                    all_classes.append(stim_class)
+            all_classes = set(all_classes)
+        if image_class == 'all':
+            image_files = sorted(
+                glob.glob(f'{root_dir}/*/*.jpg')
+            )
+        elif image_class == 'bodies':
             # bodies
             image_files = sorted(
                 glob.glob(f'{root_dir}/bodies/bodies*.jpg')
@@ -72,10 +80,6 @@ class KonkleLocalizerDataset(BaseLocalizerDataset):
         elif image_class in all_classes:
             image_files = sorted(
                 glob.glob(f'{root_dir}/{image_class}/{image_class}*.jpg')
-            )
-        elif image_class == 'all':
-            image_files = sorted(
-                glob.glob(f'{root_dir}/*/*.jpg')
             )
         else:
             raise ValueError(f'{image_class} images not implemented in localizer')
