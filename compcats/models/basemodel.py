@@ -147,7 +147,7 @@ class BaseModel(torch.nn.Module):
         activations = {}
         # If only one layer is requested, convert it to a list
         if isinstance(layers, str):
-            layers_list = [list]
+            layers_list = [layers]
         else:
             layers_list = layers
         # batch size to ensure that it is dim = 0
@@ -181,23 +181,25 @@ class BaseModel(torch.nn.Module):
             save_dir(str): Directory to save activations without the layer name
         """
         if isinstance(layers, str):
-            layers = [layers]
+            layers_list = [layers]
+        else:
+            layers_list = layers
         # init activations
         activations = {}
 
         # Error handling for path for compatibility with multiple layers
         # If only one layer is requested and save_dir is provided with layer name as the last folder
         # then remove the layer name from the save_dir
-        if save_dir and len(layers) == 1:
+        if save_dir and len(layers_list) == 1:
             last_folder_name = save_dir.split('/')[-1]
-            if last_folder_name == layers[0]:
+            if last_folder_name == layers_list[0]:
                 save_dir = '/'.join(save_dir.split('/')[:-1])
 
         # Check which layers to generate, and load already generated activations
         layers_to_generate = []
         if save_dir:
             os.makedirs(save_dir, exist_ok=True)
-            for layer in layers:
+            for layer in layers_list:
                 layer_dir = f'{save_dir}/{layer}'
                 activations_file_name = f'{self.name}_{layer}_{dataset.name}.pt'
                 if os.path.isdir(layer_dir):
@@ -211,12 +213,12 @@ class BaseModel(torch.nn.Module):
                     os.makedirs(layer_dir)
                     layers_to_generate.append(layer)
         else:
-            layers_to_generate = layers
+            layers_to_generate = layers_list
 
         # If all activations are already generated, load them and return
         if len(layers_to_generate) == 0:
-            if len(layers) == 1:
-                activations = activations[layers[0]]
+            if isinstance(layers, str):
+                activations = activations[layers]
             return activations
 
         # Start generating activations
@@ -251,8 +253,8 @@ class BaseModel(torch.nn.Module):
                 torch.save(activations[layer].cpu(), f'{layer_dir}/{activations_file_name}')
 
         # Return activations
-        if len(layers) == 1:
-            activations = activations[layers[0]]
+        if isinstance(layers, str):
+            activations = activations[layers]
         return activations
 
 
