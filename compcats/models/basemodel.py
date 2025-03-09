@@ -268,3 +268,9 @@ class BaseModel(torch.nn.Module):
         activations = activations.view(activations.size(0), -1)
         froi_activations = activations[unit_indices]
         return froi_activations
+
+    def get_relevant_layers(self):
+        """
+        Get relevant layers
+        """
+        return self.relevant_layer_names
