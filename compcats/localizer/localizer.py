@@ -160,16 +160,17 @@ def get_froi_mask(
     activations_dir = f'{root_dir}/activations'
     os.makedirs(activations_dir, exist_ok=True)
 
-    # Get localizer dataset module
-    dataset_module = utils.get_localizerdataset_module(dataset_name)
-    # Get preferred & non-preferred datasets
-    pref_datasets, nonpref_datasets = utils.get_pref_nonpref_datasets(
-        dataset_dir, dataset_module, froi, model.transforms
-    )
-
     activations_generated = False
     # Only generate activations when needed
+    pref_datasets = None
+    nonpref_datasets = None
     def _generate_activations():
+        # Get localizer dataset module
+        dataset_module = utils.get_localizerdataset_module(dataset_name)
+        # Get preferred & non-preferred datasets
+        pref_datasets, nonpref_datasets = utils.get_pref_nonpref_datasets(
+            dataset_dir, dataset_module, froi, model.transforms
+        )
         # Generate all layer activations together in one foward pass
         for pref_dataset in pref_datasets:
             model.generate_dataset_activations(layers_list, pref_dataset, activations_dir)
