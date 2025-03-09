@@ -11,7 +11,7 @@ import torch
 from compcats.models import *
 from compcats.datasets.fmri import nsd
 from compcats.localizer import localizer
-from compcats.utils import model_utils, seed_utils
+from compcats.utils import model_utils, seed_utils, misc_utils
 from compcats.utils import responsecomparison_utils as rcutils
 
 # Variables
@@ -91,13 +91,6 @@ def get_models():
     return models
 
 # Utils
-def check_row_present(row_params, results_list):
-    row_present = False
-    # Skip if row is already present
-    if any(all(row_params[key] == d.get(key, None) for key in row_params) for d in results_list):
-        row_present = True
-    return row_present
-
 def get_allsubjects_nsd515_meanrep_voxel_data():
     subjects = [1, 2, 3, 4, 5, 6, 7, 8]
     subset = 515
@@ -185,7 +178,7 @@ def model_layer_sweep(
                 'fmri_froi': froi,
                 'fmri_tthreshold': tthreshold
             }
-            if check_row_present(row_params, results_list):
+            if misc_utils.check_row_present(row_params, results_list):
                 continue
             # Correlations
             subject_pearsonrs = []
