@@ -2,11 +2,12 @@
 import os
 import time
 import argparse
+import pandas as pd
 import torch
 
 from compcats.models import *
 from compcats.datasets.fmri import nsd
-from compcats.utils import seed_utils
+from compcats.utils import seed_utils, misc_utils
 
 # Analysis files
 import analysis_layersweep
@@ -30,30 +31,30 @@ localizer_konkle/CompSearch'
 SEED = 42
 seed_utils.seed_everything(SEED)
 
-# Models
+# Models, Status of Layer sweeps
 MODELS = {
-    # 'alexnetimagenet1kv1': alexnet_imagenet1kv1, # Done
-    # 'alexnetipclref01': alexnet_ipcl, # Done
-    # 'alexnetbarlowtwins': alexnet_barlowtwins, # Done
-    # 'alexnetrandom42': alexnet_random, # Done
-    # 'resnet18imagenet1kv1': resnet18_imagenet1kv1, # Done
-    # 'resnet50imagenet1kv2': resnet50_imagenet1kv2, # Done
-    # 'resnet50imagenet21k': resnet50_imagenet21k, # Done
-    # 'resnet50openaiclip': resnet50_openaiclip, # Done
-    # 'resnet50simclr': resnet50_simclr, # Done
-    # 'resnet50robustl2eps3': resnet50_robust, # Done
-    # 'resnet50sin': resnet50_sin, # Done
-    # 'resnet50faceobfuscation': resnet50_faceobfuscation, # Done
-    # 'resnet50toponettau30': resnet50_toponet, # Done
-    # 'resnet50random42': resnet50_random, # Done
-    # 'vitb32imagenet1kv1': vitb32_imagenet1kv1, # Done
-    # 'vitb32openaiclip': vitb32_openaiclip, # Done
-    # 'vitb32random42': vitb32_random, # Done
-    # 'vitb16imagenet21k': vitb16_imagenet21k, # Done
-    # 'vitb16openaiclip': vitb16_openaiclip, # Done
-    # 'vitb16siglip2res224': vitb16_siglip2, # Done
-    # 'vitl14openaiclip': vitl14_openaiclip, # Done
-    'vgg16imagenet1kv1': vgg16_imagenet1kv1,
+    'alexnetimagenet1kv1': alexnet_imagenet1kv1, # Done
+    'alexnetipclref01': alexnet_ipcl, # Done
+    'alexnetbarlowtwins': alexnet_barlowtwins, # Done
+    'alexnetrandom42': alexnet_random, # Done
+    'resnet18imagenet1kv1': resnet18_imagenet1kv1, # Done
+    'resnet50imagenet1kv2': resnet50_imagenet1kv2, # Done
+    'resnet50imagenet21k': resnet50_imagenet21k, # Done
+    'resnet50openaiclip': resnet50_openaiclip, # Done
+    'resnet50simclr': resnet50_simclr, # Done
+    'resnet50robustl2eps3': resnet50_robust, # Done
+    'resnet50sin': resnet50_sin, # Done
+    'resnet50faceobfuscation': resnet50_faceobfuscation, # Done
+    'resnet50toponettau30': resnet50_toponet, # Done
+    'resnet50random42': resnet50_random, # Done
+    'vitb32imagenet1kv1': vitb32_imagenet1kv1, # Done
+    'vitb32openaiclip': vitb32_openaiclip, # Done
+    'vitb32random42': vitb32_random, # Done
+    'vitb16imagenet21k': vitb16_imagenet21k, # Done
+    'vitb16openaiclip': vitb16_openaiclip, # Done
+    'vitb16siglip2res224': vitb16_siglip2, # Done
+    'vitl14openaiclip': vitl14_openaiclip, # Done
+    'vgg16imagenet1kv1': vgg16_imagenet1kv1, # Done
 }
 
 def get_num_models():
@@ -149,6 +150,14 @@ def run_allmodels_layer_sweeps():
         model (Model): Model instance
         subjects_data (dict): Dictionary of subject data
     """
+    # Variables
+    best_layers_csv_path = f'{MODELS_DIR}/best_layers_nsd485_median_pearsonr.csv'
+    if os.path.exists(best_layers_csv_path):
+        best_layers_csv = pd.read_csv(best_layers_csv_path)
+        best_layers_csv_list = best_layers_csv.to_dict('records')
+    else:
+        best_layers_csv_list = []
+
     subjects = [1, 2, 5, 7]
     subset = 485
     frois = ['FFA', 'PPA', 'EBA']
@@ -162,7 +171,7 @@ def run_allmodels_layer_sweeps():
         relevant_layers = model.get_relevant_layers()
         start_time = time.time()
         print(f'Starting layer sweep for model: {model_name}')
-        analysis_layersweep.model_layer_sweep(
+        model_layersweep_csv = analysis_layersweep.model_layer_sweep(
             MODELS_DIR, NSD_DIR, get_localizer_dir(model_localizer), \
             subjects_data, model, relevant_layers, subset, frois, tthreshold, model_localizer
         )
@@ -170,12 +179,58 @@ def run_allmodels_layer_sweeps():
         elapsed_time = (end_time - start_time) / 60  # Convert to minutes
         print(f'Layer sweep for model {model_name} completed in {elapsed_time:.2f} minutes')
 
+        # assert layersweep is complete
+        assert model_layersweep_csv is not None, 'Layer sweep not complete'
+        assert len(model_layersweep_csv) == (len(relevant_layers) * len(frois)), \
+            'Layer sweep not complete'
+
         # Empty cache
         del model
         torch.cuda.empty_cache()
 
+        # Find best layer
+        best_layer_info = analysis_layersweep.get_model_best_layer(
+            model_layersweep_csv, model_name, frois
+        )
+        # Get best layers
+        best_layers = list(set([info['model_layer'] for froi, info in best_layer_info.items()]))
+        # Save best layers
+        # If already present, check if best layer is same
+        for froi, froi_best_layer_info in best_layer_info.items():
+            froi_best_layer_present = misc_utils.check_row_present(
+                {
+                    'model_name': model_name,
+                    'model_froi': froi,
+                    'model_tthreshold': tthreshold,
+                    'model_localizer': model_localizer,
+                    'fmri_dataset': f'nsd{subset}',
+                    'fmri_froi': froi,
+                    'fmri_tthreshold': tthreshold
+                }, best_layers_csv_list
+            )
+            if froi_best_layer_present:
+                previous_best_layer = froi_best_layer_present['model_layer']
+                current_best_layer = froi_best_layer_info['model_layer']
+                assert previous_best_layer == current_best_layer, 'Best layer mismatch'
+            else:
+                best_layers_csv_list.append(froi_best_layer_info)
+                best_layers_csv = pd.DataFrame(best_layers_csv_list)
+                best_layers_csv.to_csv(best_layers_csv_path, index=False)
 
-# Get best layer
+        # Delete activations of all layers except best layers to save space
+        delete_layers = [layer for layer in relevant_layers if layer not in best_layers]
+        # Delete localizer activations
+        analysis_layersweep.delete_activations(
+            f'{MODELS_DIR}/{model_name}/{model_localizer}/activations', delete_layers
+        )
+        # Delete NSD activations
+        analysis_layersweep.delete_activations(
+            f'{MODELS_DIR}/{model_name}/nsd', delete_layers
+        )
+
+    # Empty cache
+    del subjects_data
+    torch.cuda.empty_cache()
 
 # Analysis: Held-out z-scoring for category selective units
 
