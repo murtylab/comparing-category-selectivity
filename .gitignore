@@ -1,3 +1,6 @@
+# Folders to ignore
+**/preprint/models/*
+
 # Ignore torch files
 *.pt
 *.pth
