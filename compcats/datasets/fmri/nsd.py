@@ -78,14 +78,14 @@ def get_stimuli_dataset(root_dir, transform=None, subset=None):
     dataset = NSDStimuli(root_dir, transform=transform, subset=subset)
     return dataset
 
-def get_betas(root_dir, subject, froi=None, t_threshold=0, subset=None, voxels=False, **kwargs):
+def get_betas(root_dir, subject, froi=None, tthreshold=0, subset=None, voxels=False, **kwargs):
     """
     Get betas for a subject
     Args:
         root_dir(str): Root directory
         subject(int): Subject number
         froi(str): Path to froi mask
-        t_threshold(float): Threshold for t-values
+        tthreshold(float): Threshold for t-values
         subset(str): Subset of NSD dataset
         voxels(bool): Return voxels or mean of voxels
     """
@@ -93,7 +93,7 @@ def get_betas(root_dir, subject, froi=None, t_threshold=0, subset=None, voxels=F
     # Check for repetition mean
     repetition_mean = kwargs.get('repetition_mean', True)
     if froi:
-        froi_mask, froi_tvals = get_froi_mask(root_dir, froi, subject, t_threshold)
+        froi_mask, froi_tvals = get_froi_mask(root_dir, froi, subject, tthreshold)
         # If no voxels in the area
         if np.sum(froi_mask) == 0:
             return None, None
@@ -112,5 +112,5 @@ def get_betas(root_dir, subject, froi=None, t_threshold=0, subset=None, voxels=F
             betas = betas.reshape(betas.shape[0], -1) # Flatten the voxel dimensions
         else:
             betas = betas.reshape(betas.shape[0], betas.shape[1], -1) # Flatten the voxel dimensions
-        betas = betas.mean(axis=-1, keepdim=True)
+        betas = betas.mean(axis=-1)
     return betas, ptid_nsdid_map
