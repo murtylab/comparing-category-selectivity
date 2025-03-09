@@ -33,7 +33,6 @@ def get_pref_nonpref_datasets(dataset_dir, dataset_module, froi, transforms):
             dataset_dir, transforms, image_class=pref_category
         ) for pref_category in pref_categories
     ]
-    # pref_dataset = dataset_module.get_localizer_dataset(dataset_dir, transforms, image_class=pref_category)
     nonpref_datasets = [
         dataset_module.get_localizer_dataset(
             dataset_dir, transforms, image_class=nonpref_category
