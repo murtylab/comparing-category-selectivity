@@ -1,6 +1,7 @@
 """Localize fROIs"""
 import os
 import json
+import warnings
 import torch
 
 from . import utils
@@ -185,10 +186,15 @@ def get_froi_mask(
         os.makedirs(froi_dir, exist_ok=True)
         # Check if mask file is present
         if mask_file in os.listdir(froi_dir):
-            if return_tvals:
-                raise Warning("fROI mask already present, not returning t-values")
             mask = torch.load(f'{froi_dir}/{mask_file}')
-            results[layer] = mask
+            if return_tvals:
+                warnings.warn("t-values not present in the saved mask file")
+                results[layer] = {
+                    'mask': mask,
+                    'all_contrast_tvals': None
+                }
+            else:
+                results[layer] = mask
             continue
 
         # Generate fROI mask if not present
