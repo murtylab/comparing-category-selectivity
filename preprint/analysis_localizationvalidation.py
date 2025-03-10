@@ -26,11 +26,19 @@ def model_layer_froi_localization_validation(
         tvalue(float): T-value
         pvalue(float): P-value
     """
+    # Error handling
+    if not isinstance(layer, str) and np.isnan(layer):
+        return float('nan'), float('nan')
     layers_list = None
     if generate_layers:
         layers_list = generate_layers
     else:
         layers_list = [layer]
+    for layer_ in layers_list:
+        if not isinstance(layer_, str) and np.isnan(layer_):
+            layers_list.remove(layer_)
+    if len(layers_list) == 0:
+        return float('nan'), float('nan')
     # Get froi activations for validation localizer
     validation_localizer_activations = model_utils.get_dataset_activations(
         models_dir, validation_localizer_dir, model, layers_list, dataset='localizer', \
