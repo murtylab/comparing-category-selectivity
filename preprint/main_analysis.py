@@ -277,18 +277,18 @@ def run_analysis_localizationvalidation():
     Analysis: Held-out z-scoring for category selective units to validate localization
     """
     # Variables
-
     frois = ['FFA', 'PPA', 'EBA']
     tthreshold = 7
     froi_localizer = 'grillspector'
-    validation_localizer = 'kanwisher'
+    validation_localizer = 'konkle'
     frois_models_layers = {
         froi: get_froi_models_layers(froi) for froi in frois
     }
 
+    # Storing results
     localization_validation_csv_path = '.'.join(
-        LOCALIZATION_VALIDATION_CSV_PATH.split('.')[:-1] + [f'_{validation_localizer}.csv']
-    )
+        LOCALIZATION_VALIDATION_CSV_PATH.split('.')[:-1]
+    ) + f'_{validation_localizer}.csv'
     if os.path.exists(localization_validation_csv_path):
         localization_validation_csv = pd.read_csv(localization_validation_csv_path)
         localization_validation_csv_list = localization_validation_csv.to_dict('records')
@@ -299,9 +299,11 @@ def run_analysis_localizationvalidation():
         model = get_model(model_name)
         model_all_layers = list({frois_models_layers[froi][model_name] for froi in frois})
         for froi in frois:
+            model_froi_layer = frois_models_layers[froi][model_name]
             print(f'Running localization validation for model: {model_name}, froi: {froi}')
             row_params = {
                 'model_name': model_name,
+                'model_layer': model_froi_layer,
                 'model_froi': froi,
                 'model_froi_tthreshold': tthreshold,
                 'model_froi_localizer': froi_localizer,
