@@ -47,7 +47,7 @@ class ResNet50Robust(BaseModel):
         )
         # Relevant layer names
         # Layer names to ignore
-        irrelevant_layer_regexes = ['layer[0-9]$', r'layer[0-9]\.[0-9]$', '.*downsample']
+        irrelevant_layer_regexes = ['layer[0-9]$', r'layer[0-9]\.[0-9]$', '.*downsample', 'fc$']
         # Layer types to ignore
         irrelevant_layer_types = [nn.Dropout]
         self.irrelevant_layer_names = layer_utils.get_layers_matching_regexes(
