@@ -2,12 +2,13 @@
 import os
 import time
 import argparse
+import scipy
 import pandas as pd
 import torch
 
 from compcats.models import *
 from compcats.datasets.fmri import nsd
-from compcats.utils import seed_utils, misc_utils
+from compcats.utils import seed_utils, misc_utils, model_utils
 
 # Analysis files
 import analysis_layersweep
@@ -38,31 +39,33 @@ BATCH_SIZE = 2048
 # Results dirs
 BEST_LAYERS_CSV_PATH = f'{MODELS_DIR}/best_layers_nsd485_median_pearsonr.csv'
 LOCALIZATION_VALIDATION_CSV_PATH = f'{RESULTS_DIR}/localization_validation.csv'
+SUBJECTSUBJECT_PEARSONR_CSV_PATH = f'{RESULTS_DIR}/subjectsubject_pearsonr_nsd515.csv'
+MODELSUBJECT_PEARSONR_CSV_PATH = f'{RESULTS_DIR}/modelsubject_pearsonr_nsd515.csv'
 
 # Models, Info Log
 MODELS = {
     'alexnetimagenet1kv1': alexnet_imagenet1kv1, # Done
     'alexnetipclref01': alexnet_ipcl, # Done
     'alexnetbarlowtwins': alexnet_barlowtwins, # Done
-    'alexnetrandom42': alexnet_random, # Done
     'resnet18imagenet1kv1': resnet18_imagenet1kv1, # Done
     'resnet50imagenet1kv2': resnet50_imagenet1kv2, # Done
     # 'resnet50imagenet21k': resnet50_imagenet21k, # Check best layer
     'resnet50openaiclip': resnet50_openaiclip, # Done
     # 'resnet50simclr': resnet50_simclr, # Check best layer
-    'resnet50robustl2eps3': resnet50_robust, # Done
+    # 'resnet50robustl2eps3': resnet50_robust, # Done
     'resnet50sin': resnet50_sin, # Done
     'resnet50faceobfuscation': resnet50_faceobfuscation, # Done
-    # 'resnet50toponettau30': resnet50_toponet, # Check best layer
-    'resnet50random42': resnet50_random, # Done
+    'resnet50toponettau30': resnet50_toponet, # Done
     'vitb32imagenet1kv1': vitb32_imagenet1kv1, # Done
     'vitb32openaiclip': vitb32_openaiclip, # Done
-    'vitb32random42': vitb32_random, # Done
     'vitb16imagenet21k': vitb16_imagenet21k, # Done
     'vitb16openaiclip': vitb16_openaiclip, # Done
     'vitb16siglip2res224': vitb16_siglip2, # Done
     'vitl14openaiclip': vitl14_openaiclip, # Done
     'vgg16imagenet1kv1': vgg16_imagenet1kv1, # Done
+    # # # 'alexnetrandom42': alexnet_random, # Done
+    # # # 'resnet50random42': resnet50_random, # Done
+    # # # 'vitb32random42': vitb32_random, # Done
 }
 
 def get_num_models():
@@ -146,19 +149,51 @@ def get_localizer_dir(localizer_name):
     else:
         raise ValueError('Localizer not implemented')
 
-def get_allsubjects_nsd515_meanrep_voxel_data():
+def get_allsubjects_nsd515_meanrep_meanvoxel_data(frois, tthreshold):
     """
-    TODO
+    Get NSD mean of voxels, mean of repetitions data for all subjects
+    Args:
+        frois (list): List of frois
+        tthreshold (float): Threshold for t-values
+    Returns:
+        subjects_data (dict): Dictionary of subject data
     """
     subjects = [1, 2, 3, 4, 5, 6, 7, 8]
     subset = 515
     subjects_data = {}
-    for subject in subjects:
-        subject_data, _ = nsd.get_betas(
-            NSD_DIR, subject, subset=subset, voxels=True, repetition_mean=True
-        )
-        subjects_data[subject] = subject_data
+    for froi in frois:
+        subjects_data[froi] = {}
+        for subject in subjects:
+            subject_froi_data, _ = nsd.get_betas(
+                NSD_DIR, subject, subset=subset, voxels=False, repetition_mean=True, \
+                froi=froi, tthreshold=tthreshold
+            )
+            subjects_data[froi][subject] = subject_froi_data.cpu().numpy()
     return subjects_data
+
+def get_allmodels_nsd515_meanunit_data(frois, tthreshold, localizer):
+    """
+    Get NSD515 mean of froi units data for all models
+    Args:
+        frois (list): List of frois
+        tthreshold (float): Threshold for t-values
+        localizer (str): Localizer name
+    """
+    subset = 515
+    models_data = {}
+    for froi in frois:
+        models_data[froi] = {}
+        for model_name in get_model_names():
+            model = get_model(model_name)
+            layer = get_froi_models_layers(froi)[model_name]
+            model_froi_activations = model_utils.get_dataset_activations(
+                MODELS_DIR, NSD_DIR, model, layer, dataset='nsd', \
+                subset=subset, \
+                froi=froi, tthreshold=tthreshold, froi_localizer=localizer, \
+                froi_localizer_dir=get_localizer_dir(localizer)
+            ).mean(axis=-1).cpu().numpy()
+            models_data[froi][model_name] = model_froi_activations
+    return models_data
 
 def get_humandata_layersweep(subjects, frois, tthreshold, subset):
     """
@@ -320,7 +355,6 @@ def run_analysis_localizationvalidation():
             # Run localization validation
             froi_localizer_dir = get_localizer_dir(froi_localizer)
             validation_localizer_dir = get_localizer_dir(validation_localizer)
-            model_froi_layer = frois_models_layers[froi][model_name]
             tvalue, pvalue = \
                 analysis_localizationvalidation.model_layer_froi_localization_validation(
                     model, model_froi_layer, froi, tthreshold, froi_localizer, froi_localizer_dir, \
@@ -346,14 +380,102 @@ def run_analysis_subjectsubjectunivariate():
     """
     TODO
     """
-    pass
+    # Variables
+    frois = ['FFA', 'PPA', 'EBA']
+    tthreshold = 7
+    subjects = [1, 2, 3, 4, 5, 6, 7, 8]
+    subset = 515
+    subjects_data = get_allsubjects_nsd515_meanrep_meanvoxel_data(frois, tthreshold)
+
+    # Storing results
+    subjectsubject_pearsonr_csv_path = SUBJECTSUBJECT_PEARSONR_CSV_PATH
+    if os.path.exists(subjectsubject_pearsonr_csv_path):
+        subjectsubject_pearsonr_csv = pd.read_csv(subjectsubject_pearsonr_csv_path)
+        subjectsubject_pearsonr_csv_list = subjectsubject_pearsonr_csv.to_dict('records')
+    else:
+        subjectsubject_pearsonr_csv_list = []
+
+    for subject1_idx, subject1 in enumerate(subjects):
+        for subject2_idx, subject2 in enumerate(subjects[subject1_idx+1:]):
+            for froi in frois:
+                row_params = {
+                    'fmri_froi': froi,
+                    'fmri_tthreshold': tthreshold,
+                    'fmri_dataset': f'nsd{subset}',
+                    'subject1': subject1,
+                    'subject2': subject2
+                }
+                # Check if row is present
+                if misc_utils.check_row_present(row_params, subjectsubject_pearsonr_csv_list):
+                    continue
+                # Run subject-subject correlation
+                subject1_data = subjects_data[froi][subject1]
+                subject2_data = subjects_data[froi][subject2]
+                pearsonr, pvalue = scipy.stats.pearsonr(subject1_data, subject2_data)
+                # Save results
+                subjectsubject_pearsonr_csv_list.append({
+                    **row_params,
+                    'pearsonr': pearsonr,
+                    'pvalue': pvalue
+                })
+                subjectsubject_pearsonr_csv = pd.DataFrame(subjectsubject_pearsonr_csv_list)
+                subjectsubject_pearsonr_csv.to_csv(subjectsubject_pearsonr_csv_path, index=False)
 
 # Analysis: model-subject correlations (univariate)
 def run_analysis_modelsubjectunivariate():
     """
     TODO
     """
-    pass
+    # Variables
+    # Common
+    frois = ['FFA', 'PPA', 'EBA']
+    tthreshold = 7
+    # Subjects
+    subjects = [1, 2, 3, 4, 5, 6, 7, 8]
+    subset = 515
+    # Models
+    model_localizer = 'grillspector'
+
+    # Storing results
+    modelsubject_pearsonr_csv_path = MODELSUBJECT_PEARSONR_CSV_PATH
+    if os.path.exists(modelsubject_pearsonr_csv_path):
+        modelsubject_pearsonr_csv = pd.read_csv(modelsubject_pearsonr_csv_path)
+        modelsubject_pearsonr_csv_list = modelsubject_pearsonr_csv.to_dict('records')
+    else:
+        modelsubject_pearsonr_csv_list = []
+
+    subjects_data = get_allsubjects_nsd515_meanrep_meanvoxel_data(frois, tthreshold)
+    models_data = get_allmodels_nsd515_meanunit_data(frois, tthreshold, model_localizer)
+
+    for model_name in get_model_names():
+        for subject in subjects:
+            for froi in frois:
+                row_params = {
+                    'model_name': model_name,
+                    'model_layer': get_froi_models_layers(froi)[model_name],
+                    'model_froi': froi,
+                    'modeltthreshold': tthreshold,
+                    'model_localizer': model_localizer,
+                    'fmri_dataset': f'nsd{subset}',
+                    'fmri_froi': froi,
+                    'fmri_tthreshold': tthreshold,
+                    'subject': subject
+                }
+                # Check if row is present
+                if misc_utils.check_row_present(row_params, modelsubject_pearsonr_csv_list):
+                    continue
+                # Run model-subject correlation
+                model_data = models_data[froi][model_name]
+                subject_data = subjects_data[froi][subject]
+                pearsonr, pvalue = scipy.stats.pearsonr(model_data, subject_data)
+                # Save results
+                modelsubject_pearsonr_csv_list.append({
+                    **row_params,
+                    'pearsonr': pearsonr,
+                    'pvalue': pvalue
+                })
+                modelsubject_pearsonr_csv = pd.DataFrame(modelsubject_pearsonr_csv_list)
+                modelsubject_pearsonr_csv.to_csv(modelsubject_pearsonr_csv_path, index=False)
 
 # MDS (univariate)
 def run_analysis_mdsunivariate():
@@ -374,10 +496,12 @@ def main():
         '--localizationvalidation', action='store_true', help='Run localization validation'
     )
     parser.add_argument(
-        '--subjectsubjectcorrelations', action='store_true', help='Run subject-subject correlations'
+        '--subjectsubjectunivariate', action='store_true', \
+            help='Run subject-subject univariate correlations'
     )
     parser.add_argument(
-        '--modelsubjectcorrelations', action='store_true', help='Run model-subject correlations'
+        '--modelsubjectunivariate', action='store_true', \
+            help='Run model-subject univariate correlations'
     )
     parser.add_argument(
         '--mds', action='store_true', help='Run MDS'
@@ -388,9 +512,9 @@ def main():
         run_analysis_layersweep()
     if args.localizationvalidation:
         run_analysis_localizationvalidation()
-    if args.subjectsubjectcorrelations:
+    if args.subjectsubjectunivariate:
         run_analysis_subjectsubjectunivariate()
-    if args.modelsubjectcorrelations:
+    if args.modelsubjectunivariate:
         run_analysis_modelsubjectunivariate()
     if args.mds:
         run_analysis_mdsunivariate()
