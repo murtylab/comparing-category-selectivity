@@ -177,7 +177,7 @@ def get_froi_mask(
             model.generate_dataset_activations(layers_list, pref_dataset, activations_dir)
         for nonpref_dataset in nonpref_datasets:
             model.generate_dataset_activations(layers_list, nonpref_dataset, activations_dir)
-        return True
+        return True, pref_datasets, nonpref_datasets
 
     for layer in layers_list:
         # Mask file name
@@ -199,8 +199,8 @@ def get_froi_mask(
 
         # Generate fROI mask if not present
         # Generate activations
-        activations_generated = _generate_activations() if not activations_generated \
-            else activations_generated
+        if not activations_generated:
+            activations_generated, pref_datasets, nonpref_datasets = _generate_activations()
 
         # Localize the units in the layer
         result = localize(model, layer, pref_datasets, nonpref_datasets, froi, \
