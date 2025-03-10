@@ -5,6 +5,8 @@ from torchvision.transforms import v2
 # PyTorch recommends using v2 for transforms
 # https://pytorch.org/vision/main/transforms.html#v1-or-v2-which-one-should-i-use
 
+from compcats import constants
+
 class SquarePad:
     """
     Updated from:
@@ -21,7 +23,9 @@ class SquarePad:
         # https://pytorch.org/vision/main/generated/torchvision.transforms.v2.Pad.html
         return v2.functional.pad(image, padding, fill, 'constant')
 
-def get_transforms(mean, std, resize=(224, 224)):
+def get_transforms(
+    mean, std, resize=(224, 224)
+):
     """
     Get standard transforms for the model
     """
@@ -43,7 +47,7 @@ def get_transforms(mean, std, resize=(224, 224)):
         transforms.transforms.append(resize)
     else:
         raise ValueError(f'Incorrect resize type {type(resize)}')
-    
+
     # ToImage: Convert to Image (subclass of Tensor)
     transforms.transforms.append(v2.ToImage())
 
@@ -55,10 +59,12 @@ def get_transforms(mean, std, resize=(224, 224)):
     # Normalize: Normalize with mean and std
     if mean is not None and std is not None:
         transforms.transforms.append(v2.Normalize(mean, std))
-    
+
     return transforms
 
-def get_clip_transforms(mean=None, std=None, resize=None):
+def get_clip_transforms(
+    mean=None, std=None, resize=(224, 224)
+):
     """
     Get transforms for CLIP models
     mean and std are the same across models, only resize is different
@@ -72,9 +78,11 @@ def get_clip_transforms(mean=None, std=None, resize=None):
     ])
 
     # Resize: Resize to input size
-    assert isinstance(resize, int), "Only int resize is supported for CLIP models"
-    transforms.transforms.append(v2.Resize((resize, resize),
-                                           interpolation=v2.InterpolationMode.BICUBIC))
+    if isinstance(resize, int):
+        resize = (resize, resize)
+    transforms.transforms.append(
+        v2.Resize(resize, interpolation=v2.InterpolationMode.BICUBIC)
+    )
 
     # RGB: Convert to RGB
     transforms.transforms.append(v2.RGB())
@@ -91,11 +99,11 @@ def get_clip_transforms(mean=None, std=None, resize=None):
     # https://github.com/openai/CLIP/blob/main/clip/clip.py#L85C19-L85C92
     if mean is None and std is None:
         transforms.transforms.append(v2.Normalize(
-            (0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)
+            constants.OPENAI_CLIP_MEAN, constants.OPENAI_CLIP_STD
         ))
     elif mean is not None and std is not None:
         transforms.transforms.append(v2.Normalize(mean, std))
     else:
         raise ValueError("Both mean and std should be provided or None")
-    
+
     return transforms
