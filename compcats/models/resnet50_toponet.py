@@ -33,7 +33,7 @@ class ResNet50TopoNet(BaseModel):
         # Layer names to ignore
         irrelevant_layer_regexes = [
             'layer[0-9]$', r'layer[0-9]\.[0-9]$', '.*downsample', \
-            r'.*conv[0-9]\.conv$'
+            r'.*conv[0-9]\.conv$', 'conv1$', 'bn1$', 'relu$', 'maxpool$'
         ]
         # Layer types to ignore
         irrelevant_layer_types = [nn.Dropout]
