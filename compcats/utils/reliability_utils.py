@@ -17,7 +17,7 @@ def fix_type(data):
 ####################################################################################################
 # VOXEL-WISE SPLITHALF CORRELATION
 ####################################################################################################
-def get_voxelwise_splithalf_correlation(subject_data, image_subset=..., method=1):
+def get_voxelwise_splithalf_correlation(subject_data, image_subset=..., method=3):
     assert method in [1, 2], 'Method must be 1 or 2'
     # Convert to appropriate type
     subject_data = fix_type(subject_data)
@@ -32,6 +32,8 @@ def get_voxelwise_splithalf_correlation(subject_data, image_subset=..., method=1
             corr = _get_pearsonr_splithalf_correlarion_method1(voxel_data)
         elif method==2:
             corr = _get_pearsonr_splithalf_correlarion_method2(voxel_data)
+        elif method==3:
+            corr = _get_pearsonr_splithalf_correlarion_method3(voxel_data)
         if isinstance(corr, np.floating):
             corr = corr.item()
         voxel_corrs.append(corr)
@@ -81,10 +83,35 @@ def _get_pearsonr_splithalf_correlarion_method2(voxel_data):
         corrs_ijk.append(corr_ijk)
     return 2*np.mean(corrs_ijk)/(1+np.mean(corrs_ijk))
 
+def _get_pearsonr_splithalf_correlarion_method3(voxel_data):
+    """
+    Split each repetition into individual and take correlation across each individual and
+    mean of remaining repetitions, perform the spearman-brown correction and return the
+    maximum of the three correlations
+    """
+    # Error handle
+    assert voxel_data.ndim == 2, 'Data must be 2D in the shape of n_stimuli, n_repetitions'
+    corrs_ijk = []
+    idx_combinations = [
+        (0, (1, 2)),
+        (1, (0, 2)),
+        (0, (1, 2))
+    ]
+    for (i, (j, k)) in idx_combinations:
+        di = voxel_data[:, i]
+        dj = voxel_data[:, j]
+        dk = voxel_data[:, k]
+        djk = (dj + dk)/2
+        corr_ijk = rcutils.pearsonr(di, djk)
+        corrs_ijk.append(corr_ijk)
+    max_corr = np.max(corrs_ijk)
+    corrected_corr = 2*max_corr/(1+max_corr)
+    return corrected_corr
+
 ####################################################################################################
 # RDM SPLITHALF CORRELATION
 ####################################################################################################
-def get_rdm_splithalf_correlation(subject_data, image_subset=..., method=1):
+def get_rdm_splithalf_correlation(subject_data, image_subset=..., method=3):
     assert method in [1, 2], 'Method must be 1 or 2'
     # Convert to appropriate type
     subject_data = fix_type(subject_data)
@@ -98,6 +125,8 @@ def get_rdm_splithalf_correlation(subject_data, image_subset=..., method=1):
         corr = _get_rdm_splithalf_correlation_method1(subset_data)
     elif method==2:
         corr = _get_rdm_splithalf_correlation_method2(subset_data)
+    elif method==3:
+        corr = _get_rdm_splithalf_correlation_method3(subset_data)
     if isinstance(corr, np.floating):
         corr = corr.item()
     return corr
@@ -142,10 +171,37 @@ def _get_rdm_splithalf_correlation_method2(subset_data):
     # Spearman-Brown correction
     return 2*np.mean(corrs_ijk)/(1+np.mean(corrs_ijk))
 
+def _get_rdm_splithalf_correlation_method3(subset_data):
+    """
+    Split each repetition into individual and take correlation across each individual and
+    mean of remaining repetitions, perform the spearman-brown correction and return the
+    maximum of the three correlations
+    """
+    # Error handle
+    assert subset_data.ndim == 3, \
+        'Data must be 3D in the shape of n_stimuli, n_repetitions, n_voxels'
+    # RDM Correlations
+    corrs_ijk = []
+    idx_combinations = [
+        (0, (1, 2)),
+        (1, (0, 2)),
+        (0, (1, 2))
+    ]
+    for (i, (j, k)) in idx_combinations:
+        di = subset_data[:, i, :]
+        dj = subset_data[:, j, :]
+        dk = subset_data[:, k, :]
+        djk = (dj + dk)/2
+        corr_ijk = rcutils.rdmr(di, djk)
+        corrs_ijk.append(corr_ijk)
+    max_corr = np.max(corrs_ijk)
+    corrected_corr = 2*max_corr/(1+max_corr)
+    return corrected_corr
+
 ####################################################################################################
 # VOXEL-AVERAGED PEARSON SPLITHALF CORRELATION
 ####################################################################################################
-def get_voxelmean_splithalf_correlation(subject_data, image_subset=..., method=1):
+def get_voxelmean_splithalf_correlation(subject_data, image_subset=..., method=3):
     assert method in [1, 2], 'Method must be 1 or 2'
     # Convert to appropriate type
     subject_data = fix_type(subject_data)
@@ -163,6 +219,8 @@ def get_voxelmean_splithalf_correlation(subject_data, image_subset=..., method=1
         corr = _get_pearsonr_splithalf_correlarion_method1(subset_data)
     elif method==2:
         corr = _get_pearsonr_splithalf_correlarion_method2(subset_data)
+    elif method==3:
+        corr = _get_pearsonr_splithalf_correlarion_method3(subset_data)
     if isinstance(corr, np.floating):
         corr = corr.item()
     return corr
