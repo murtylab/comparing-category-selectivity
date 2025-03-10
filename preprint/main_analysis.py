@@ -190,6 +190,13 @@ def run_analysis_layersweep():
         subjects_data (dict): Dictionary of subject data
     """
     # Variables
+    subjects = [1, 2, 5, 7]
+    subset = 485
+    frois = ['FFA', 'PPA', 'EBA']
+    tthreshold = 7
+    model_localizer = 'grillspector'
+
+    # Storing results
     best_layers_csv_path = BEST_LAYERS_CSV_PATH
     if os.path.exists(best_layers_csv_path):
         best_layers_csv = pd.read_csv(best_layers_csv_path)
@@ -197,14 +204,12 @@ def run_analysis_layersweep():
     else:
         best_layers_csv_list = []
 
-    subjects = [1, 2, 5, 7]
-    subset = 485
-    frois = ['FFA', 'PPA', 'EBA']
-    tthreshold = 7
-    model_localizer = 'grillspector'
+    # Get subjects data
     subjects_data = get_humandata_layersweep(
         subjects, frois, tthreshold, subset
     )
+
+    # Run layer sweep
     for model_name in get_model_names():
         model = get_model(model_name)
         relevant_layers = model.get_relevant_layers()
