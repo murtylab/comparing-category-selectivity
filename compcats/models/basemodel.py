@@ -125,13 +125,13 @@ class BaseModel(torch.nn.Module):
                     f' does not match batch size: {batch_size}. ' + \
                     ' But hook dim=1 also does not match. Unsure how to switch, check the outputs.'
                 raise ValueError(error_message)
-            # Switch dimensions if dim=0 does not match batch size
-            hook_output = hook_output.transpose(0, 1)
             warning_message = \
                 f'Hook output size: {hook_output.size()}, dim=0' + \
                 f' does not match batch size: {batch_size}. Switching dimensions.' + \
                 ' Make sure this is intended.'
             warnings.warn(warning_message, RuntimeWarning)
+            # Switch dimensions if dim=0 does not match batch size
+            hook_output = hook_output.transpose(0, 1)
         return hook_output
 
     def get_activations(self, batch, layers):
