@@ -167,7 +167,7 @@ def get_localizer_dir(localizer_name):
     else:
         raise ValueError('Localizer not implemented')
 
-def get_allsubjects_nsd515_meanrep_meanvoxel_data(frois, tthreshold):
+def get_allsubjects_nsd515_meanrep_meanvoxel_data(frois, tthreshold, tensors=False):
     """
     Get NSD mean of voxels, mean of repetitions data for all subjects
     Args:
@@ -186,10 +186,12 @@ def get_allsubjects_nsd515_meanrep_meanvoxel_data(frois, tthreshold):
                 NSD_DIR, subject, subset=subset, voxels=False, repetition_mean=True, \
                 froi=froi, tthreshold=tthreshold
             )
-            subjects_data[froi][subject] = subject_froi_data.cpu().numpy()
+            if not tensors:
+                subject_froi_data = subject_froi_data.cpu().numpy()
+            subjects_data[froi][subject] = subject_froi_data
     return subjects_data
 
-def get_allmodels_nsd515_meanunit_data(frois, tthreshold, localizer):
+def get_allmodels_nsd515_meanunit_data(frois, tthreshold, localizer, tensors=False):
     """
     Get NSD515 mean of froi units data for all models
     Args:
@@ -209,7 +211,9 @@ def get_allmodels_nsd515_meanunit_data(frois, tthreshold, localizer):
                 subset=subset, \
                 froi=froi, tthreshold=tthreshold, froi_localizer=localizer, \
                 froi_localizer_dir=get_localizer_dir(localizer)
-            ).mean(axis=-1).cpu().numpy()
+            ).mean(axis=-1)
+            if not tensors:
+                model_froi_activations = model_froi_activations.cpu().numpy()
             models_data[froi][model_name] = model_froi_activations
     return models_data
 
