@@ -1,5 +1,9 @@
 #!/bin/bash
 
-OUTPUT_LOGFILE="localizationvalidation_output.log"
+LOG_DIR="logs"
+OUTPUT_LOGFILE="$LOG_DIR/localizationvalidation_output.log"
+
+# Create logs directory if it doesn't exist
+mkdir -p "$LOG_DIR"
 
 python main_analysis.py --localizationvalidation "$@" 2>&1 | tee -a "$OUTPUT_LOGFILE"
