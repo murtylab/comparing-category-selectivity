@@ -8,7 +8,7 @@ import torch
 
 from compcats.models import *
 from compcats.datasets.fmri import nsd
-from compcats.utils import seed_utils, misc_utils, model_utils
+from compcats.utils import seed_utils, misc_utils, model_utils, reliability_utils
 
 # Analysis files
 import analysis_layersweep
@@ -252,6 +252,8 @@ def get_humandata_layersweep(subjects, frois, tthreshold, subset):
         subset (int): Subset of NSD dataset
     """
     subjects_data = {}
+    splithalf_pearsonrs = {}
+    # Get subject froi mean-repetition mean-voxels data
     for froi in frois:
         subjects_data[froi] = {}
         for subject in subjects:
@@ -260,7 +262,19 @@ def get_humandata_layersweep(subjects, frois, tthreshold, subset):
                 subset=subset, voxels=False, repetition_mean=True
             )
             subjects_data[froi][subject] = subject_data.cuda()
-    return subjects_data
+    # Get subject froi split-half correlations
+    for froi in frois:
+        splithalf_pearsonrs[froi] = {}
+        for subject in subjects:
+            subject_data, _ = nsd.get_betas(
+                NSD_DIR, subject, froi=froi, tthreshold=tthreshold, \
+                subset=subset, voxels=False, repetition_mean=False
+            )
+            splithalf_pearsonr_ = reliability_utils.get_voxelmean_splithalf_correlation(
+                subject_data
+            )
+            splithalf_pearsonrs[froi][subject] = splithalf_pearsonr_
+    return subjects_data, splithalf_pearsonrs
 
 # Layer sweeps
 def run_analysis_layersweep():
@@ -287,7 +301,7 @@ def run_analysis_layersweep():
         best_layers_csv_list = []
 
     # Get subjects data
-    subjects_data = get_humandata_layersweep(
+    subjects_data, subjects_splithalf_pearsonrs = get_humandata_layersweep(
         subjects, frois, tthreshold, subset
     )
 
