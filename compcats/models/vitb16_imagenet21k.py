@@ -27,8 +27,10 @@ class ViTB16ImageNet21k(BaseModel):
         )
         # Relevant layer names
         # Layer names to ignore
-        irrelevant_layer_regexes = [r'patch_embed\..*', 'blocks$', r'.*blocks\.[0-9]{1,2}$', \
-                                    'heads.head$' , r'.*attn\..*', r'.*mlp\..*']
+        irrelevant_layer_regexes = [
+            r'patch_embed.*', 'blocks$', r'.*blocks\.[0-9]{1,2}$', \
+            'heads.head$' , r'.*attn\..*', r'.*mlp\..*', 'norm$'
+        ]
         # Layer types to ignore
         irrelevant_layer_types = [nn.Dropout, nn.Identity]
         self.irrelevant_layer_names = layer_utils.get_layers_matching_regexes(

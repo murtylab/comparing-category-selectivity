@@ -24,13 +24,17 @@ class ViTB16OpenAICLIP(BaseModel):
         # RGB(): Convert to RGB
         # ToImage(): Convert to Image (subclass of Tensor)
         # ToDtype(): Convert to FloatTensor and scale to [0, 1]
-        # Normalize(): mean=(0.48145466, 0.4578275, 0.40821073), std=(0.26862954, 0.26130258, 0.27577711)
+        # Normalize():
+        #   mean=(0.48145466, 0.4578275, 0.40821073), std=(0.26862954, 0.26130258, 0.27577711)
         # Relevant layer names
         # Layer names to ignore
-        irrelevant_layer_regexes = ['transformer$', 'transformer.resblocks$', r'.*resblocks\.[0-9]{1,2}$', \
-                                    'heads.head$' , r'.*attn\..*', r'.*mlp\..*']
+        irrelevant_layer_regexes = [
+            'transformer$', 'transformer.resblocks$', r'.*resblocks\.[0-9]{1,2}$', \
+            'heads.head$' , r'.*attn\..*', r'.*mlp\..*', \
+            'conv1$', 'ln_pre$', 'ln_post$'
+        ]
         # Layer types to ignore
-        irrelevant_layer_types = [nn.Dropout]
+        irrelevant_layer_types = [nn.Dropout, nn.Identity]
         self.irrelevant_layer_names = layer_utils.get_layers_matching_regexes(
             self.model, irrelevant_layer_regexes
         ) + layer_utils.get_layers_matching_types(self.model, irrelevant_layer_types)

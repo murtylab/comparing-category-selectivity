@@ -24,7 +24,7 @@ class ViTB16EVA02(BaseModel):
         # RGB(): Convert to RGB
         # ToImage(): Convert to Image (subclass of Tensor)
         # ToDtype(): Convert to FloatTensor and scale to [0, 1]
-        # Normalize(): 
+        # Normalize():
         #   mean=(0.48145466, 0.4578275, 0.40821073), std=(0.26862954, 0.26130258, 0.27577711)
         # Relevant layer names
         # Layer names to ignore
