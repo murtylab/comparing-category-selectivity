@@ -394,12 +394,18 @@ def run_analysis_localizationvalidation():
     Analysis: Held-out z-scoring for category selective units to validate localization
     """
     # Variables
-    frois = ['FFA', 'PPA', 'EBA']
+    model_fmri_frois = [
+        ('FFA', 'FFA'),
+        ('PPA', 'PPA'),
+        ('EBA', 'EBA')
+    ]
+    model_frois = list({i[0] for i in model_fmri_frois})
     tthreshold = 7
     froi_localizer = 'grillspector'
     validation_localizer = 'konkle'
     frois_models_layers = {
-        froi: get_froi_models_layers(froi) for froi in frois
+        model_froi: get_froi_models_layers(model_froi, fmri_froi) \
+            for (model_froi, fmri_froi) in model_fmri_frois
     }
 
     # Storing results
@@ -414,8 +420,8 @@ def run_analysis_localizationvalidation():
 
     for model_name in get_model_names():
         model = get_model(model_name)
-        model_all_layers = list({frois_models_layers[froi][model_name] for froi in frois})
-        for froi in frois:
+        model_all_layers = list({frois_models_layers[froi][model_name] for froi in model_frois})
+        for froi in model_frois:
             model_froi_layer = frois_models_layers[froi][model_name]
             print(f'Running localization validation for model: {model_name}, froi: {froi}')
             row_params = {
