@@ -27,6 +27,12 @@ def t_statistic(tensor1: torch.Tensor, tensor2: torch.Tensor) -> torch.Tensor:
     pooled_se = torch.sqrt(var1 / n1 + var2 / n2)
     t_stat = mean_diff / pooled_se
 
+    # Error handling
+    # Replace inf with -inf so that it can be used for masking
+    t_stat[t_stat == torch.inf] = -torch.inf
+    # Replace NaN with -inf so that it can be used for masking
+    t_stat[torch.isnan(t_stat)] = -torch.inf
+
     # p-values not being calculated for computational efficiency
     calculate_pvalues = False
     if calculate_pvalues:
