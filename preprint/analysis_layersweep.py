@@ -84,6 +84,7 @@ def model_layer_sweep(
                 continue
             # Correlations
             subject_pearsonrs = []
+            subject_normed_pearsonrs = []
             for subject, subject_froi_data in subjects_data[fmri_froi].items():
                 # Get model froi masks
                 model_froi_masks = _get_model_froi_masks(model_froi) if model_froi_masks is None \
@@ -99,13 +100,20 @@ def model_layer_sweep(
                     layer_froi_data, subject_froi_data
                 )
                 subject_pearsonrs.append(pearsonr_)
+                # Normalize by split-half pearsonr
+                normed_pearsonr = pearsonr_ / subjects_splithalf_pearsonrs[fmri_froi][subject]
+                subject_normed_pearsonrs.append(normed_pearsonr)
             # Save results
             results_list.append({
                 **row_params,
-                'pearsonr': subject_pearsonrs,
-                'pearsonr_mean': np.nanmean(subject_pearsonrs),
+                'normed_pearsonr_median': np.nanmedian(subject_normed_pearsonrs),
+                'normed_pearsonr_mean': np.nanmean(subject_normed_pearsonrs),
+                'normed_pearsonr_sem': scipy.stats.sem(subject_normed_pearsonrs, nan_policy='omit'),
                 'pearsonr_median': np.nanmedian(subject_pearsonrs),
-                'pearsonr_sem': scipy.stats.sem(subject_pearsonrs, nan_policy='omit')
+                'pearsonr_mean': np.nanmean(subject_pearsonrs),
+                'pearsonr_sem': scipy.stats.sem(subject_pearsonrs, nan_policy='omit'),
+                'pearsonr': subject_pearsonrs,
+                'normed_pearsonr': subject_normed_pearsonrs,
             })
             # Save to CSV
             results_df = pd.DataFrame(results_list)
@@ -137,11 +145,11 @@ def get_model_best_layer(results_df, model_name, model_fmri_frois):
         if rows.empty:
             raise ValueError(f'No rows found for {model_name}, {model_froi}, {fmri_froi}')
         key = (model_froi, fmri_froi)
-        if rows['pearsonr_median'].isnull().all():
+        if rows['normed_pearsonr_median'].isnull().all():
             tmp_row = rows.iloc[0].copy()
             tmp_row['model_layer'] = None
             best_layers[key] = tmp_row
         else:
-            best_row = rows.loc[rows['pearsonr_median'].idxmax(skipna=True)]
+            best_row = rows.loc[rows['normed_pearsonr_median'].idxmax(skipna=True)]
             best_layers[key] = best_row.to_dict()
     return best_layers
