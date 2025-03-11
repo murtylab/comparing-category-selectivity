@@ -32,10 +32,10 @@ class ResNet50EcoSet(BaseModel):
         irrelevant_layer_regexes = [
             'conv1$', 'bn1$', 'relu$', 'maxpool$', \
             'layer[0-9]$', r'layer[0-9]\.[0-9]$', '.*downsample', \
-            'fc$', 'avgpool$'
+            'fc$'
         ]
         # Layer types to ignore
-        irrelevant_layer_types = [nn.Dropout]
+        irrelevant_layer_types = [nn.Dropout, nn.Identity]
         self.irrelevant_layer_names = layer_utils.get_layers_matching_regexes(
             self.model, irrelevant_layer_regexes
         ) + layer_utils.get_layers_matching_types(self.model, irrelevant_layer_types)
