@@ -24,14 +24,12 @@ class AlexNetRandom(BaseModel):
         # ToImage(): Convert to Image (subclass of Tensor)
         # ToDtype(): Convert to FloatTensor and scale to [0, 1]
         # Normalize(): mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
-        self.transforms = transform_utils.get_transforms(
-            mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225], resize=(224, 224)
-        )
+        self.transforms = transform_utils.get_transforms()
         # Relevant layer names
         # Layer names to ignore
-        irrelevant_layer_regexes = ['features$', 'classifier$']
+        irrelevant_layer_regexes = ['features$', 'classifier.*']
         # Layer types to ignore
-        irrelevant_layer_types = [nn.Dropout]
+        irrelevant_layer_types = [nn.Dropout, nn.Identity]
         self.irrelevant_layer_names = layer_utils.get_layers_matching_regexes(
             self.model, irrelevant_layer_regexes
         ) + layer_utils.get_layers_matching_types(self.model, irrelevant_layer_types)
