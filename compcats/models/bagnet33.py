@@ -28,11 +28,12 @@ class BagNet33(BaseModel):
         # Relevant layer names
         # Layer names to ignore
         irrelevant_layer_regexes = [
-            'layer[0-9]$', r'layer[0-9]\.[0-9]$', '.*downsample', 'conv[0-9]$', 'fc.*', \
-            'avgpool$', 'bn[0-9]$', 'relu$'
+            'conv[0-9]$', 'bn1$', 'relu$', 'maxpool$', \
+            'layer[0-9]$', r'layer[0-9]\.[0-9]$', '.*downsample', \
+            'fc$'
         ]
         # Layer types to ignore
-        irrelevant_layer_types = [nn.Dropout]
+        irrelevant_layer_types = [nn.Dropout, nn.Identity]
         self.irrelevant_layer_names = layer_utils.get_layers_matching_regexes(
             self.model, irrelevant_layer_regexes
         ) + layer_utils.get_layers_matching_types(self.model, irrelevant_layer_types)
