@@ -54,10 +54,10 @@ MODELS = {
     'resnet18imagenet1kv1': resnet18_imagenet1kv1,
     # # # ResNet-50s
     'resnet50imagenet1kv2': resnet50_imagenet1kv2,
-    # 'resnet50imagenet21k': resnet50_imagenet21k, # Check best layer
+    'resnet50imagenet21k': resnet50_imagenet21k,
     'resnet50openaiclip': resnet50_openaiclip,
-    # 'resnet50simclr': resnet50_simclr, # Check best layer
-    # 'resnet50robustl2eps3': resnet50_robust,
+    'resnet50simclr': resnet50_simclr,
+    'resnet50robustl2eps3': resnet50_robust,
     'resnet50sin': resnet50_sin,
     'resnet50ecoset': resnet50_ecoset,
     'resnet50faceobfuscation': resnet50_faceobfuscation,
