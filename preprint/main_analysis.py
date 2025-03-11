@@ -37,7 +37,7 @@ seed_utils.seed_everything(SEED)
 BATCH_SIZE = 2048
 
 # Results dirs
-BEST_LAYERS_CSV_PATH = f'{MODELS_DIR}/best_layers_nsd485_median_pearsonr.csv'
+BEST_LAYERS_CSV_PATH = f'{RESULTS_DIR}/best_layers_nsd485_median_pearsonr.csv'
 LOCALIZATION_VALIDATION_CSV_PATH = f'{RESULTS_DIR}/localization_validation.csv'
 SUBJECTSUBJECT_PEARSONR_CSV_PATH = f'{RESULTS_DIR}/subjectsubject_pearsonr_nsd515.csv'
 MODELSUBJECT_PEARSONR_CSV_PATH = f'{RESULTS_DIR}/modelsubject_pearsonr_nsd515.csv'
