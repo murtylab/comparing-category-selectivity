@@ -147,6 +147,31 @@ def get_froi_models_layers(froi):
         model_best_layer = model_best_layer.values[0]
         # Save best layer
         models_layers[model_name] = model_best_layer
+    # Old layers
+    # models_layers = {
+    #     'alexnetimagenet1kv1': 'features.10',
+    #     'alexnetipclref01': 'conv_block_5.0',
+    #     'alexnetbarlowtwins': 'backbone.4.1',
+    #     'resnet18imagenet1kv1': 'layer4.1.conv2',
+    #     'resnet50imagenet1kv2': 'layer4.1.conv2',
+    #     # 'resnet50imagenet21k': resnet50_imagenet21k, # Check best layer
+    #     'resnet50openaiclip': 'layer4.1.conv2',
+    #     # 'resnet50simclr': resnet50_simclr, # Check best layer
+    #     # 'resnet50robustl2eps3': resnet50_robust,
+    #     'resnet50sin': 'layer4.1.conv2',
+    #     'resnet50faceobfuscation': 'layer4.1.conv2',
+    #     'resnet50toponettau30': 'layer4.1.conv2',
+    #     'vitb32imagenet1kv1': 'encoder.layers.encoder_layer_11.mlp',
+    #     'vitb32openaiclip': 'transformer.resblocks.11.mlp',
+    #     'vitb16imagenet21k': 'blocks.11.mlp',
+    #     'vitb16openaiclip': 'transformer.resblocks.11.mlp',
+    #     'vitb16siglip2res224': 'trunk.blocks.11.mlp',
+    #     'vitl14openaiclip': 'transformer.resblocks.11.mlp',
+    #     'vgg16imagenet1kv1': 'features.28',
+    #     # # 'alexnetrandom42': alexnet_random,
+    #     # # 'resnet50random42': resnet50_random,
+    #     # # 'vitb32random42': vitb32_random,
+    # }
     return models_layers
 
 # Utils
