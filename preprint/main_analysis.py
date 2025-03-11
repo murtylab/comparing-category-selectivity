@@ -429,7 +429,7 @@ def run_analysis_localizationvalidation():
                 'model_layer': model_froi_layer,
                 'model_froi': froi,
                 'model_froi_tthreshold': tthreshold,
-                'model_froi_localizer': froi_localizer,
+                'model_localization_localizer': froi_localizer,
                 'model_validation_localizer': validation_localizer,
             }
             # Check if row is present
@@ -444,11 +444,20 @@ def run_analysis_localizationvalidation():
                     MODELS_DIR, validation_localizer, validation_localizer_dir, \
                     batch_size=BATCH_SIZE, generate_layers=model_all_layers
                 )
+            # Get t-values for original localizer
+            localization_tvalue, localization_pvalue = \
+                analysis_localizationvalidation.model_layer_froi_localization_validation(
+                    model, model_froi_layer, froi, tthreshold, froi_localizer, froi_localizer_dir, \
+                    MODELS_DIR, froi_localizer, froi_localizer_dir, \
+                    batch_size=BATCH_SIZE, generate_layers=model_all_layers
+                )
             # Save results
             localization_validation_csv_list.append({
                 **row_params,
-                'tvalue': tvalue,
-                'pvalue': pvalue
+                'validation_tvalue': tvalue,
+                'validation_pvalue': pvalue,
+                'localization_tvalue': localization_tvalue,
+                'localization_pvalue': localization_pvalue
             })
             localization_validation_csv = pd.DataFrame(localization_validation_csv_list)
             localization_validation_csv.to_csv(localization_validation_csv_path, index=False)
