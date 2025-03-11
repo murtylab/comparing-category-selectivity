@@ -13,6 +13,7 @@ from compcats.utils import model_utils, misc_utils, responsecomparison_utils as 
 
 def model_layer_sweep(
         models_dir, nsd_dir, localizer_dir, \
+        subjects_data, subjects_splithalf_pearsonrs, \
         model, layers, subset, model_fmri_frois, tthreshold, model_localizer
 ):
     """
