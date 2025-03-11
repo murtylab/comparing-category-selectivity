@@ -24,7 +24,7 @@ class SquarePad:
         return v2.functional.pad(image, padding, fill, 'constant')
 
 def get_transforms(
-    mean, std, resize=(224, 224)
+    mean=None, std=None, resize=(224, 224)
 ):
     """
     Get standard transforms for the model
@@ -57,7 +57,11 @@ def get_transforms(
     transforms.transforms.append(v2.ToDtype(dtype=torch.float32, scale=True))
 
     # Normalize: Normalize with mean and std
-    if mean is not None and std is not None:
+    if mean is None and std is None:
+        transforms.transforms.append(v2.Normalize(
+            constants.IMAGENET_DEFAULT_MEAN, constants.IMAGENET_DEFAULT_STD
+        ))
+    else:
         transforms.transforms.append(v2.Normalize(mean, std))
 
     return transforms
