@@ -13,16 +13,21 @@ from compcats.utils import model_utils, misc_utils, responsecomparison_utils as 
 
 def model_layer_sweep(
         models_dir, nsd_dir, localizer_dir, \
-        subjects_data, model, layers, subset, frois, tthreshold, model_localizer
+        model, layers, subset, model_fmri_frois, tthreshold, model_localizer
 ):
     """
     Generate model-human univariate comparison results to select best layer
     NSD 485 images, 4 subjects, FFA, PPA, EBA, t>7
     Args:
+        models_dir (str): Models directory
+        nsd_dir (str): NSD directory
+        localizer_dir (str): Localizer directory
         subjects_data (dict): Dictionary of subject data
+        subjects_splithalf_pearsonrs (dict): Dictionary of subject split-half pearsonrs
         model (Model): Model instance
+        layers (list): List of layers
         subset (int): Subset of NSD dataset
-        frois (list): List of frois
+        model_fmri_frois (list): List of tuples of model and fmri frois
         tthreshold (float): Threshold for t-values
         model_localizer (str): Model localizer
     """
@@ -50,30 +55,38 @@ def model_layer_sweep(
             model, layers, froi, tthreshold
         )
 
+    previous_model_froi = ''
     # Loop over frois
-    for froi in frois:
-        # Reset model froi masks
-        model_froi_masks = None
-        print(f'Running layer sweep: {model.name}, {froi}')
+    for (model_froi, fmri_froi) in model_fmri_frois:
+        # Check if model froi masks are present
+        if model_froi != previous_model_froi:
+            # Empty CUDA cache
+            del model_froi_masks
+            torch.cuda.empty_cache()
+            # Reset model froi masks
+            model_froi_masks = None
+        # Update previous model froi
+        previous_model_froi = model_froi
+        print(f'Running layer sweep: {model.name}, {model_froi}, {fmri_froi}')
         for layer in tqdm(layers):
             # Check if row is present
             row_params = {
                 'model_name': model.name,
                 'model_layer': layer,
-                'model_froi': froi,
+                'model_froi': model_froi,
                 'model_tthreshold': tthreshold,
                 'model_localizer': model_localizer,
                 'fmri_dataset': f'nsd{subset}',
-                'fmri_froi': froi,
+                'fmri_froi': fmri_froi,
                 'fmri_tthreshold': tthreshold
             }
             if misc_utils.check_row_present(row_params, results_list):
                 continue
             # Correlations
             subject_pearsonrs = []
-            for subject, subject_froi_data in subjects_data[froi].items():
+            for subject, subject_froi_data in subjects_data[fmri_froi].items():
                 # Get model froi masks
-                model_froi_masks = _get_model_froi_masks(froi) if model_froi_masks is None \
+                model_froi_masks = _get_model_froi_masks(model_froi) if model_froi_masks is None \
                     else model_froi_masks
                 # Get model data
                 model_data = _get_model_data() if model_data is None else model_data
@@ -97,8 +110,6 @@ def model_layer_sweep(
             # Save to CSV
             results_df = pd.DataFrame(results_list)
             results_df.to_csv(csv_pth, index=False)
-        # Empty CUDA cache
-        del model_froi_masks
 
     # Empty CUDA cache
     del model_data
@@ -106,30 +117,31 @@ def model_layer_sweep(
 
     return pd.DataFrame(results_list)
 
-def get_model_best_layer(results_df, model_name, frois):
+def get_model_best_layer(results_df, model_name, model_fmri_frois):
     """
     Get best layer for a model-froi pair
     Args:
         results_df (pd.DataFrame): Results DataFrame
         model_name (str): Model name
-        frois (list): List of frois
+        model_fmri_frois (list): List of tuples of model and fmri frois
     Returns:
         best_layers (dict): Dictionary of best layers
     """
     best_layers = {}
-    for froi_ in frois:
+    for (model_froi, fmri_froi) in model_fmri_frois:
         rows = results_df[
             (results_df['model_name'] == model_name) &
-            (results_df['model_froi'] == froi_) &
-            (results_df['fmri_froi'] == froi_)
+            (results_df['model_froi'] == model_froi) &
+            (results_df['fmri_froi'] == fmri_froi)
         ]
         if rows.empty:
-            raise ValueError(f'No rows found for {model_name}, {froi_}')
+            raise ValueError(f'No rows found for {model_name}, {model_froi}, {fmri_froi}')
+        key = (model_froi, fmri_froi)
         if rows['pearsonr_median'].isnull().all():
             tmp_row = rows.iloc[0].copy()
             tmp_row['model_layer'] = None
-            best_layers[froi_] = tmp_row
+            best_layers[key] = tmp_row
         else:
             best_row = rows.loc[rows['pearsonr_median'].idxmax(skipna=True)]
-            best_layers[froi_] = best_row.to_dict()
+            best_layers[key] = best_row.to_dict()
     return best_layers

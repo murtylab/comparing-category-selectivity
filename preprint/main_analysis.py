@@ -122,11 +122,12 @@ def get_all_models():
         models[model_name] = model
     return models
 
-def get_froi_models_layers(froi):
+def get_froi_models_layers(model_froi, fmri_froi):
     """
     Get layers of all models used for the analysis
     Args:
-        froi (str): Froi
+        model_froi (str): Model froi
+        fmri_froi (str): FMRI froi
     Returns:
         models_layers (dict): Dictionary of model layers
     """
@@ -139,8 +140,8 @@ def get_froi_models_layers(froi):
         # Get best layer
         model_best_layer = best_layers_csv[
             (best_layers_csv['model_name'] == model_name) &
-            (best_layers_csv['model_froi'] == froi) &
-            (best_layers_csv['fmri_froi'] == froi)
+            (best_layers_csv['model_froi'] == model_froi) &
+            (best_layers_csv['fmri_froi'] == fmri_froi)
         ]['model_layer']
         # Check if best layer is found
         assert len(model_best_layer) == 1, 'Best layer not found'
@@ -288,7 +289,22 @@ def run_analysis_layersweep():
     # Variables
     subjects = [1, 2, 5, 7]
     subset = 485
-    frois = ['FFA', 'PPA', 'EBA']
+    model_fmri_frois_core = [
+        ('FFA', 'FFA'),
+        ('PPA', 'PPA'),
+        ('EBA', 'EBA')
+    ]
+    model_fmri_frois_extended = [
+        ('FFA', 'FFA'),
+        ('FFA', 'OFA'),
+        ('EBA', 'EBA'),
+        ('EBA', 'FBA'),
+        ('PPA', 'PPA'),
+        ('PPA', 'OPA'),
+        ('PPA', 'RSC')
+    ]
+    # Choose model_fmri_frois, core or extended
+    model_fmri_frois = model_fmri_frois_extended
     tthreshold = 7
     model_localizer = 'grillspector'
 
@@ -301,8 +317,9 @@ def run_analysis_layersweep():
         best_layers_csv_list = []
 
     # Get subjects data
+    fmri_frois = list({i[1] for i in model_fmri_frois})
     subjects_data, subjects_splithalf_pearsonrs = get_humandata_layersweep(
-        subjects, frois, tthreshold, subset
+        subjects, fmri_frois, tthreshold, subset
     )
 
     # Run layer sweep
@@ -313,16 +330,15 @@ def run_analysis_layersweep():
         print(f'\nStarting layer sweep for model: {model_name}')
         model_layersweep_csv = analysis_layersweep.model_layer_sweep(
             MODELS_DIR, NSD_DIR, get_localizer_dir(model_localizer), \
-            subjects_data, model, relevant_layers, subset, frois, tthreshold, model_localizer
+            subjects_data, subjects_splithalf_pearsonrs, \
+            model, relevant_layers, subset, model_fmri_frois, tthreshold, model_localizer
         )
         end_time = time.time()
         elapsed_time = (end_time - start_time) / 60  # Convert to minutes
         print(f'Layer sweep for model {model_name} completed in {elapsed_time:.2f} minutes\n')
 
         # assert layersweep is complete
-        assert model_layersweep_csv is not None, 'Layer sweep not complete'
-        assert len(model_layersweep_csv) == (len(relevant_layers) * len(frois)), \
-            'Layer sweep not complete'
+        assert model_layersweep_csv is not None, 'Layer sweep csv not found'
 
         # Empty cache
         del model
@@ -330,21 +346,21 @@ def run_analysis_layersweep():
 
         # Find best layer
         best_layer_info = analysis_layersweep.get_model_best_layer(
-            model_layersweep_csv, model_name, frois
+            model_layersweep_csv, model_name, model_fmri_frois
         )
         # Get best layers
-        best_layers = {info['model_layer'] for froi, info in best_layer_info.items()}
+        best_layers = {info['model_layer'] for _, info in best_layer_info.items()}
         # Save best layers
         # If already present, check if best layer is same
-        for froi, froi_best_layer_info in best_layer_info.items():
+        for (model_froi, fmri_froi), froi_best_layer_info in best_layer_info.items():
             froi_best_layer_present = misc_utils.check_row_present(
                 {
                     'model_name': model_name,
-                    'model_froi': froi,
+                    'model_froi': model_froi,
                     'model_tthreshold': tthreshold,
                     'model_localizer': model_localizer,
                     'fmri_dataset': f'nsd{subset}',
-                    'fmri_froi': froi,
+                    'fmri_froi': fmri_froi,
                     'fmri_tthreshold': tthreshold
                 }, best_layers_csv_list
             )
