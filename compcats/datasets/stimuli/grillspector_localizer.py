@@ -44,7 +44,12 @@ class GrillSpectorLocalizerDataset(BaseLocalizerDataset):
     def _get_image_files(self, image_class):
         """Function to get paths to image files"""
         root_dir = self.root_dir
-        all_classes = set([fl.split('-')[0] for fl in os.listdir(root_dir)])
+        all_classes = []
+        if image_class not in [
+            'all', 'bodies', 'faces', 'places', 'objects', 'characters', 'scrambledobjects'
+        ]:
+            # Get all classes if requested image class not found
+            all_classes = {fl.split('-')[0] for fl in os.listdir(root_dir)}
         if image_class == 'bodies':
             # body, limb
             image_files = sorted(
@@ -80,13 +85,13 @@ class GrillSpectorLocalizerDataset(BaseLocalizerDataset):
             image_files = sorted(
                 glob.glob(f'{root_dir}/scrambled-*.jpg')
             )
-        elif image_class in all_classes:
-            image_files = sorted(
-                glob.glob(f'{root_dir}/{image_class}-*.jpg')
-            )
         elif image_class == 'all':
             image_files = sorted(
                 glob.glob(f'{root_dir}/*.jpg')
+            )
+        elif image_class in all_classes:
+            image_files = sorted(
+                glob.glob(f'{root_dir}/{image_class}-*.jpg')
             )
         else:
             raise ValueError(f'{image_class} images not implemented in localizer')
