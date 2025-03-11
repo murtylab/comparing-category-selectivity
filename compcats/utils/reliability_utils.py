@@ -18,7 +18,7 @@ def fix_type(data):
 # VOXEL-WISE SPLITHALF CORRELATION
 ####################################################################################################
 def get_voxelwise_splithalf_correlation(subject_data, image_subset=..., method=3):
-    assert method in [1, 2], 'Method must be 1 or 2'
+    assert method in [1, 2, 3], 'Method must be 1, 2, or 3'
     # Convert to appropriate type
     subject_data = fix_type(subject_data)
     # Check dimensions
@@ -112,7 +112,7 @@ def _get_pearsonr_splithalf_correlarion_method3(voxel_data):
 # RDM SPLITHALF CORRELATION
 ####################################################################################################
 def get_rdm_splithalf_correlation(subject_data, image_subset=..., method=3):
-    assert method in [1, 2], 'Method must be 1 or 2'
+    assert method in [1, 2, 3], 'Method must be 1, 2, or 3'
     # Convert to appropriate type
     subject_data = fix_type(subject_data)
     # Check dimensions
@@ -202,7 +202,7 @@ def _get_rdm_splithalf_correlation_method3(subset_data):
 # VOXEL-AVERAGED PEARSON SPLITHALF CORRELATION
 ####################################################################################################
 def get_voxelmean_splithalf_correlation(subject_data, image_subset=..., method=3):
-    assert method in [1, 2], 'Method must be 1 or 2'
+    assert method in [1, 2, 3], 'Method must be 1, 2, or 3'
     # Convert to appropriate type
     subject_data = fix_type(subject_data)
     # Check dimensions
