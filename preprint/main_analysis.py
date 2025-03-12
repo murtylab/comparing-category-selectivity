@@ -233,7 +233,7 @@ def get_allsubjects_nsd515_meanrep_meanvoxel_data(frois, tthreshold, tensors=Fal
     if not tensors:
         for froi in frois:
             for subject in subjects:
-                subjects_data[froi][subject] = subjects_data[froi][subject].cpu().numpy
+                subjects_data[froi][subject] = subjects_data[froi][subject].cpu().numpy()
     return subjects_data, splithalf_pearsonrs
 
 def get_allsubjects_nsd515_meanrep_voxel_data(frois, tthreshold, tensors=False):
@@ -278,7 +278,8 @@ def get_allsubjects_nsd515_meanrep_voxel_data(frois, tthreshold, tensors=False):
                 subjects_data[froi][subject] = subjects_data[froi][subject].cpu().numpy
     return subjects_data, splithalf_rdmrs
 
-def get_allmodels_nsd515_meanunit_data(frois, tthreshold, localizer, tensors=False):
+def get_allmodels_nsd515_data(model_fmri_frois, tthreshold, localizer, \
+                                       unitmean, tensors=False):
     """
     Get NSD515 mean of froi units data for all models
     Args:
@@ -288,20 +289,22 @@ def get_allmodels_nsd515_meanunit_data(frois, tthreshold, localizer, tensors=Fal
     """
     subset = 515
     models_data = {}
-    for froi in frois:
-        models_data[froi] = {}
+    for (model_froi, fmri_froi) in model_fmri_frois:
+        models_data[(model_froi, fmri_froi)] = {}
         for model_name in get_model_names():
             model = get_model(model_name)
-            layer = get_froi_models_layers(froi)[model_name]
+            layer = get_froi_models_layers(model_froi, fmri_froi)[model_name]
             model_froi_activations = model_utils.get_dataset_activations(
                 MODELS_DIR, NSD_DIR, model, layer, dataset='nsd', \
                 subset=subset, \
-                froi=froi, tthreshold=tthreshold, froi_localizer=localizer, \
+                froi=model_froi, tthreshold=tthreshold, froi_localizer=localizer, \
                 froi_localizer_dir=get_localizer_dir(localizer)
-            ).mean(axis=-1)
+            )
+            if unitmean:
+                model_froi_activations = model_froi_activations.mean(axis=-1)
             if not tensors:
                 model_froi_activations = model_froi_activations.cpu().numpy()
-            models_data[froi][model_name] = model_froi_activations
+            models_data[(model_froi, fmri_froi)][model_name] = model_froi_activations
     return models_data
 
 def get_humandata_layersweep(subjects, frois, tthreshold, subset):
@@ -606,9 +609,25 @@ def run_analysis_modelsubjectunivariate():
     """
     TODO
     """
+    # Define frois
+    model_fmri_frois_core = [
+        ('FFA', 'FFA'),
+        ('PPA', 'PPA'),
+        ('EBA', 'EBA')
+    ]
+    model_fmri_frois_extended = [
+        ('FFA', 'FFA'),
+        ('FFA', 'OFA'),
+        ('EBA', 'EBA'),
+        ('EBA', 'FBA'),
+        ('PPA', 'PPA'),
+        ('PPA', 'OPA'),
+        ('PPA', 'RSC')
+    ]
+
     # Variables
-    # Common
-    frois = ['FFA', 'PPA', 'EBA']
+    model_fmri_frois = model_fmri_frois_extended
+    fmri_frois = list({i[1] for i in model_fmri_frois})
     tthreshold = 7
     # Subjects
     subjects = [1, 2, 3, 4, 5, 6, 7, 8]
@@ -624,20 +643,23 @@ def run_analysis_modelsubjectunivariate():
     else:
         modelsubject_pearsonr_csv_list = []
 
-    subjects_data = get_allsubjects_nsd515_meanrep_meanvoxel_data(frois, tthreshold)
-    models_data = get_allmodels_nsd515_meanunit_data(frois, tthreshold, model_localizer)
+    subjects_data, subjects_splithalf_pearsonrs = \
+        get_allsubjects_nsd515_meanrep_meanvoxel_data(fmri_frois, tthreshold)
+    models_data = get_allmodels_nsd515_data(
+        model_fmri_frois, tthreshold, model_localizer, unitmean=True
+    )
 
     for model_name in get_model_names():
         for subject in subjects:
-            for froi in frois:
+            for (model_froi, fmri_froi) in model_fmri_frois:
                 row_params = {
                     'model_name': model_name,
-                    'model_layer': get_froi_models_layers(froi)[model_name],
-                    'model_froi': froi,
+                    'model_layer': get_froi_models_layers(model_froi, fmri_froi)[model_name],
+                    'model_froi': model_froi,
                     'modeltthreshold': tthreshold,
                     'model_localizer': model_localizer,
                     'fmri_dataset': f'nsd{subset}',
-                    'fmri_froi': froi,
+                    'fmri_froi': fmri_froi,
                     'fmri_tthreshold': tthreshold,
                     'subject': subject
                 }
@@ -645,14 +667,20 @@ def run_analysis_modelsubjectunivariate():
                 if misc_utils.check_row_present(row_params, modelsubject_pearsonr_csv_list):
                     continue
                 # Run model-subject correlation
-                model_data = models_data[froi][model_name]
-                subject_data = subjects_data[froi][subject]
+                model_data = models_data[(model_froi, fmri_froi)][model_name]
+                subject_data = subjects_data[fmri_froi][subject]
                 pearsonr, pvalue = scipy.stats.pearsonr(model_data, subject_data)
+                # Split-half correlation
+                splithalf_pearsonr = subjects_splithalf_pearsonrs[fmri_froi][subject]
+                # Normalize by split-half correlation
+                normed_pearsonr = pearsonr / np.sqrt(splithalf_pearsonr)
                 # Save results
                 modelsubject_pearsonr_csv_list.append({
                     **row_params,
+                    'normed_pearsonr': normed_pearsonr,
                     'pearsonr': pearsonr,
-                    'pvalue': pvalue
+                    'pvalue': pvalue,
+                    'fmri_splithalf_pearsonr': splithalf_pearsonr,
                 })
                 modelsubject_pearsonr_csv = pd.DataFrame(modelsubject_pearsonr_csv_list)
                 modelsubject_pearsonr_csv.to_csv(modelsubject_pearsonr_csv_path, index=False)
