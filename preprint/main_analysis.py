@@ -234,8 +234,48 @@ def get_allsubjects_nsd515_meanrep_meanvoxel_data(frois, tthreshold, tensors=Fal
             for subject in subjects:
                 subjects_data[froi][subject] = subjects_data[froi][subject].cpu().numpy
     return subjects_data, splithalf_pearsonrs
+
+def get_allsubjects_nsd515_meanrep_voxel_data(frois, tthreshold, tensors=False):
+    """
+    Get NSD individual voxels, mean of repetitions data for all subjects
+    Args:
+        frois (list): List of frois
+        tthreshold (float): Threshold for t-values
+    Returns:
+        subjects_data (dict): Dictionary of subject data
+    """
+    # Variables
+    subjects = [1, 2, 3, 4, 5, 6, 7, 8]
+    subset = 515
+    # Storing results
+    subjects_data = {}
+    splithalf_rdmrs = {}
+    # Get subject froi mean-repetition mean-voxels data
+    for froi in frois:
+        subjects_data[froi] = {}
+        for subject in subjects:
+            subject_froi_data, _ = nsd.get_betas(
+                NSD_DIR, subject, subset=subset, voxels=True, repetition_mean=True, \
+                froi=froi, tthreshold=tthreshold
+            )
             subjects_data[froi][subject] = subject_froi_data
-    return subjects_data
+    # Get subject froi split-half correlations
+    for froi in frois:
+        splithalf_rdmrs[froi] = {}
+        for subject in subjects:
+            subject_data, _ = nsd.get_betas(
+                NSD_DIR, subject, froi=froi, tthreshold=tthreshold, \
+                subset=subset, voxels=True, repetition_mean=False
+            )
+            splithalf_pearsonr_ = reliability_utils.get_rdm_splithalf_correlation(
+                subject_data
+            )
+            splithalf_rdmrs[froi][subject] = splithalf_pearsonr_
+    if not tensors:
+        for froi in frois:
+            for subject in subjects:
+                subjects_data[froi][subject] = subjects_data[froi][subject].cpu().numpy
+    return subjects_data, splithalf_rdmrs
 
 def get_allmodels_nsd515_meanunit_data(frois, tthreshold, localizer, tensors=False):
     """
