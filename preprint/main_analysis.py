@@ -384,7 +384,9 @@ def run_analysis_layersweep():
 
     # To save GPU memory, can chunk layers and run layer sweep for each chunk
     # chunk_size = 0 for no chunking
-    chunk_size = 25
+    chunk_size = 0
+    if chunk_size > 0:
+        print(f'Layer sweep chunk size: {chunk_size} layers')
 
     # Run layer sweep
     for model_name in get_model_names():
