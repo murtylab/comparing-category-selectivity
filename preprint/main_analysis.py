@@ -202,9 +202,13 @@ def get_allsubjects_nsd515_meanrep_meanvoxel_data(frois, tthreshold, tensors=Fal
     Returns:
         subjects_data (dict): Dictionary of subject data
     """
+    # Variables
     subjects = [1, 2, 3, 4, 5, 6, 7, 8]
     subset = 515
+    # Storing results
     subjects_data = {}
+    splithalf_pearsonrs = {}
+    # Get subject froi mean-repetition mean-voxels data
     for froi in frois:
         subjects_data[froi] = {}
         for subject in subjects:
@@ -212,8 +216,24 @@ def get_allsubjects_nsd515_meanrep_meanvoxel_data(frois, tthreshold, tensors=Fal
                 NSD_DIR, subject, subset=subset, voxels=False, repetition_mean=True, \
                 froi=froi, tthreshold=tthreshold
             )
-            if not tensors:
-                subject_froi_data = subject_froi_data.cpu().numpy()
+            subjects_data[froi][subject] = subject_froi_data
+    # Get subject froi split-half correlations
+    for froi in frois:
+        splithalf_pearsonrs[froi] = {}
+        for subject in subjects:
+            subject_data, _ = nsd.get_betas(
+                NSD_DIR, subject, froi=froi, tthreshold=tthreshold, \
+                subset=subset, voxels=False, repetition_mean=False
+            )
+            splithalf_pearsonr_ = reliability_utils.get_voxelmean_splithalf_correlation(
+                subject_data
+            )
+            splithalf_pearsonrs[froi][subject] = splithalf_pearsonr_
+    if not tensors:
+        for froi in frois:
+            for subject in subjects:
+                subjects_data[froi][subject] = subjects_data[froi][subject].cpu().numpy
+    return subjects_data, splithalf_pearsonrs
             subjects_data[froi][subject] = subject_froi_data
     return subjects_data
 
