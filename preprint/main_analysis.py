@@ -3,6 +3,7 @@ import os
 import time
 import argparse
 import scipy
+import numpy as np
 import pandas as pd
 import torch
 
@@ -543,14 +544,20 @@ def run_analysis_localizationvalidation():
 # Analysis: subject-subject correlations (univariate)
 def run_analysis_subjectsubjectunivariate():
     """
-    TODO
+    Analysis: Subject-subject correlations, univariate pearsonr
+    Also normalized by split-half pearsonr
     """
+    # Define frois
+    frois_core = ['FFA', 'PPA', 'EBA']
+    frois_extended = ['FFA', 'OFA', 'PPA', 'OPA', 'RSC', 'EBA', 'FBA']
+
     # Variables
-    frois = ['FFA', 'PPA', 'EBA']
+    frois = frois_extended
     tthreshold = 7
     subjects = [1, 2, 3, 4, 5, 6, 7, 8]
     subset = 515
-    subjects_data = get_allsubjects_nsd515_meanrep_meanvoxel_data(frois, tthreshold)
+    subjects_data, subjects_splithalf_pearsonrs = \
+        get_allsubjects_nsd515_meanrep_meanvoxel_data(frois, tthreshold, tensors=False)
 
     # Storing results
     subjectsubject_pearsonr_csv_path = SUBJECTSUBJECT_PEARSONR_CSV_PATH
@@ -577,11 +584,19 @@ def run_analysis_subjectsubjectunivariate():
                 subject1_data = subjects_data[froi][subject1]
                 subject2_data = subjects_data[froi][subject2]
                 pearsonr, pvalue = scipy.stats.pearsonr(subject1_data, subject2_data)
+                # split-half correlation
+                subject1_splithalf_pearsonr = subjects_splithalf_pearsonrs[froi][subject1]
+                subject2_splithalf_pearsonr = subjects_splithalf_pearsonrs[froi][subject2]
+                normed_pearsonr = \
+                    pearsonr / np.sqrt(subject1_splithalf_pearsonr * subject2_splithalf_pearsonr)
                 # Save results
                 subjectsubject_pearsonr_csv_list.append({
                     **row_params,
+                    'normed_pearsonr': normed_pearsonr,
                     'pearsonr': pearsonr,
-                    'pvalue': pvalue
+                    'pvalue': pvalue,
+                    'subject1_splithalf_pearsonr': subject1_splithalf_pearsonr,
+                    'subject2_splithalf_pearsonr': subject2_splithalf_pearsonr
                 })
                 subjectsubject_pearsonr_csv = pd.DataFrame(subjectsubject_pearsonr_csv_list)
                 subjectsubject_pearsonr_csv.to_csv(subjectsubject_pearsonr_csv_path, index=False)
