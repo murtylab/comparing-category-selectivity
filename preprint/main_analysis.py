@@ -322,17 +322,28 @@ def run_analysis_layersweep():
         subjects, fmri_frois, tthreshold, subset
     )
 
+    # To save GPU memory, can chunk layers and run layer sweep for each chunk
+    # chunk_size = 0 for no chunking
+    chunk_size = 25
+
     # Run layer sweep
     for model_name in get_model_names():
         model = get_model(model_name)
-        relevant_layers = model.get_relevant_layers()
+        relevant_layers = model.get_relevant_layers()[:9]
         start_time = time.time()
         print(f'\nStarting layer sweep for model: {model_name}')
-        model_layersweep_csv = analysis_layersweep.model_layer_sweep(
-            MODELS_DIR, NSD_DIR, get_localizer_dir(model_localizer), \
-            subjects_data, subjects_splithalf_pearsonrs, \
-            model, relevant_layers, subset, model_fmri_frois, tthreshold, model_localizer
-        )
+        # Run layer sweep for each chunk
+        if chunk_size > 0:
+            layer_chunks = misc_utils.chunk_numbers(len(relevant_layers), chunk_size)
+        else:
+            layer_chunks = [(0, len(relevant_layers))]
+        for start, end in layer_chunks:
+            subset_relevant_layers = relevant_layers[start:end]
+            model_layersweep_csv = analysis_layersweep.model_layer_sweep(
+                MODELS_DIR, NSD_DIR, get_localizer_dir(model_localizer), \
+                subjects_data, subjects_splithalf_pearsonrs, \
+                model, subset_relevant_layers, subset, model_fmri_frois, tthreshold, model_localizer
+            )
         end_time = time.time()
         elapsed_time = (end_time - start_time) / 60  # Convert to minutes
         print(f'Layer sweep for model {model_name} completed in {elapsed_time:.2f} minutes\n')
