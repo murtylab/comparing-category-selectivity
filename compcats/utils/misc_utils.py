@@ -35,3 +35,14 @@ def delete_activations(activations_dir, layer_names):
             num_layers_found += 1
     if num_layers_found > 0:
         print(f'Deleted activations for {num_layers_found} layers in {activations_dir}')
+
+def chunk_numbers(N, chunk_size=10):
+    """
+    Splits a range of numbers from 0 to N into chunks of specified size.
+    Parameters:
+        N (int): The upper limit of the range (inclusive).
+        chunk_size (int, optional): The size of each chunk. Default is 10.
+    Returns:
+        list of tuples: A list where each tuple contains the start and end indices of each chunk.
+    """
+    return [(i, min(i + chunk_size, N + 1)) for i in range(0, N + 1, chunk_size)]
