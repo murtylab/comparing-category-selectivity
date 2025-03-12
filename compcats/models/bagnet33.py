@@ -30,7 +30,7 @@ class BagNet33(BaseModel):
         irrelevant_layer_regexes = [
             'conv[0-9]$', 'bn1$', 'relu$', 'maxpool$', \
             'layer[0-9]$', r'layer[0-9]\.[0-9]$', '.*downsample', \
-            'fc$'
+            'fc$', 'avgpool$'
         ]
         # Layer types to ignore
         irrelevant_layer_types = [nn.Dropout, nn.Identity]
