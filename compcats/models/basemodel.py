@@ -107,6 +107,9 @@ class BaseModel(torch.nn.Module):
         """
         Error handling for hooks
         """
+        # Check for None type
+        if hook_output is None:
+            raise ValueError('Hook output is None')
         # If the output is a tuple, only store the first element
         # This will be the case for example with MultiHeadAttention
         if isinstance(hook_output, tuple):
