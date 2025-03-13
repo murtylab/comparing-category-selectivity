@@ -1,6 +1,7 @@
 """Utils for comparing responses across models and fMRI data"""
 import torch
-from torch.distributions import StudentT
+import numpy as np
+from scipy.stats import spearmanr as scipy_spearmanr
 
 def pearsonr(vector1, vector2, return_pvalue=False):
     """
@@ -51,13 +52,24 @@ def spearmanr(vector1, vector2, return_pvalue=False):
     Args:
         vector1 (torch.Tensor): 1D tensor
         vector2 (torch.Tensor): 1D tensor
+        return_pvalue (bool): Whether to return p-value
     Returns:
         rho (float): Spearman's rank correlation
+        p_value (float): P-value (if return_pvalue is True)
     """
     if not torch.is_tensor(vector1) or not torch.is_tensor(vector2):
         raise ValueError('Input must be tensors')
     assert vector1.ndim == 1 and vector2.ndim == 1, 'Input must be 1D tensors'
     assert vector1.size(0) == vector2.size(0), 'Vectors must have the same length'
+
+    if return_pvalue:
+        rho, p_value = scipy_spearmanr(vector1.cpu().numpy(), vector2.cpu().numpy())
+        # assert np.isclose(scipy_rho, rho, atol=1e-3), \
+        #     f"Spearman correlation mismatch: {scipy_rho} (scipy) vs {rho} (torch)"
+        if isinstance(p_value, np.floating):
+            p_value = p_value.item()
+        return rho, p_value
+
     with torch.no_grad():
         # Step 1: Rank the data using argsort
         rank_x = torch.argsort(torch.argsort(vector1, descending=False), descending=False)
@@ -69,22 +81,10 @@ def spearmanr(vector1, vector2, return_pvalue=False):
         # Step 3: Compute Spearman's rank correlation
         n = vector1.size(0)
         rho = 1 - (6 * torch.sum(d ** 2)) / (n * (n ** 2 - 1))
-
-        if return_pvalue:
-            raise NotImplementedError('P-value calculation not implemented')
-            # Step 4: Compute the t-statistic
-            t_statistic = rho * \
-                torch.sqrt(torch.tensor(n - 2, dtype=torch.float32)) / \
-                    torch.sqrt(1 - rho ** 2)
-
-            # Step 5: Compute the p-value using torch.distributions.StudentT
-            student_t = StudentT(df=n-2)
-            p_value = 2 * (1 - student_t.cdf(torch.abs(t_statistic)))
-            del student_t
+        rho = rho.item()
+        assert -1 <= rho <= 1, f"Invalid Spearman correlation: {rho}"
 
         # Empty cuda cache
         del rank_x, rank_y, d
 
-    if return_pvalue:
-        return rho.item(), p_value.item()
-    return rho.item()
+    return rho
