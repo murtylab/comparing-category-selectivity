@@ -10,6 +10,7 @@ import torch
 from compcats.models import *
 from compcats.datasets.fmri import nsd
 from compcats.utils import seed_utils, misc_utils, model_utils, reliability_utils
+import compcats.utils.responsecomparison_utils as rcutils
 
 # Analysis files
 import analysis_layersweep
@@ -40,7 +41,7 @@ BATCH_SIZE = 2048
 # Results dirs
 BEST_LAYERS_CSV_PATH = f'{RESULTS_DIR}/best_layers_nsd485_median_pearsonr.csv'
 LOCALIZATION_VALIDATION_CSV_PATH = f'{RESULTS_DIR}/localization_validation.csv'
-SUBJECTSUBJECT_PEARSONR_CSV_PATH = f'{RESULTS_DIR}/subjectsubject_pearsonr_nsd515.csv'
+SUBJECTSUBJECT_CORRELATIONS_CSV_PATH = f'{RESULTS_DIR}/subjectsubject_correlations_nsd515.csv'
 MODELSUBJECT_PEARSONR_CSV_PATH = f'{RESULTS_DIR}/modelsubject_pearsonr_nsd515.csv'
 
 # Models, Info Log
@@ -277,6 +278,55 @@ def get_allsubjects_nsd515_meanrep_voxel_data(frois, tthreshold, tensors=False):
             for subject in subjects:
                 subjects_data[froi][subject] = subjects_data[froi][subject].cpu().numpy
     return subjects_data, splithalf_rdmrs
+
+def get_allsubjects_nsd515_data(frois, tthreshold, tensors=True):
+    """
+    Get NSD individual mean of repetitions data for all subjects
+    Args:
+        frois (list): List of frois
+        tthreshold (float): Threshold for t-values
+    Returns:
+        subjects_data (dict): Dictionary of subject data
+    """
+    # Variables
+    subjects = [1, 2, 3, 4, 5, 6, 7, 8]
+    subset = 515
+    # Storing results
+    subjects_data = {}
+    splithalf_pearsonrs = {}
+    splithalf_rdmrs = {}
+    # Get subject froi mean-repetition mean-voxels data
+    for froi in frois:
+        subjects_data[froi] = {}
+        for subject in subjects:
+            subject_froi_data, _ = nsd.get_betas(
+                NSD_DIR, subject, subset=subset, voxels=True, repetition_mean=True, \
+                froi=froi, tthreshold=tthreshold
+            )
+            subjects_data[froi][subject] = subject_froi_data
+    # Get subject froi split-half correlations
+    for froi in frois:
+        splithalf_pearsonrs[froi] = {}
+        splithalf_rdmrs[froi] = {}
+        for subject in subjects:
+            subject_data, _ = nsd.get_betas(
+                NSD_DIR, subject, froi=froi, tthreshold=tthreshold, \
+                subset=subset, voxels=True, repetition_mean=False
+            )
+            splithalf_pearsonr_ = reliability_utils.get_voxelmean_splithalf_correlation(
+                subject_data.mean(axis=-1)
+            )
+            splithalf_rdmr_ = reliability_utils.get_rdm_splithalf_correlation(
+                subject_data
+            )
+            splithalf_pearsonrs[froi][subject] = splithalf_pearsonr_
+            splithalf_rdmrs[froi][subject] = splithalf_rdmr_
+    if not tensors:
+        for froi in frois:
+            for subject in subjects:
+                subjects_data[froi][subject] = subjects_data[froi][subject].cpu().numpy()
+    return subjects_data, splithalf_pearsonrs, splithalf_rdmrs
+
 
 def get_allmodels_nsd515_data(model_fmri_frois, tthreshold, localizer, \
                                        unitmean, tensors=False):
@@ -544,11 +594,11 @@ def run_analysis_localizationvalidation():
             f'{MODELS_DIR}/{model_name}/{validation_localizer}/activations', model_all_layers
         )
 
-# Analysis: subject-subject correlations (univariate)
-def run_analysis_subjectsubjectunivariate():
+# Analysis: subject-subject correlations
+def run_analysis_subjectsubjectcorrelations():
     """
-    Analysis: Subject-subject correlations, univariate pearsonr
-    Also normalized by split-half pearsonr
+    Analysis: Subject-subject correlations, univariate pearsonr and multivariate RDMr
+    Also normalized by split-half correlations
     """
     # Define frois
     frois_core = ['FFA', 'PPA', 'EBA']
@@ -559,16 +609,16 @@ def run_analysis_subjectsubjectunivariate():
     tthreshold = 7
     subjects = [1, 2, 3, 4, 5, 6, 7, 8]
     subset = 515
-    subjects_data, subjects_splithalf_pearsonrs = \
-        get_allsubjects_nsd515_meanrep_meanvoxel_data(frois, tthreshold, tensors=False)
+    subjects_voxel_data, subjects_splithalf_pearsonrs, subjects_splithalf_rdmrs = \
+        get_allsubjects_nsd515_data(frois, tthreshold, tensors=True)
 
     # Storing results
-    subjectsubject_pearsonr_csv_path = SUBJECTSUBJECT_PEARSONR_CSV_PATH
-    if os.path.exists(subjectsubject_pearsonr_csv_path):
-        subjectsubject_pearsonr_csv = pd.read_csv(subjectsubject_pearsonr_csv_path)
-        subjectsubject_pearsonr_csv_list = subjectsubject_pearsonr_csv.to_dict('records')
+    subjectsubject_correlations_csv_path = SUBJECTSUBJECT_CORRELATIONS_CSV_PATH
+    if os.path.exists(subjectsubject_correlations_csv_path):
+        subjectsubject_correlations_csv = pd.read_csv(subjectsubject_correlations_csv_path)
+        subjectsubject_correlations_csv_list = subjectsubject_correlations_csv.to_dict('records')
     else:
-        subjectsubject_pearsonr_csv_list = []
+        subjectsubject_correlations_csv_list = []
 
     for subject1_idx, subject1 in enumerate(subjects):
         for subject2_idx, subject2 in enumerate(subjects[subject1_idx+1:]):
@@ -581,28 +631,46 @@ def run_analysis_subjectsubjectunivariate():
                     'subject2': subject2
                 }
                 # Check if row is present
-                if misc_utils.check_row_present(row_params, subjectsubject_pearsonr_csv_list):
+                if misc_utils.check_row_present(row_params, subjectsubject_correlations_csv_list):
                     continue
                 # Run subject-subject correlation
-                subject1_data = subjects_data[froi][subject1]
-                subject2_data = subjects_data[froi][subject2]
-                pearsonr, pvalue = scipy.stats.pearsonr(subject1_data, subject2_data)
-                # split-half correlation
+                subject1_voxel_data = subjects_voxel_data[froi][subject1]
+                subject2_voxel_data = subjects_voxel_data[froi][subject2]
+                # Pearsonr
+                pearsonr, pvalue_pearsonr = scipy.stats.pearsonr(
+                    subject1_voxel_data.mean(axis=-1), subject2_voxel_data.mean(axis=-1)
+                )
+                # split-half pearsonrs
                 subject1_splithalf_pearsonr = subjects_splithalf_pearsonrs[froi][subject1]
                 subject2_splithalf_pearsonr = subjects_splithalf_pearsonrs[froi][subject2]
                 normed_pearsonr = \
                     pearsonr / np.sqrt(subject1_splithalf_pearsonr * subject2_splithalf_pearsonr)
+                # RDMr
+                rdmr, pvalue_rdmr = rcutils.rdmr(
+                    subject1_voxel_data, subject2_voxel_data, return_pvalue=True
+                )
+                subject1_splithalf_rdmr = subjects_splithalf_rdmrs[froi][subject1]
+                subject2_splithalf_rdmr = subjects_splithalf_rdmrs[froi][subject2]
+                normed_rdmr = \
+                    rdmr / np.sqrt(subject1_splithalf_rdmr * subject2_splithalf_rdmr)
                 # Save results
-                subjectsubject_pearsonr_csv_list.append({
+                subjectsubject_correlations_csv_list.append({
                     **row_params,
                     'normed_pearsonr': normed_pearsonr,
                     'pearsonr': pearsonr,
-                    'pvalue': pvalue,
+                    'normed_rdmr': normed_rdmr,
+                    'rdmr': rdmr,
+                    'pvalue_rdmr': pvalue_rdmr,
+                    'pvalue_pearsonr': pvalue_pearsonr,
                     'subject1_splithalf_pearsonr': subject1_splithalf_pearsonr,
-                    'subject2_splithalf_pearsonr': subject2_splithalf_pearsonr
+                    'subject2_splithalf_pearsonr': subject2_splithalf_pearsonr,
+                    'subject1_splithalf_rdmr': subject1_splithalf_rdmr,
+                    'subject2_splithalf_rdmr': subject2_splithalf_rdmr
                 })
-                subjectsubject_pearsonr_csv = pd.DataFrame(subjectsubject_pearsonr_csv_list)
-                subjectsubject_pearsonr_csv.to_csv(subjectsubject_pearsonr_csv_path, index=False)
+                subjectsubject_correlations_csv = pd.DataFrame(subjectsubject_correlations_csv_list)
+                subjectsubject_correlations_csv.to_csv(
+                    subjectsubject_correlations_csv_path, index=False
+                )
 
 # Analysis: model-subject correlations (univariate)
 def run_analysis_modelsubjectunivariate():
@@ -719,8 +787,8 @@ def main():
         '--localizationvalidation', action='store_true', help='Run localization validation'
     )
     parser.add_argument(
-        '--subjectsubjectunivariate', action='store_true', \
-            help='Run subject-subject univariate correlations'
+        '--subjectsubjectcorrelations', action='store_true', \
+            help='Run subject-subject correlations'
     )
     parser.add_argument(
         '--modelsubjectunivariate', action='store_true', \
@@ -741,8 +809,8 @@ def main():
         run_analysis_layersweep()
     if args.localizationvalidation:
         run_analysis_localizationvalidation()
-    if args.subjectsubjectunivariate:
-        run_analysis_subjectsubjectunivariate()
+    if args.subjectsubjectcorrelations:
+        run_analysis_subjectsubjectcorrelations()
     if args.modelsubjectunivariate:
         run_analysis_modelsubjectunivariate()
     if args.mds:
