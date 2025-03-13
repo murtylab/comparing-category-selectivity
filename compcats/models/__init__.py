@@ -29,6 +29,7 @@ from . import resnet50_ecoset
 
 # ResNet-101s
 from . import resnet101_imagenet1kv1
+from . import resnet101_openaiclip
 
 # VGGs
 from . import vgg16_imagenet1kv1
