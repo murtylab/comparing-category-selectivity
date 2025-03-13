@@ -47,45 +47,48 @@ MODELSUBJECT_PEARSONR_CSV_PATH = f'{RESULTS_DIR}/modelsubject_pearsonr_nsd515.cs
 # Models, Info Log
 MODELS = {
     # # # AlexNets
-    # 'alexnetimagenet1kv1': alexnet_imagenet1kv1, # Done
-    # 'alexnetipclref01': alexnet_ipcl, # Done
-    # 'alexnetbarlowtwins': alexnet_barlowtwins, # Done
-    # # # VGGs
-    # 'vgg16imagenet1kv1': vgg16_imagenet1kv1, # Done
-    # # # ResNet-18s
-    # 'resnet18imagenet1kv1': resnet18_imagenet1kv1, # Done
-    # # # ResNet-50s
-    # 'resnet50imagenet1kv2': resnet50_imagenet1kv2, # Done
-    # 'resnet50imagenet21k': resnet50_imagenet21k, # Done
-    # 'resnet50openaiclip': resnet50_openaiclip, # Done
-    # 'resnet50simclr': resnet50_simclr, # Done
-    # 'resnet50robustl2eps3': resnet50_robust, # Done
-    # 'resnet50sin': resnet50_sin, # Done
-    # 'resnet50ecoset': resnet50_ecoset, # Done
-    # 'resnet50faceobfuscation': resnet50_faceobfuscation, # Done
-    # 'resnet50toponettau30': resnet50_toponet, # Done
-    # # # # BagNets
-    'bagnet33': bagnet33, #114_2
-    # # # # CORNets
-    # 'cornets': cornet_s, # Done
-    # 'cornetz': cornet_z, # Done
-    # # # # ViTs
-    # # # # ViT-B/32
-    # 'vitb32imagenet1kv1': vitb32_imagenet1kv1, # Done
-    # 'vitb32openaiclip': vitb32_openaiclip, # Done
-    # 'vitb32dreamsimopenclip': vitb32_dreamsim, # Done
-    # # # # ViT-B/16
-    # 'vitb16imagenet21k': vitb16_imagenet21k, # Done
-    # 'vitb16openaiclip': vitb16_openaiclip, # Done
-    # 'vitb16siglip2res224': vitb16_siglip2, # Done
-    # 'vitb16eva028bs8bb131k': vitb16_eva02, # Done
-    # 'vitb16synclr': vitb16_synclr, # Done
-    # # # # ViT-B/14
-    # 'vitb14dinov2': vitb14_dinov2, # Done
-    # 'vitb14dinov2reg': vitb14_dinov2register, # Done
-    # # # # ViT-L/14
-    # 'vitl14openaiclip': vitl14_openaiclip, # Done
-    # 'vitl14kosmos2': vitl14_kosmos2, #Done
+    'alexnetimagenet1kv1': alexnet_imagenet1kv1, # Done
+    'alexnetipclref01': alexnet_ipcl, # Done
+    'alexnetbarlowtwins': alexnet_barlowtwins, # Done
+    # # VGGs
+    'vgg16imagenet1kv1': vgg16_imagenet1kv1, # Done
+    # # ResNet-18s
+    'resnet18imagenet1kv1': resnet18_imagenet1kv1, # Done
+    # # ResNet-50s
+    'resnet50imagenet1kv2': resnet50_imagenet1kv2, # Done
+    'resnet50imagenet21k': resnet50_imagenet21k, # Done
+    'resnet50openaiclip': resnet50_openaiclip, # Done
+    'resnet50simclr': resnet50_simclr, # Done
+    'resnet50robustl2eps3': resnet50_robust, # Done
+    'resnet50sin': resnet50_sin, # Done
+    'resnet50ecoset': resnet50_ecoset, # Done
+    'resnet50faceobfuscation': resnet50_faceobfuscation, # Done
+    'resnet50toponettau30': resnet50_toponet, # Done
+    # # ResNet-101s
+    'resnet101imagenet1kv1': resnet101_imagenet1kv1, # Done
+    'resnet101openaiclip': resnet101_openaiclip,
+    # # # BagNets
+    'bagnet33': bagnet33, # Done
+    # # # CORNets
+    'cornets': cornet_s, # Done
+    'cornetz': cornet_z, # Done
+    # # # ViTs
+    # # # ViT-B/32
+    'vitb32imagenet1kv1': vitb32_imagenet1kv1, # Done
+    'vitb32openaiclip': vitb32_openaiclip, # Done
+    'vitb32dreamsimopenclip': vitb32_dreamsim, # Done
+    # # # ViT-B/16
+    'vitb16imagenet21k': vitb16_imagenet21k, # Done
+    'vitb16openaiclip': vitb16_openaiclip, # Done
+    'vitb16siglip2res224': vitb16_siglip2, # Done
+    'vitb16eva028bs8bb131k': vitb16_eva02, # Done
+    'vitb16synclr': vitb16_synclr, # Done
+    # # # ViT-B/14
+    'vitb14dinov2': vitb14_dinov2, # Done
+    'vitb14dinov2reg': vitb14_dinov2register, # Done
+    # # # ViT-L/14
+    'vitl14openaiclip': vitl14_openaiclip, # Done
+    'vitl14kosmos2': vitl14_kosmos2, #Done
 }
 
 def get_num_models():
