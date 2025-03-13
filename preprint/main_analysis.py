@@ -658,18 +658,19 @@ def run_analysis_modelsubjectcorrelations():
                 subject_data = subjects_data[fmri_froi][subject]
                 subject_splithalf_pearsonr = subjects_splithalf_pearsonrs[fmri_froi][subject]
                 subject_splithalf_rdmr = subjects_splithalf_rdmrs[fmri_froi][subject]
-                # Pearsonr
-                pearsonr, pvalue_pearsonr = scipy.stats.pearsonr(
-                    model_data.mean(axis=-1), subject_data.mean(axis=-1)
-                )
-                # Normalize by split-half correlation
-                normed_pearsonr = pearsonr / np.sqrt(subject_splithalf_pearsonr)
                 # RDMr
                 rdmr, pvalue_rdmr = rcutils.rdmr(
                     model_data, subject_data, return_pvalue=True
                 )
                 # Normalize by split-half correlation
                 normed_rdmr = rdmr / np.sqrt(subject_splithalf_rdmr)
+                # Pearsonr
+                pearsonr, pvalue_pearsonr = scipy.stats.pearsonr(
+                    model_data.mean(axis=-1).cpu().numpy(), 
+                    subject_data.mean(axis=-1).cpu().numpy()
+                )
+                # Normalize by split-half correlation
+                normed_pearsonr = pearsonr / np.sqrt(subject_splithalf_pearsonr)
                 # Save results
                 modelsubject_correlations_csv_list.append({
                     **row_params,
