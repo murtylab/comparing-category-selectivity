@@ -66,7 +66,7 @@ MODELS = {
     'resnet50toponettau30': resnet50_toponet, # Done
     # # ResNet-101s
     'resnet101imagenet1kv1': resnet101_imagenet1kv1, # Done
-    'resnet101openaiclip': resnet101_openaiclip,
+    'resnet101openaiclip': resnet101_openaiclip, # Done
     # # # BagNets
     'bagnet33': bagnet33, # Done
     # # # CORNets
