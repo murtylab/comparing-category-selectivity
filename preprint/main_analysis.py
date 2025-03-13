@@ -42,7 +42,7 @@ BATCH_SIZE = 2048
 BEST_LAYERS_CSV_PATH = f'{RESULTS_DIR}/best_layers_nsd485_median_pearsonr.csv'
 LOCALIZATION_VALIDATION_CSV_PATH = f'{RESULTS_DIR}/localization_validation.csv'
 SUBJECTSUBJECT_CORRELATIONS_CSV_PATH = f'{RESULTS_DIR}/subjectsubject_correlations_nsd515.csv'
-MODELSUBJECT_PEARSONR_CSV_PATH = f'{RESULTS_DIR}/modelsubject_pearsonr_nsd515.csv'
+MODELSUBJECT_CORRELATIONS_CSV_PATH = f'{RESULTS_DIR}/modelsubject_pearsonr_nsd515.csv'
 
 # Models, Info Log
 MODELS = {
@@ -245,7 +245,6 @@ def get_allsubjects_nsd515_data(frois, tthreshold, tensors=True):
             for subject in subjects:
                 subjects_data[froi][subject] = subjects_data[froi][subject].cpu().numpy()
     return subjects_data, splithalf_pearsonrs, splithalf_rdmrs
-
 
 def get_allmodels_nsd515_data(model_fmri_frois, tthreshold, localizer, \
                                        unitmean, tensors=False):
@@ -591,8 +590,8 @@ def run_analysis_subjectsubjectcorrelations():
                     subjectsubject_correlations_csv_path, index=False
                 )
 
-# Analysis: model-subject correlations (univariate)
-def run_analysis_modelsubjectunivariate():
+# Analysis: model-subject correlations
+def run_analysis_modelsubjectcorrelations():
     """
     TODO
     """
@@ -623,17 +622,17 @@ def run_analysis_modelsubjectunivariate():
     model_localizer = 'grillspector'
 
     # Storing results
-    modelsubject_pearsonr_csv_path = MODELSUBJECT_PEARSONR_CSV_PATH
-    if os.path.exists(modelsubject_pearsonr_csv_path):
-        modelsubject_pearsonr_csv = pd.read_csv(modelsubject_pearsonr_csv_path)
-        modelsubject_pearsonr_csv_list = modelsubject_pearsonr_csv.to_dict('records')
+    modelsubject_correlations_csv_path = MODELSUBJECT_CORRELATIONS_CSV_PATH
+    if os.path.exists(modelsubject_correlations_csv_path):
+        modelsubject_correlations_csv = pd.read_csv(modelsubject_correlations_csv_path)
+        modelsubject_correlations_csv_list = modelsubject_correlations_csv.to_dict('records')
     else:
-        modelsubject_pearsonr_csv_list = []
+        modelsubject_correlations_csv_list = []
 
-    subjects_data, subjects_splithalf_pearsonrs = \
-        get_allsubjects_nsd515_meanrep_meanvoxel_data(fmri_frois, tthreshold)
+    subjects_data, subjects_splithalf_pearsonrs, subjects_splithalf_rdmrs = \
+        get_allsubjects_nsd515_data(fmri_frois, tthreshold)
     models_data = get_allmodels_nsd515_data(
-        model_fmri_frois, tthreshold, model_localizer, unitmean=True
+        model_fmri_frois, tthreshold, model_localizer, unitmean=False, tensors=True
     )
 
     for model_name in get_model_names():
@@ -651,29 +650,45 @@ def run_analysis_modelsubjectunivariate():
                     'subject': subject
                 }
                 # Check if row is present
-                if misc_utils.check_row_present(row_params, modelsubject_pearsonr_csv_list):
+                if misc_utils.check_row_present(row_params, modelsubject_correlations_csv_list):
                     continue
                 # Run model-subject correlation
+                # Get data
                 model_data = models_data[(model_froi, fmri_froi)][model_name]
                 subject_data = subjects_data[fmri_froi][subject]
-                pearsonr, pvalue = scipy.stats.pearsonr(model_data, subject_data)
-                # Split-half correlation
-                splithalf_pearsonr = subjects_splithalf_pearsonrs[fmri_froi][subject]
+                subject_splithalf_pearsonr = subjects_splithalf_pearsonrs[fmri_froi][subject]
+                subject_splithalf_rdmr = subjects_splithalf_rdmrs[fmri_froi][subject]
+                # Pearsonr
+                pearsonr, pvalue_pearsonr = scipy.stats.pearsonr(
+                    model_data.mean(axis=-1), subject_data.mean(axis=-1)
+                )
                 # Normalize by split-half correlation
-                normed_pearsonr = pearsonr / np.sqrt(splithalf_pearsonr)
+                normed_pearsonr = pearsonr / np.sqrt(subject_splithalf_pearsonr)
+                # RDMr
+                rdmr, pvalue_rdmr = rcutils.rdmr(
+                    model_data, subject_data, return_pvalue=True
+                )
+                # Normalize by split-half correlation
+                normed_rdmr = rdmr / np.sqrt(subject_splithalf_rdmr)
                 # Save results
-                modelsubject_pearsonr_csv_list.append({
+                modelsubject_correlations_csv_list.append({
                     **row_params,
                     'normed_pearsonr': normed_pearsonr,
                     'pearsonr': pearsonr,
-                    'pvalue': pvalue,
-                    'fmri_splithalf_pearsonr': splithalf_pearsonr,
+                    'normed_rdmr': normed_rdmr,
+                    'rdmr': rdmr,
+                    'pvalue_rdmr': pvalue_rdmr,
+                    'pvalue_pearsonr': pvalue_pearsonr,
+                    'fmri_splithalf_pearsonr': subject_splithalf_pearsonr,
+                    'fmri_splithalf_rdmr': subject_splithalf_rdmr
                 })
-                modelsubject_pearsonr_csv = pd.DataFrame(modelsubject_pearsonr_csv_list)
-                modelsubject_pearsonr_csv.to_csv(modelsubject_pearsonr_csv_path, index=False)
+                modelsubject_correlations_csv = pd.DataFrame(modelsubject_correlations_csv_list)
+                modelsubject_correlations_csv.to_csv(
+                    modelsubject_correlations_csv_path, index=False
+                )
 
-# MDS (univariate)
-def run_analysis_mdsunivariate():
+# MDS
+def run_analysis_mds():
     """
     TODO
     """
@@ -710,7 +725,7 @@ def main():
             help='Run subject-subject correlations'
     )
     parser.add_argument(
-        '--modelsubjectunivariate', action='store_true', \
+        '--modelsubjectcorrelations', action='store_true', \
             help='Run model-subject univariate correlations'
     )
     parser.add_argument(
@@ -730,10 +745,10 @@ def main():
         run_analysis_localizationvalidation()
     if args.subjectsubjectcorrelations:
         run_analysis_subjectsubjectcorrelations()
-    if args.modelsubjectunivariate:
-        run_analysis_modelsubjectunivariate()
+    if args.modelsubjectcorrelations:
+        run_analysis_modelsubjectcorrelations()
     if args.mds:
-        run_analysis_mdsunivariate()
+        run_analysis_mds()
     if args.nsdcomparison:
         run_analysis_nsdcomparison()
     if args.murty185validation:
