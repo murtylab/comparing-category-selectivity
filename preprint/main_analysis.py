@@ -56,7 +56,6 @@ MODELS = {
     'resnet18imagenet1kv1': resnet18_imagenet1kv1, # Done
     # # ResNet-50s
     'resnet50imagenet1kv2': resnet50_imagenet1kv2, # Done
-    'resnet50imagenet21k': resnet50_imagenet21k, # Done
     'resnet50openaiclip': resnet50_openaiclip, # Done
     'resnet50simclr': resnet50_simclr, # Done
     'resnet50robustl2eps3': resnet50_robust, # Done
