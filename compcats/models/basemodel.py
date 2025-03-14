@@ -184,6 +184,13 @@ class BaseModel(torch.nn.Module):
             save_dir(str): Directory to save activations without the layer name
         """
         # Error handling
+        if batch_size is None:
+            batch_size = 768
+        if device is None:
+            if torch.cuda.is_available():
+                device = 'cuda'
+            else:
+                device = 'cpu'
         if isinstance(layers, str):
             layers_list = [layers]
         else:
