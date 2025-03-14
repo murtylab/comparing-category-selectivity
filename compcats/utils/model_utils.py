@@ -78,7 +78,7 @@ def get_dataset_activations(
     if froi is not None and tthreshold is not None and froi_localizer is not None:
         froi_masks = localizer.get_froi_mask(
             froi_localizer_dir, froi_localizer, models_dir, \
-            model, layers_list, froi, tthreshold
+            model, layers_list, froi, tthreshold, batch_size=batch_size
         )
         for layer in layers_list:
             if isinstance(dataset_activations[layer], dict):
