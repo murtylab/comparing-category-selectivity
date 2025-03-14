@@ -233,12 +233,16 @@ def get_allsubjects_nsd515_data(frois, tthreshold, tensors=True):
                 NSD_DIR, subject, froi=froi, tthreshold=tthreshold, \
                 subset=subset, voxels=True, repetition_mean=False
             )
-            splithalf_pearsonr_ = reliability_utils.get_voxelmean_splithalf_correlation(
-                subject_data.mean(axis=-1)
-            )
-            splithalf_rdmr_ = reliability_utils.get_rdm_splithalf_correlation(
-                subject_data
-            )
+            if subject_data is None:
+                splithalf_pearsonr_ = np.NaN
+                splithalf_rdmr_ = np.NaN
+            else:
+                splithalf_pearsonr_ = reliability_utils.get_voxelmean_splithalf_correlation(
+                    subject_data.mean(axis=-1)
+                )
+                splithalf_rdmr_ = reliability_utils.get_rdm_splithalf_correlation(
+                    subject_data
+                )
             splithalf_pearsonrs[froi][subject] = splithalf_pearsonr_
             splithalf_rdmrs[froi][subject] = splithalf_rdmr_
     if not tensors:
@@ -558,23 +562,38 @@ def run_analysis_subjectsubjectcorrelations():
                     # Run subject-subject correlation
                     subject1_voxel_data = subjects_voxel_data[froi][subject1]
                     subject2_voxel_data = subjects_voxel_data[froi][subject2]
-                    # Pearsonr
-                    pearsonr, pvalue_pearsonr = scipy.stats.pearsonr(
-                        subject1_voxel_data.mean(axis=-1), subject2_voxel_data.mean(axis=-1)
-                    )
                     # split-half pearsonrs
                     subject1_splithalf_pearsonr = subjects_splithalf_pearsonrs[froi][subject1]
                     subject2_splithalf_pearsonr = subjects_splithalf_pearsonrs[froi][subject2]
-                    normed_pearsonr = \
-                        pearsonr / np.sqrt(subject1_splithalf_pearsonr * subject2_splithalf_pearsonr)
-                    # RDMr
-                    rdmr, pvalue_rdmr = rcutils.rdmr(
-                        subject1_voxel_data, subject2_voxel_data, return_pvalue=True
-                    )
+                    # split-half rdmrs
                     subject1_splithalf_rdmr = subjects_splithalf_rdmrs[froi][subject1]
                     subject2_splithalf_rdmr = subjects_splithalf_rdmrs[froi][subject2]
-                    normed_rdmr = \
-                        rdmr / np.sqrt(subject1_splithalf_rdmr * subject2_splithalf_rdmr)
+                    if subject1_voxel_data is None or \
+                        subject2_voxel_data is None or \
+                        np.isnan(subject1_splithalf_pearsonr) or \
+                        np.isnan(subject2_splithalf_pearsonr) or \
+                        np.isnan(subject1_splithalf_rdmr) or \
+                        np.isnan(subject2_splithalf_rdmr):
+                        # Set to NaN
+                        pearsonr = np.NaN
+                        rdmr = np.NaN
+                        pvalue_pearsonr = np.NaN
+                        pvalue_rdmr = np.NaN
+                        normed_pearsonr = np.NaN
+                        normed_rdmr = np.NaN
+                    else:
+                        # Pearsonr
+                        pearsonr, pvalue_pearsonr = scipy.stats.pearsonr(
+                            subject1_voxel_data.mean(axis=-1), subject2_voxel_data.mean(axis=-1)
+                        )
+                        normed_pearsonr = \
+                            pearsonr / np.sqrt(subject1_splithalf_pearsonr * subject2_splithalf_pearsonr)
+                        # RDMr
+                        rdmr, pvalue_rdmr = rcutils.rdmr(
+                            subject1_voxel_data, subject2_voxel_data, return_pvalue=True
+                        )
+                        normed_rdmr = \
+                            rdmr / np.sqrt(subject1_splithalf_rdmr * subject2_splithalf_rdmr)
                     # Save results
                     subjectsubject_correlations_csv_list.append({
                         **row_params,
