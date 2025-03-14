@@ -5,6 +5,9 @@
 *.pt
 *.pth
 
+# Ignore figures
+*.pdf
+
 # Ignore results
 **/*results_*.json
 *.csv
