@@ -268,7 +268,7 @@ def get_allmodels_nsd515_data(model_fmri_frois, tthreshold, localizer, \
                 MODELS_DIR, NSD_DIR, model, layer, dataset='nsd', \
                 subset=subset, \
                 froi=model_froi, tthreshold=tthreshold, froi_localizer=localizer, \
-                froi_localizer_dir=get_localizer_dir(localizer)
+                froi_localizer_dir=get_localizer_dir(localizer), batch_size=BATCH_SIZE
             )
             if unitmean:
                 model_froi_activations = model_froi_activations.mean(axis=-1)
