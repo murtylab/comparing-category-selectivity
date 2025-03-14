@@ -43,6 +43,7 @@ BEST_LAYERS_CSV_PATH = f'{RESULTS_DIR}/best_layers_nsd485_median_pearsonr.csv'
 LOCALIZATION_VALIDATION_CSV_PATH = f'{RESULTS_DIR}/localization_validation.csv'
 SUBJECTSUBJECT_CORRELATIONS_CSV_PATH = f'{RESULTS_DIR}/subjectsubject_correlations_nsd515.csv'
 MODELSUBJECT_CORRELATIONS_CSV_PATH = f'{RESULTS_DIR}/modelsubject_correlations_nsd515.csv'
+LOCALIZEREFFECT_CSV_PATH = f'{RESULTS_DIR}/localizer_effect_correlations_nsd515.csv'
 
 # Models, Info Log
 MODELS = {
@@ -643,7 +644,7 @@ def run_analysis_modelsubjectcorrelations():
                     'model_name': model_name,
                     'model_layer': get_froi_models_layers(model_froi, fmri_froi)[model_name],
                     'model_froi': model_froi,
-                    'modeltthreshold': tthreshold,
+                    'model_tthreshold': tthreshold,
                     'model_localizer': model_localizer,
                     'fmri_dataset': f'nsd{subset}',
                     'fmri_froi': fmri_froi,
@@ -689,6 +690,95 @@ def run_analysis_modelsubjectcorrelations():
                     modelsubject_correlations_csv_path, index=False
                 )
 
+# Analysis: model-localizer effect
+def run_analysis_localizereffect():
+    """
+    TODO
+    """
+    # Define frois
+    model_fmri_frois = [
+        ('FFA', 'FFA'),
+        ('PPA', 'PPA'),
+        ('EBA', 'EBA')
+    ]
+
+    # Variables
+    fmri_frois = list({i[1] for i in model_fmri_frois})
+    tthreshold = 7
+    # Subjects
+    subjects = [1, 2, 3, 4, 5, 6, 7, 8]
+    subset = 515
+    # Models
+    model_localizers = ['grillspector', 'kanwisher', 'konkle']
+
+    # Storing results
+    localizereffect_correlations_csv_path = LOCALIZEREFFECT_CSV_PATH
+    if os.path.exists(localizereffect_correlations_csv_path):
+        localizereffect_correlations_csv = pd.read_csv(localizereffect_correlations_csv_path)
+        localizereffect_correlations_csv_list = localizereffect_correlations_csv.to_dict('records')
+    else:
+        localizereffect_correlations_csv_list = []
+
+    subjects_data, subjects_splithalf_pearsonrs, subjects_splithalf_rdmrs = \
+        get_allsubjects_nsd515_data(fmri_frois, tthreshold)
+
+    for model_localizer in model_localizers:
+        models_data = get_allmodels_nsd515_data(
+            model_fmri_frois, tthreshold, model_localizer, unitmean=False, tensors=True
+        )
+        for model_name in get_model_names():
+            for subject in subjects:
+                for (model_froi, fmri_froi) in model_fmri_frois:
+                    row_params = {
+                        'model_name': model_name,
+                        'model_layer': get_froi_models_layers(model_froi, fmri_froi)[model_name],
+                        'model_froi': model_froi,
+                        'model_tthreshold': tthreshold,
+                        'model_localizer': model_localizer,
+                        'fmri_dataset': f'nsd{subset}',
+                        'fmri_froi': fmri_froi,
+                        'fmri_tthreshold': tthreshold,
+                        'subject': subject
+                    }
+                    # Check if row is present
+                    if misc_utils.check_row_present(row_params, localizereffect_correlations_csv_list):
+                        continue
+                    # Run model-subject correlation
+                    # Get data
+                    model_data = models_data[(model_froi, fmri_froi)][model_name]
+                    subject_data = subjects_data[fmri_froi][subject]
+                    subject_splithalf_pearsonr = subjects_splithalf_pearsonrs[fmri_froi][subject]
+                    subject_splithalf_rdmr = subjects_splithalf_rdmrs[fmri_froi][subject]
+                    # RDMr
+                    rdmr, pvalue_rdmr = rcutils.rdmr(
+                        model_data, subject_data, return_pvalue=True
+                    )
+                    # Normalize by split-half correlation
+                    normed_rdmr = rdmr / np.sqrt(subject_splithalf_rdmr)
+                    # Pearsonr
+                    pearsonr, pvalue_pearsonr = scipy.stats.pearsonr(
+                        model_data.mean(axis=-1).cpu().numpy(),
+                        subject_data.mean(axis=-1).cpu().numpy()
+                    )
+                    # Normalize by split-half correlation
+                    normed_pearsonr = pearsonr / np.sqrt(subject_splithalf_pearsonr)
+                    # Save results
+                    localizereffect_correlations_csv_list.append({
+                        **row_params,
+                        'normed_pearsonr': normed_pearsonr,
+                        'pearsonr': pearsonr,
+                        'normed_rdmr': normed_rdmr,
+                        'rdmr': rdmr,
+                        'pvalue_rdmr': pvalue_rdmr,
+                        'pvalue_pearsonr': pvalue_pearsonr,
+                        'fmri_splithalf_pearsonr': subject_splithalf_pearsonr,
+                        'fmri_splithalf_rdmr': subject_splithalf_rdmr
+                    })
+                    localizereffect_correlations_csv = pd.DataFrame(localizereffect_correlations_csv_list)
+                    localizereffect_correlations_csv.to_csv(
+                        localizereffect_correlations_csv_path, index=False
+                    )
+
 # MDS
 def run_analysis_mds():
     """
@@ -716,6 +806,7 @@ def main():
     Main function
     """
     parser = argparse.ArgumentParser(description='Run analysis')
+
     parser.add_argument(
         '--layersweep', action='store_true', help='Run layer sweep'
     )
@@ -739,6 +830,10 @@ def main():
     parser.add_argument(
         '--murty185validation', action='store_true', help='Run Murty185 validation'
     )
+    parser.add_argument(
+        '--localizereffect', action='store_true', help='Run localizer effect'
+    )
+
     args = parser.parse_args()
 
     if args.layersweep:
@@ -755,6 +850,10 @@ def main():
         run_analysis_nsdcomparison()
     if args.murty185validation:
         run_analysis_murty185validation()
+    if args.localizereffect:
+        run_analysis_localizereffect()
+    if not any(vars(args).values()):
+        print('No analysis specified. Use --help for more information.')
 
 if __name__ == '__main__':
     main()
