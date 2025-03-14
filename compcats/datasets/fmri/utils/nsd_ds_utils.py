@@ -514,6 +514,7 @@ def get_froi_mask(root_dir, froi, subject, tthreshold=0):
     # 1: OPA, 2: PPA, 3: RSC
     # 1: OVWFA, 2: VWFA-1, 3: VWFA-2, 4: mfs-words, 5: mTL-words
     froi_info = {
+        'NSDGENERAL': ('nsdgeneral.nii.gz', [1]),
         'OFA': ('floc-faces.nii.gz', [1]),
         'FFA_1': ('floc-faces.nii.gz', [2]),
         'FFA_2': ('floc-faces.nii.gz', [3]),
