@@ -58,7 +58,7 @@ def compare_activations(tensor1, tensor2, tthreshold):
     return mask, t_values
 
 def localize(model, layer, pref_datasets, nonpref_datasets, froi, dataset_name, \
-             activations_dir, froi_dir, tthreshold, return_tvals=False):
+             activations_dir, froi_dir, tthreshold, return_tvals=False, **kwargs):
     """
     Localize units in a layer that respond to 
     a preferred category more than non-preferred categories
@@ -74,13 +74,14 @@ def localize(model, layer, pref_datasets, nonpref_datasets, froi, dataset_name, 
         tthreshold(float): t-threshold
         return_tvals(bool): Return t-values
     """
+    batch_size = kwargs.get('batch_size', None)
     # Generate all activations
     # preferred categories
     pref_activations = {}
     for pref_dataset in pref_datasets:
         pref_img_class = pref_dataset.name
         pref_activation_ = model.generate_dataset_activations(
-            layer, pref_dataset, activations_dir
+            layer, pref_dataset, activations_dir, batch_size=batch_size
         )
         pref_activations[pref_img_class] = pref_activation_
     # non-preferred categories
@@ -88,7 +89,7 @@ def localize(model, layer, pref_datasets, nonpref_datasets, froi, dataset_name, 
     for nonpref_dataset in nonpref_datasets:
         nonpref_img_class = nonpref_dataset.name
         nonpref_activation_ = model.generate_dataset_activations(
-            layer, nonpref_dataset, activations_dir
+            layer, nonpref_dataset, activations_dir, batch_size=batch_size
         )
         nonpref_activations[nonpref_img_class] = nonpref_activation_
     # Compare activations
@@ -142,7 +143,8 @@ def localize(model, layer, pref_datasets, nonpref_datasets, froi, dataset_name, 
     return froi_mask
 
 def get_froi_mask(
-        dataset_dir, dataset_name, models_dir, model, layers, froi, tthreshold, return_tvals=False
+        dataset_dir, dataset_name, models_dir, model, layers, froi, tthreshold, return_tvals=False,
+        **kwargs
 ):
     """
     Get indices for neurons corresponding to froi, localized
@@ -158,6 +160,9 @@ def get_froi_mask(
         layers_list = layers
     else:
         raise ValueError("layers should be a string or a list of strings")
+    
+    # kwargs
+    batch_size = kwargs.get('batch_size', None)
 
     # Results
     results = {}
@@ -180,9 +185,13 @@ def get_froi_mask(
         )
         # Generate all layer activations together in one foward pass
         for pref_dataset in pref_datasets:
-            model.generate_dataset_activations(layers_list, pref_dataset, activations_dir)
+            model.generate_dataset_activations(
+                layers_list, pref_dataset, activations_dir, batch_size=batch_size
+            )
         for nonpref_dataset in nonpref_datasets:
-            model.generate_dataset_activations(layers_list, nonpref_dataset, activations_dir)
+            model.generate_dataset_activations(
+                layers_list, nonpref_dataset, activations_dir, batch_size=batch_size
+            )
         return True, pref_datasets, nonpref_datasets
 
     for layer in layers_list:
