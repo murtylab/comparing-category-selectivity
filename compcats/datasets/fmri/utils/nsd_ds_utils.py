@@ -546,5 +546,7 @@ def get_froi_mask(root_dir, froi, subject, tthreshold=0):
     # Select voxels in specific areas in fROI
     froi_mask = np.isin(froi_all_areas, selected_areas_idxs)
     # Threshold the mask according to tthreshold
-    froi_mask, froi_tvals = threshold_froi_mask(root_dir, subject, froi, froi_mask, tthreshold)
+    froi_tvals = None
+    if tthreshold is not None:
+        froi_mask, froi_tvals = threshold_froi_mask(root_dir, subject, froi, froi_mask, tthreshold)
     return froi_mask, froi_tvals
