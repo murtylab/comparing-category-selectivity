@@ -247,13 +247,15 @@ def get_allsubjects_nsd515_data(frois, tthreshold, tensors=True):
     return subjects_data, splithalf_pearsonrs, splithalf_rdmrs
 
 def get_allmodels_nsd515_data(model_fmri_frois, tthreshold, localizer, \
-                                       unitmean, tensors=False):
+                                       unitmean, tensors=True):
     """
     Get NSD515 mean of froi units data for all models
     Args:
         frois (list): List of frois
         tthreshold (float): Threshold for t-values
         localizer (str): Localizer name
+        unitmean (bool): Whether to take mean of units
+        tensors (bool): Whether to return tensors
     """
     subset = 515
     models_data = {}
