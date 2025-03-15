@@ -234,8 +234,8 @@ def get_allsubjects_nsd515_data(frois, tthreshold, tensors=True):
                 subset=subset, voxels=True, repetition_mean=False
             )
             if subject_data is None:
-                splithalf_pearsonr_ = np.NaN
-                splithalf_rdmr_ = np.NaN
+                splithalf_pearsonr_ = np.nan
+                splithalf_rdmr_ = np.nan
             else:
                 splithalf_pearsonr_ = reliability_utils.get_voxelmean_splithalf_correlation(
                     subject_data.mean(axis=-1)
@@ -574,13 +574,13 @@ def run_analysis_subjectsubjectcorrelations():
                         np.isnan(subject2_splithalf_pearsonr) or \
                         np.isnan(subject1_splithalf_rdmr) or \
                         np.isnan(subject2_splithalf_rdmr):
-                        # Set to NaN
-                        pearsonr = np.NaN
-                        rdmr = np.NaN
-                        pvalue_pearsonr = np.NaN
-                        pvalue_rdmr = np.NaN
-                        normed_pearsonr = np.NaN
-                        normed_rdmr = np.NaN
+                        # Set to nan
+                        pearsonr = np.nan
+                        rdmr = np.nan
+                        pvalue_pearsonr = np.nan
+                        pvalue_rdmr = np.nan
+                        normed_pearsonr = np.nan
+                        normed_rdmr = np.nan
                     else:
                         # Pearsonr
                         pearsonr, pvalue_pearsonr = scipy.stats.pearsonr(
