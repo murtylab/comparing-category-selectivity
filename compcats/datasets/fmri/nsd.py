@@ -40,6 +40,16 @@ def get_froi_mask(root_dir, froi, subject, tthreshold):
     """
     return nsd_ds_utils.get_froi_mask(root_dir, froi, subject, tthreshold)
 
+# Dataset name
+def get_stumli_dataset_name(subset=None):
+    """
+    Get dataset name
+    Args:
+        subset(str): Subset of NSD dataset
+    """
+    dataset_name = 'nsdcoco'
+    return f'{dataset_name}{subset}' if subset else dataset_name
+
 # Stimuli
 class NSDStimuli(Dataset):
     """
@@ -56,8 +66,7 @@ class NSDStimuli(Dataset):
         self.subset = subset
         self.all_stimuli, self.nsdids = get_subset_stimuli(root_dir, self.subset)
         # Name of the dataset to store activations
-        dataset_name = 'nsdcoco'
-        self.name = f'{dataset_name}{self.subset}' if self.subset else dataset_name
+        self.name = get_stumli_dataset_name(subset)
 
     def __len__(self):
         return len(self.all_stimuli)
