@@ -173,6 +173,73 @@ class BaseModel(torch.nn.Module):
         if isinstance(layers, str):
             activations = activations[layers]
         return activations
+    
+    def check_dataset_activations_present(
+        self, layers, dataset_name, save_dir
+    ):
+        """
+        Function to check if activations are already present
+        Args:
+            layer(str): Layer name
+            dataset_name (str): Name of the dataset
+            save_dir(str): Directory to save activations without the layer name
+        """
+        # Error handling
+        if isinstance(layers, str):
+            layers_list = [layers]
+        else:
+            layers_list = layers
+        # Check which layers to generate, and load already generated activations
+        layers_to_generate = []
+        if save_dir and os.path.isdir(save_dir):
+            for layer in layers_list:
+                layer_dir = f'{save_dir}/{layer}'
+                activations_file_name = f'{self.name}_{layer}_{dataset_name}.pt'
+                if os.path.isdir(layer_dir):
+                    if activations_file_name not in os.listdir(layer_dir):
+                        layers_to_generate.append(layer)
+                else:
+                    layers_to_generate.append(layer)
+        else:
+            layers_to_generate = layers_list
+        
+        activations_present = False
+        if len(layers_to_generate) == 0:
+            activations_present = True
+        
+        # Return activations present and layers to generate
+        return activations_present, layers_to_generate
+    
+    def load_dataset_activations(self, layers, dataset_name, save_dir):
+        """
+        Function to load activations for a dataset, assuming they are already generated
+        Args:
+            layer(str): Layer name
+            dataset_name (str): Name of the dataset
+            save_dir(str): Directory to save activations without the layer name
+        """
+        # Assert activations are already generated
+        all_activations_generated, _ = self.check_dataset_activations_present(
+            layers, dataset_name, save_dir
+        )
+        assert all_activations_generated, \
+            f'Activations for {layers} not generated yet. Please generate them first.'
+        # Error handling
+        if isinstance(layers, str):
+            layers_list = [layers]
+        else:
+            layers_list = layers
+        # Load already generated activations
+        activations = {}
+        for layer in layers_list:
+            layer_dir = f'{save_dir}/{layer}'
+            activations_file_name = f'{self.name}_{layer}_{dataset_name}.pt'
+            if os.path.isdir(layer_dir):
+                layer_activations = torch.load(f'{layer_dir}/{activations_file_name}')
+                activations[layer] = layer_activations
+            else:
+                raise ValueError(f'Layer {layer} not found in {layer_dir}')
+        return activations
 
     def generate_dataset_activations(self, layers, dataset, save_dir=None, \
                                      batch_size=768, device='cuda'):
@@ -198,8 +265,12 @@ class BaseModel(torch.nn.Module):
         if not torch.cuda.is_available():
             warnings.warn('CUDA not available but was specified. Moving to CPU.')
             device = 'cpu'
+        # Check if save_dir is provided
+        if save_dir:
+            os.makedirs(save_dir, exist_ok=True)
         # init activations
         activations = {}
+        layers_to_generate = None
 
         # Error handling for path for compatibility with multiple layers
         # If only one layer is requested and save_dir is provided with layer name as the last folder
@@ -210,27 +281,22 @@ class BaseModel(torch.nn.Module):
                 save_dir = '/'.join(save_dir.split('/')[:-1])
 
         # Check which layers to generate, and load already generated activations
-        layers_to_generate = []
+        all_activations_generated, layers_to_generate = self.check_dataset_activations_present(
+            layers, dataset.name, save_dir
+        )
+
+        # If save_dir is provided, create directories for each layer that is not already generated
+        # and load the activations if they are already generated
         if save_dir:
-            os.makedirs(save_dir, exist_ok=True)
-            for layer in layers_list:
-                layer_dir = f'{save_dir}/{layer}'
-                activations_file_name = f'{self.name}_{layer}_{dataset.name}.pt'
-                if os.path.isdir(layer_dir):
-                    if activations_file_name not in os.listdir(layer_dir):
-                        layers_to_generate.append(layer)
-                    else:
-                        layer_activations = torch.load(f'{layer_dir}/{activations_file_name}')
-                        layer_activations = layer_activations.to(device)
-                        activations[layer] = layer_activations
-                else:
-                    os.makedirs(layer_dir)
-                    layers_to_generate.append(layer)
-        else:
-            layers_to_generate = layers_list
+            if layer in layers_to_generate:
+                layer_activations = torch.load(f'{layer_dir}/{activations_file_name}')
+                layer_activations = layer_activations.to(device)
+                activations[layer] = layer_activations
+            else:
+                os.makedirs(layer_dir)
 
         # If all activations are already generated, load them and return
-        if len(layers_to_generate) == 0:
+        if all_activations_generated:
             if isinstance(layers, str):
                 activations = activations[layers]
             return activations
@@ -253,10 +319,15 @@ class BaseModel(torch.nn.Module):
                 # Store activations
                 for layer in layers_to_generate:
                     layer_output = outputs_batch_layers[layer]
+                    # Save GPU memory
+                    layer_output = layer_output.cpu()
                     if layer in activations:
                         activations[layer] = torch.vstack((activations[layer], layer_output))
                     else:
                         activations[layer] = layer_output
+                # Empty cache
+                del outputs_batch_layers, batch
+                torch.cuda.empty_cache()
 
         # Store activations
         if save_dir:
@@ -265,6 +336,10 @@ class BaseModel(torch.nn.Module):
                 # Layer dir should already exist
                 activations_file_name = f'{self.name}_{layer}_{dataset.name}.pt'
                 torch.save(activations[layer].cpu(), f'{layer_dir}/{activations_file_name}')
+        
+        # Move activations to device
+        for layer in layers_to_generate:
+            activations[layer] = activations[layer].to(device)
 
         # Return activations
         if isinstance(layers, str):
