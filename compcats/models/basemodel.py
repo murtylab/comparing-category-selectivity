@@ -288,12 +288,15 @@ class BaseModel(torch.nn.Module):
         # If save_dir is provided, create directories for each layer that is not already generated
         # and load the activations if they are already generated
         if save_dir:
-            if layer in layers_to_generate:
-                layer_activations = torch.load(f'{layer_dir}/{activations_file_name}')
-                layer_activations = layer_activations.to(device)
-                activations[layer] = layer_activations
-            else:
-                os.makedirs(layer_dir)
+            for layer in layers_list:
+                layer_dir = f'{save_dir}/{layer}'
+                activations_file_name = f'{self.name}_{layer}_{dataset.name}.pt'
+                if layer not in layers_to_generate:
+                    layer_activations = torch.load(f'{layer_dir}/{activations_file_name}')
+                    layer_activations = layer_activations.to(device)
+                    activations[layer] = layer_activations
+                else:
+                    os.makedirs(layer_dir, exist_ok=True)
 
         # If all activations are already generated, load them and return
         if all_activations_generated:
