@@ -1,3 +1,5 @@
+import torch
+
 from compcats.datasets.fmri import nsd, murty185
 from compcats.localizer import localizer
 from compcats.localizer import utils as localizer_utils
@@ -26,6 +28,9 @@ def get_dataset_activations(
     # kwargs
     batch_size = kwargs.get('batch_size', 768)
     device = kwargs.get('device', 'cuda')
+    if not torch.cuda.is_available():
+        device = 'cpu'
+
 
     # Error handling
     dataset = dataset.lower()
@@ -91,12 +96,13 @@ def get_dataset_activations(
             model, layers_list, froi, tthreshold, batch_size=batch_size
         )
         for layer in layers_list:
+            froi_mask_layer = froi_masks[layer].to(device)
             if isinstance(dataset_activations[layer], dict):
                 for imgclass in dataset_activations[layer].keys():
                     dataset_activations[layer][imgclass] = \
-                        dataset_activations[layer][imgclass][:, froi_masks[layer]]
+                        dataset_activations[layer][imgclass][:, froi_mask_layer]
             else:
-                dataset_activations[layer] = dataset_activations[layer][:, froi_masks[layer]]
+                dataset_activations[layer] = dataset_activations[layer][:, froi_mask_layer]
 
     # Error handling
     if isinstance(layers, str):
