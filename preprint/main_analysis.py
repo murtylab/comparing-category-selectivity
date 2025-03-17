@@ -454,6 +454,8 @@ def run_analysis_localizationvalidation():
     model_frois = list({i[0] for i in model_fmri_frois})
     tthreshold = 7
     froi_localizer = 'grillspector'
+    # froi_localizer = 'kanwisher'
+    print('Validating localization for localizer: ', froi_localizer)
     validation_localizer = 'konkle'
     frois_models_layers = {
         model_froi: get_froi_models_layers(model_froi, fmri_froi) \
