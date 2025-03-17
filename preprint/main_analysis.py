@@ -36,7 +36,7 @@ SEED = 42
 seed_utils.seed_everything(SEED)
 
 # Batch size
-BATCH_SIZE = 2048
+BATCH_SIZE = 768
 
 # Results dirs
 BEST_LAYERS_CSV_PATH = f'{RESULTS_DIR}/best_layers_nsd485_median_pearsonr.csv'
@@ -463,7 +463,7 @@ def run_analysis_localizationvalidation():
     # Storing results
     localization_validation_csv_path = '.'.join(
         LOCALIZATION_VALIDATION_CSV_PATH.split('.')[:-1]
-    ) + f'_{validation_localizer}.csv'
+    ) + f'_{froi_localizer}.csv'
     if os.path.exists(localization_validation_csv_path):
         localization_validation_csv = pd.read_csv(localization_validation_csv_path)
         localization_validation_csv_list = localization_validation_csv.to_dict('records')
@@ -730,7 +730,7 @@ def run_analysis_localizereffect():
     subjects = [1, 2, 3, 4, 5, 6, 7, 8]
     subset = 515
     # Models
-    model_localizers = ['grillspector', 'kanwisher', 'konkle']
+    model_localizers = ['grillspector', 'kanwisher']
 
     # Storing results
     localizereffect_correlations_csv_path = LOCALIZEREFFECT_CSV_PATH
