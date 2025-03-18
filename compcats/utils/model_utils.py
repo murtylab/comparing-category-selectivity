@@ -54,6 +54,8 @@ def get_dataset_activations(
             dataset_activations = model.load_dataset_activations(
                 layers_list, dataset_name, save_dir
             )
+            # Move activations to device
+            dataset_activations = {k: v.to(device) for k, v in dataset_activations.items()}
         else:
             nsd_dataset = nsd.get_stimuli_dataset(dataset_dir, model.transforms, subset=subset)
             dataset_activations = model.generate_dataset_activations(
