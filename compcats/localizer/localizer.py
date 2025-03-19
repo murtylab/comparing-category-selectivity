@@ -120,6 +120,7 @@ def localize(model, layer, pref_datasets, nonpref_datasets, froi, dataset_name, 
     for key, tvals in all_contrast_tvals.items():
         froi_tvals = tvals[froi_mask]
         mean_tvals.append([key, froi_tvals.mean().item()])
+    # TODO: Fix results json name, froi is twice
     json_file = f'results_{model.name}_{layer}_{froi}_{dataset_name}_{froi}_{tthreshold:.2f}.json'
     json_file_path = f'{froi_dir}/{json_file}'
     results = {
