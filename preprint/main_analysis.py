@@ -747,11 +747,15 @@ def run_analysis_localizereffect():
 
     subjects_data, subjects_splithalf_pearsonrs, subjects_splithalf_rdmrs = \
         get_allsubjects_nsd515_data(fmri_frois, tthreshold)
-
-    for model_localizer in model_localizers:
-        models_data = get_allmodels_nsd515_data(
+    
+    def _get_model_data(model_localizer):
+        return get_allmodels_nsd515_data(
             model_fmri_frois, tthreshold, model_localizer, unitmean=False, tensors=True
         )
+
+    for model_localizer in model_localizers:
+        print(f'Running model-localizer effect for localizer: {model_localizer}')
+        models_data = None
         for model_name in get_model_names():
             for subject in subjects:
                 for (model_froi, fmri_froi) in model_fmri_frois:
@@ -769,6 +773,9 @@ def run_analysis_localizereffect():
                     # Check if row is present
                     if misc_utils.check_row_present(row_params, localizereffect_correlations_csv_list):
                         continue
+                    # Get model data
+                    if models_data is None:
+                        models_data = _get_model_data(model_localizer)
                     # Run model-subject correlation
                     # Get data
                     model_data = models_data[(model_froi, fmri_froi)][model_name]
