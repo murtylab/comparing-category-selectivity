@@ -194,6 +194,8 @@ def get_localizer_dir(localizer_name):
         return GRILLSPECTOR_LOCALIZER_DIR
     elif localizer_name == 'kanwisher':
         return KANWISHER_LOCALIZER_DIR
+    elif localizer_name == 'kanwishergrayscale':
+        return KANWISHER_LOCALIZER_DIR
     elif localizer_name == 'konkle':
         return KONKLE_LOCALIZER_DIR
     else:
@@ -455,6 +457,7 @@ def run_analysis_localizationvalidation():
     tthreshold = 7
     froi_localizer = 'grillspector'
     # froi_localizer = 'kanwisher'
+    # froi_localizer = 'kanwishergrayscale'
     print('Validating localization for localizer: ', froi_localizer)
     validation_localizer = 'konkle'
     frois_models_layers = {
@@ -732,7 +735,7 @@ def run_analysis_localizereffect():
     subjects = [1, 2, 3, 4, 5, 6, 7, 8]
     subset = 515
     # Models
-    model_localizers = ['grillspector', 'kanwisher']
+    model_localizers = ['grillspector', 'kanwisher', 'kanwishergrayscale']
 
     # Storing results
     localizereffect_correlations_csv_path = LOCALIZEREFFECT_CSV_PATH
