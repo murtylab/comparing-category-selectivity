@@ -1,5 +1,5 @@
 from compcats.datasets.stimuli import grillspector_localizer, \
-    kanwisher_localizer, konkle_localizer, vinken23_localizer
+    kanwisher_localizer, konkle_localizer, vinken23_localizer, kanwishergrayscale_localizer
 
 def get_localizerdataset_module(dataset_name):
     """
@@ -7,6 +7,8 @@ def get_localizerdataset_module(dataset_name):
     """
     if dataset_name == 'kanwisher':
         dataset_module = kanwisher_localizer
+    elif dataset_name == 'kanwishergrayscale':
+        dataset_module = kanwishergrayscale_localizer
     elif dataset_name == 'grillspector':
         dataset_module = grillspector_localizer
     elif dataset_name == 'konkle':
