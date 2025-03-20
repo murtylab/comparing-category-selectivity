@@ -5,6 +5,11 @@ from torchvision.transforms import v2
 # PyTorch recommends using v2 for transforms
 # https://pytorch.org/vision/main/transforms.html#v1-or-v2-which-one-should-i-use
 
+# ffcv
+import ffcv.transforms as ffcv_transforms
+from ffcv.fields.rgb_image import CenterCropRGBImageDecoder, RandomResizedCropRGBImageDecoder
+from ffcv.fields.basics import IntDecoder
+
 from compcats import constants
 
 class SquarePad:
@@ -112,15 +117,44 @@ def get_clip_transforms(
 
     return transforms
 
-def get_imagenet_val_transforms():
+def get_imagenet_val_transforms(ffcv=False, device='cuda:0'):
     """
     Get transforms for ImageNet validation dataset
     """
-    transforms = v2.Compose([
-        v2.Resize((256, 256)),
-        v2.CenterCrop((224, 224)),
-        v2.ToImage(),
-        v2.ToDtype(dtype=torch.float32, scale=True),
-        v2.Normalize(constants.IMAGENET_DEFAULT_MEAN, constants.IMAGENET_DEFAULT_STD)
-    ])
+    transforms = None
+    if ffcv:
+        cropper = CenterCropRGBImageDecoder((224, 224), ratio=224/256)
+        image_pipeline = [
+            cropper,
+            ffcv_transforms.ToTensor(),
+            ffcv_transforms.ToDevice(torch.device(device), non_blocking=True),
+            ffcv_transforms.ToTorchImage(),
+            ffcv_transforms.NormalizeImage(
+                np.array(constants.IMAGENET_DEFAULT_MEAN) * 255,
+                np.array(constants.IMAGENET_DEFAULT_STD) * 255,
+                np.float16
+            )
+        ]
+        label_pipeline = [
+            IntDecoder(),
+            ffcv_transforms.ToTensor(),
+            ffcv_transforms.Squeeze(),
+            ffcv_transforms.ToDevice(torch.device(device),
+            non_blocking=True)
+        ]
+        transforms = {
+            'image': image_pipeline,
+            'label': label_pipeline
+        }
+    else:
+        # Resize to 256x256
+        # CenterCrop to 224x224
+        # Normalize to ImageNet mean and std
+        transforms = v2.Compose([
+            v2.Resize((256, 256)),
+            v2.CenterCrop((224, 224)),
+            v2.ToImage(),
+            v2.ToDtype(dtype=torch.float32, scale=True),
+            v2.Normalize(constants.IMAGENET_DEFAULT_MEAN, constants.IMAGENET_DEFAULT_STD)
+        ])
     return transforms
