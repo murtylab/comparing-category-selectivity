@@ -1,55 +1,35 @@
 """
-ResNet-50 untrained
-https://pytorch.org/vision/main/models/generated/torchvision.models.resnet50.html
+Custom model wrapper
 """
-from torch import nn
-import torchvision
+import torch
+from torchvision.transforms import v2
 
 from .basemodel import BaseModel
-from .utils import transform_utils, layer_utils, resnet_utils
 
-def get_model(**kwargs):
-    model = ResNet50Random(**kwargs)
+def get_model(model, name, transforms, **kwargs):
+    """
+    Get custom model
+    """
+    model = CustomModel(model, name, transforms, **kwargs)
     return model
 
-class ResNet50Random(BaseModel):
+class CustomModel(BaseModel):
     """
-    class for the model ResNet50 Untrained
+    class for custom model
     """
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(
+        self,
+        model,
+        name,
+        transforms,
+        **kwargs
+    ):
+        super().__init__(model, name, **kwargs)
         # Transforms:
-        # SquarePad(): Padding shorter side to make it square
-        # Resize(): Resizing to 224x224
-        # ToImage(): Convert to Image (subclass of Tensor)
-        # ToDtype(): Convert to FloatTensor and scale to [0, 1]
-        # Normalize(): mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
-        self.transforms = transform_utils.get_transforms()
+        if transforms is None:
+            transforms = v2.Compose([v2.ToImage(), v2.ToDtype(torch.float32, scale=True)])
+        self.transforms = transforms
         # Relevant layer names
-        # Layer names to ignore
-        irrelevant_layer_regexes = [
-            'conv1$', 'bn1$', 'relu$', 'maxpool$', \
-            'layer[0-9]$', r'layer[0-9]\.[0-9]$', '.*downsample', \
-            'fc$'
-        ]
-        # Layer types to ignore
-        irrelevant_layer_types = [nn.Dropout, nn.Identity]
-        self.irrelevant_layer_names = layer_utils.get_layers_matching_regexes(
-            self.model, irrelevant_layer_regexes
-        ) + layer_utils.get_layers_matching_types(self.model, irrelevant_layer_types)
-        self.relevant_layer_names = [
-            layer for layer in self.all_layer_names
-            if layer not in self.irrelevant_layer_names
-        ]
-
-    def _load_model(self):
-        """
-        Initialize ResNet50
-        """
-        self._store_rng_states()
-        backbone_name = 'resnet50'
-        model_name = self._set_model_seed(backbone_name)
-        model = torchvision.models.resnet50(weights=None)
-        resnet_utils.fix_resnet_blocks_name_relus(model)
-        self._recover_rng_states()
-        return model, model_name
+        self.relevant_layer_names = kwargs.get('relevant_layer_names', [])
+        self.irrelevant_layer_names = \
+            list(set(self.all_layer_names) - set(self.relevant_layer_names))
