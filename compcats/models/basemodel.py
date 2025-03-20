@@ -173,7 +173,7 @@ class BaseModel(torch.nn.Module):
         if isinstance(layers, str):
             activations = activations[layers]
         return activations
-    
+
     def check_dataset_activations_present(
         self, layers, dataset_name, save_dir
     ):
@@ -202,14 +202,14 @@ class BaseModel(torch.nn.Module):
                     layers_to_generate.append(layer)
         else:
             layers_to_generate = layers_list
-        
+
         activations_present = False
         if len(layers_to_generate) == 0:
             activations_present = True
-        
+
         # Return activations present and layers to generate
         return activations_present, layers_to_generate
-    
+
     def load_dataset_activations(self, layers, dataset_name, save_dir):
         """
         Function to load activations for a dataset, assuming they are already generated
@@ -339,7 +339,7 @@ class BaseModel(torch.nn.Module):
                 # Layer dir should already exist
                 activations_file_name = f'{self.name}_{layer}_{dataset.name}.pt'
                 torch.save(activations[layer].cpu(), f'{layer_dir}/{activations_file_name}')
-        
+
         # Move activations to device
         for layer in layers_to_generate:
             activations[layer] = activations[layer].to(device)
