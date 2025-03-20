@@ -2,6 +2,17 @@
 This module initializes and imports various neural network models.
 """
 
+##########################
+# Evaluation
+##########################
+
+from .evaluate.imagenet import evaluate as imagenet_evaluataion
+
+
+##########################
+# Pretrained models
+##########################
+
 # AlexNets
 from .pretrained.alexnet import alexnet_imagenet1kv1
 from .pretrained.alexnet import alexnet_barlowtwins
