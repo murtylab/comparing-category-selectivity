@@ -111,3 +111,16 @@ def get_clip_transforms(
         raise ValueError("Both mean and std should be provided or None")
 
     return transforms
+
+def get_imagenet_val_transforms():
+    """
+    Get transforms for ImageNet validation dataset
+    """
+    transforms = v2.Compose([
+        v2.Resize((256, 256)),
+        v2.CenterCrop((224, 224)),
+        v2.ToImage(),
+        v2.ToDtype(dtype=torch.float32, scale=True),
+        v2.Normalize(constants.IMAGENET_DEFAULT_MEAN, constants.IMAGENET_DEFAULT_STD)
+    ])
+    return transforms
