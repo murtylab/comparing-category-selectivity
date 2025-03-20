@@ -10,7 +10,12 @@ class BaseModel(torch.nn.Module):
     """
     class for the Base model
     """
-    def __init__(self, **kwargs):
+    def __init__(
+        self,
+        model = None,
+        name = None,
+        **kwargs
+    ):
         super().__init__()
         # Store kwargs
         self.kwargs = kwargs
@@ -28,7 +33,11 @@ class BaseModel(torch.nn.Module):
         self.transforms = None
 
         # Load model
-        self.model, self.name = self._load_model()
+        if model and name:
+            self.model = model
+            self.name = name
+        else:
+            self.model, self.name = self._load_model()
         self.cpu() # Move to device during intialization
 
         # Fixing models to ensure correct hook outputs
