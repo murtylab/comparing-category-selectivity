@@ -158,3 +158,45 @@ def get_imagenet_val_transforms(ffcv=False, device='cuda:0'):
             v2.Normalize(constants.IMAGENET_DEFAULT_MEAN, constants.IMAGENET_DEFAULT_STD)
         ])
     return transforms
+
+def get_imagenet_train_transforms(ffcv=False, device='cuda:0'):
+    """
+    Get transforms for ImageNet training dataset
+    """
+    transforms = None
+    if ffcv:
+        cropper = RandomResizedCropRGBImageDecoder((224, 224))
+        image_pipeline = [
+            cropper,
+            ffcv_transforms.RandomHorizontalFlip(),
+            ffcv_transforms.ToTensor(),
+            ffcv_transforms.ToDevice(torch.device(device), non_blocking=True),
+            ffcv_transforms.ToTorchImage(),
+            ffcv_transforms.NormalizeImage(
+                np.array(constants.IMAGENET_DEFAULT_MEAN) * 255,
+                np.array(constants.IMAGENET_DEFAULT_STD) * 255,
+                np.float16
+            )
+        ]
+        label_pipeline = [
+            IntDecoder(),
+            ffcv_transforms.ToTensor(),
+            ffcv_transforms.Squeeze(),
+            ffcv_transforms.ToDevice(torch.device(device), non_blocking=True)
+        ]
+        transforms = {
+            'image': image_pipeline,
+            'label': label_pipeline
+        }
+    else:
+        # RandomResizedCrop to 224x224
+        # RandomHorizontalFlip
+        # Normalize to ImageNet mean and std
+        transforms = v2.Compose([
+            v2.RandomResizedCrop((224, 224)),
+            v2.RandomHorizontalFlip(),
+            v2.ToImage(),
+            v2.ToDtype(dtype=torch.float16, scale=True),
+            v2.Normalize(constants.IMAGENET_DEFAULT_MEAN, constants.IMAGENET_DEFAULT_STD)
+        ])
+    return transforms
