@@ -1,3 +1,7 @@
+"""
+Util functions for working with layers in PyTorch models
+"""
+import warnings
 import re
 import torch.nn as nn
 
@@ -49,7 +53,7 @@ def replace_relu_with_out_of_place(module):
         else:
             replace_relu_with_out_of_place(child)  # Recursively apply to child modules
 
-def check_for_inplace_operations(module, parent_name="model"):
+def check_for_inplace_operations(module, parent_name="model", raise_error=True):
     """
     Recursively checks all modules in a model and raises an error if any module
     has an in-place operation (e.g., ReLU(inplace=True)).
@@ -59,7 +63,14 @@ def check_for_inplace_operations(module, parent_name="model"):
 
         # Check for in-place ReLU or other modules with inplace=True attribute
         if hasattr(child, "inplace") and child.inplace:
-            raise RuntimeError(f"In-place operation detected: {full_name} ({child})")
+            if raise_error:
+                raise RuntimeError(f"In-place operation detected: {full_name} ({child})")
+            # If raise_error is False, just issue a warning
+            warnings.warn(
+                f"Atleast one in-place operation detected: {full_name} ({child}), " + \
+                "make sure this in intended."
+            )
+            return
 
         # Recursively check child modules
         check_for_inplace_operations(child, full_name)
