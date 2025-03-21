@@ -5,6 +5,7 @@ from tqdm import tqdm
 import torch
 
 from compcats.models.utils import hook_utils, layer_utils
+from compcats import constants
 
 class BaseModel(torch.nn.Module):
     """
@@ -22,7 +23,7 @@ class BaseModel(torch.nn.Module):
 
         # Seed
         # Default seed when untrained models are initialized without passing a seed
-        self.DEFAULT_SEED = 42
+        self.default_seed = constants.DEFAULT_SEED
         # Seed if passed
         self.seed = kwargs.get('seed', None)
         # RNG states for seeding
@@ -82,7 +83,7 @@ class BaseModel(torch.nn.Module):
         Set seed for the model
         """
         if self.seed is None:
-            self.seed = self.DEFAULT_SEED
+            self.seed = self.default_seed
         torch.manual_seed(self.seed)
         if torch.cuda.is_available():
             torch.cuda.manual_seed(self.seed)

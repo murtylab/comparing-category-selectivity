@@ -3,9 +3,12 @@ Constants used in the project
 """
 
 # https://github.com/ssundaram21/dreamsim/blob/main/dreamsim/constants.py
-# use timm names from 
+# use timm names from
 #   https://github.com/huggingface/pytorch-image-models/blob/main/timm/data/constants.py
 IMAGENET_DEFAULT_MEAN = (0.485, 0.456, 0.406)
 IMAGENET_DEFAULT_STD = (0.229, 0.224, 0.225)
 OPENAI_CLIP_MEAN = (0.48145466, 0.4578275, 0.40821073)
 OPENAI_CLIP_STD = (0.26862954, 0.26130258, 0.27577711)
+
+# Seeding
+DEFAULT_SEED = 42
