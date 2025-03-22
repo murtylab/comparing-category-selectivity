@@ -1,5 +1,6 @@
 # Folders to ignore
-**/preprint/models*/*
+**/preprint/*models*/*
+**/preprint/wandb/*
 **/generate_data/*
 
 # Ignore torch files
