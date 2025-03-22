@@ -8,13 +8,20 @@ from torch.utils.data import DataLoader
 
 from ffcv.loader import Loader, OrderOption
 
-def get_loader(root, transform, batch_size=768, num_workers=12, ffcv=False):
+from compcats.models.utils.transform_utils import get_imagenet_val_transforms
+
+def get_loader(root, transform=None, batch_size=768, num_workers=12, ffcv=False, **kwargs):
     """
     Get ImageNet validation dataset
     """
     dataloader = None
+    if transform is None:
+        transform = get_imagenet_val_transforms(
+            ffcv=ffcv, device=kwargs.get("device", "cuda:0")
+        )
     if ffcv:
         val_path = Path(root)
+        assert val_path.is_file(), f"Path {val_path} is not a file"
         torch.cuda.synchronize()
         dataloader = Loader(
             val_path,
