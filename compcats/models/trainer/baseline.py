@@ -52,7 +52,7 @@ class BaselineTrainer:
         self.global_step = 0
         # lr schedule
         self.lr_schedule = self._create_lr_schedule(
-            self.args.lr_schedule, self.args.lr, self.args.epochs,
+            self.args.lr_scheduler_type, self.args.lr, self.args.epochs,
             lr_peak_epoch=self.args.lr_peak_epoch
         )
         # Validation, channels last?
@@ -113,7 +113,7 @@ class BaselineTrainer:
         self, arch, device
     ):
         scaler = GradScaler()
-        model = getattr(architectures, arch)()
+        model = getattr(architectures, arch).get_architecture()
 
         model = model.to(memory_format=torch.channels_last)
         model = model.to(device)
@@ -155,9 +155,9 @@ class BaselineTrainer:
         start_time = time.time()
         # Save params
         print(f'=> Logging in {log_folder}')
-        with open(log_folder / 'params.json', 'w+') as handle:
-            json.dump(args, handle)
-        
+        with open(log_folder / 'params.json', 'w+', encoding='utf-8') as handle:
+            json.dump(vars(args), handle, indent=4)
+
         return val_meters, log_folder, start_time
 
     def _train(self, epochs, log_folder):
