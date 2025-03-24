@@ -55,7 +55,7 @@ class BaselineTrainer:
             self.args.lr_scheduler_type, self.args.lr, self.args.epochs,
             lr_peak_epoch=self.args.lr_peak_epoch
         )
-        # Validation, channels last?
+        # Validation, training time augmentation
         self.lr_tta = self.args.lr_tta
         # Device
         self.device = self.args.device
@@ -75,7 +75,7 @@ class BaselineTrainer:
         # https://github.com/libffcv/ffcv-imagenet/blob/main/train_imagenet.py#L110
         xs = [0, kwargs.get('lr_peak_epoch'), epochs]
         ys = [1e-4 * initial_lr, initial_lr, 0]
-        epoch_lrs = np.interp(np.arange(epochs), xs, ys)
+        epoch_lrs = np.interp(np.arange(epochs+1), xs, ys)
         return epoch_lrs
 
     def _create_train_loader(
