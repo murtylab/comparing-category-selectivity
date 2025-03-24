@@ -19,7 +19,7 @@ from torch.amp import autocast, GradScaler
 from .. import architectures
 from ...datasets import imagenet
 
-class BaselineTrainer:
+class ImageNet1kTrainer:
     """
     Trainer class to train an architecture on ImageNet dataset as a baseline
     """

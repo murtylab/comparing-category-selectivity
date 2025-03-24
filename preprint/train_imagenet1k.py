@@ -4,7 +4,7 @@ Script to train a model on ImageNet dataset using FFCV
 import argparse
 import wandb
 
-from compcats.models.trainer.baseline import BaselineTrainer
+from compcats.models.trainer.imagenet1k import ImageNet1kTrainer
 
 def main(args):
     """
@@ -14,7 +14,7 @@ def main(args):
         project=args.project_name,
         config = None
     )
-    trainer = BaselineTrainer(args)
+    trainer = ImageNet1kTrainer(args)
     trainer.run()
 
 def get_args_parser(add_help=True):
