@@ -1,13 +1,13 @@
-python train_baseline.py \
+python train_imagenet1k.py \
 --train-data-path=/om/user/alishd/datasets/imagenet/ffcv/train_256_0.5_90.ffcv \
 --val-data-path=/om/user/alishd/datasets/imagenet/ffcv/val_256_0.5_90.ffcv \
---output-dir=/om2/user/alishd/github/comparing-category-selectivity/preprint/trained_models/baseline \
---architecture=resnet50 \
---epochs=88 \
+--output-dir=/om2/user/alishd/github/comparing-category-selectivity/preprint/trained_models/imagenet1k \
+--architecture=resnet18 \
+--epochs=2 \
 --optimizer=sgd \
---lr=1.7 \
+--lr=0.5 \
 --momentum=0.9 \
---weight-decay=0.0001 \
+--weight-decay=5e-5 \
 --label-smoothing=0.1 \
 --lr-scheduler-type=cyclic \
 --lr-peak-epoch=2 \
@@ -17,4 +17,4 @@ python train_baseline.py \
 --os-cache=True \
 --lr-tta=True \
 --project-name=compcats_baseline \
---eval-only
+# --eval-only
