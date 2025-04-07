@@ -514,7 +514,27 @@ def get_froi_mask(root_dir, froi, subject, tthreshold=0):
     # 1: OPA, 2: PPA, 3: RSC
     # 1: OVWFA, 2: VWFA-1, 3: VWFA-2, 4: mfs-words, 5: mTL-words
     froi_info = {
+        # NSD general
         'NSDGENERAL': ('nsdgeneral.nii.gz', [1]),
+        # Early visual areas
+        'V1': {'prf-visualrois.nii.gz': [1, 2]},
+        'V1D': {'prf-visualrois.nii.gz': [1]},
+        'V1V': {'prf-visualrois.nii.gz': [2]},
+        'V2': {'prf-visualrois.nii.gz': [3, 4]},
+        'V2D': {'prf-visualrois.nii.gz': [3]},
+        'V2V': {'prf-visualrois.nii.gz': [4]},
+        'V3': {'prf-visualrois.nii.gz': [5, 6]},
+        'V3D': {'prf-visualrois.nii.gz': [5]},
+        'V3V': {'prf-visualrois.nii.gz': [6]},
+        'V4': {'prf-visualrois.nii.gz': [7]},
+        # Eccentricity-based visual areas
+        'ECC0PT5': {'prf-eccrois.nii.gz': [1]},
+        'ECC0': {'prf-eccrois.nii.gz': [2]},
+        'ECC1': {'prf-eccrois.nii.gz': [3]},
+        'ECC2': {'prf-eccrois.nii.gz': [4]},
+        'ECC4': {'prf-eccrois.nii.gz': [5]},
+        'ECC4+': {'prf-eccrois.nii.gz': [6]},
+        # Higher-level regions
         'OFA': ('floc-faces.nii.gz', [1]),
         'FFA_1': ('floc-faces.nii.gz', [2]),
         'FFA_2': ('floc-faces.nii.gz', [3]),
