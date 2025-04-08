@@ -13,11 +13,17 @@ import os
 import pickle
 import gdown
 import zipfile
-import torch
 import numpy as np
 from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms
+
+LABELS = ['bodies'] * 25 + ['faces'] * 25 + ['objects'] * 25 + ['scenes'] * 25 + \
+    ['bodies'] * 25 + ['scenes'] * 25 + ['objects'] * 35
+FACE_LABELS = ['human_faces'] * 12 + ['animal_faces'] + ['human_faces'] + ['animal_faces'] * 4 + \
+    ['human_faces'] * 4 + ['animal_faces'] + ['human_faces'] * 2
+LABELS_FACES_ANNOTATED = ['bodies'] * 25 + FACE_LABELS + ['objects'] * 25 + ['scenes'] * 25 + \
+    ['bodies'] * 25 + ['scenes'] * 25 + ['objects'] * 35
 
 def download_murty185_dataset(dir):
     # Skip download if already exists
