@@ -2,6 +2,7 @@
 Save commonly used paths
 """
 NSD_DIR = '/weka/scratch/weka/sinha/alishd/datasets/nsd'
+MURTY185_DIR = '/weka/scratch/weka/sinha/alishd/datasets/murty185'
 GRILLSPECTOR_LOCALIZER_DIR = '/net/vast-storage/scratch/vast/sinha/alishd/datasets/\
 localizer_grillspector/fLoc_stimuli'
 KANWISHER_LOCALIZER_DIR = '/net/vast-storage/scratch/vast/sinha/alishd/datasets/\
