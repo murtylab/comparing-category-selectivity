@@ -12,7 +12,7 @@ def main(args):
     """
     wandb.init(
         project=args.project_name,
-        config = None
+        config = args
     )
     trainer = ImageNet1kTrainer(args)
     trainer.run()
