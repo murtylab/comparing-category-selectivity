@@ -3,6 +3,7 @@
 **/preprint/wandb/*
 **/preprint/results/*
 **/generate_data/*
+**/misc/*
 
 # Ignore torch files
 *.pt
