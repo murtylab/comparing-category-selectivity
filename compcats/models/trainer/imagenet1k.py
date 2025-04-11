@@ -166,11 +166,13 @@ class ImageNet1kTrainer:
         """
         for epoch in range(epochs):
             # Run one epoch of training
+            start_train_loop_time = time.time()
             train_loss = self._train_loop(epoch)
+            train_loop_time = time.time() - start_train_loop_time
             # Validate the model and log the results
             self._eval_and_log({
-                'train_loss': train_loss,
                 'epoch': epoch,
+                'train_loop_time': train_loop_time
             })
             # Save the model checkpoint
             torch.save(
@@ -190,14 +192,12 @@ class ImageNet1kTrainer:
         start_val = time.time()
         stats = self._val_loop()
         val_time = time.time() - start_val
-        wandb.log(
-            {
+        wandb.log(dict({
                 'current_lr': self.optimizer.param_groups[0]['lr'],
                 'top_1': stats['top_1'],
                 'top_5': stats['top_5'],
-                'val_time': val_time
-            }
-        )
+                'val_loop_time': val_time
+            }, **extra_metrics))
         return stats
 
     def _train_loop(self, epoch):
