@@ -43,13 +43,18 @@ def get_args_parser(add_help=True):
     )
 
     # Training parameters
+    ## Epochs
     parser.add_argument(
         "--epochs", default=88, type=int, metavar="N",
         help="number of total epochs to run"
     )
+    ## Optimizer
     parser.add_argument("--optimizer", default="sgd", type=str, help="optimizer")
+    ## Initial learning rate
     parser.add_argument("--lr", default=0.1, type=float, help="initial learning rate")
+    ## Momentum
     parser.add_argument("--momentum", default=0.9, type=float, metavar="M", help="momentum")
+    ## Weight decay
     parser.add_argument(
         "--wd",
         "--weight-decay",
@@ -59,10 +64,12 @@ def get_args_parser(add_help=True):
         help="weight decay (default: 1e-4)",
         dest="weight_decay",
     )
+    ## Label smoothing
     parser.add_argument(
         "--label-smoothing", default=0.0, type=float, 
         help="label smoothing (default: 0.0)", dest="label_smoothing"
     )
+    ## lr scheduler
     parser.add_argument(
         "--lr-scheduler-type", default="cyclic", type=str,
         help="the lr scheduler (default: cyclic)"
@@ -70,6 +77,38 @@ def get_args_parser(add_help=True):
     parser.add_argument(
         "--lr-peak-epoch", default=0, type=int,
         help="the number of epochs to warmup (default: 0)"
+    )
+    ## Resolution scheduler
+    # resolution_schedule_type
+    parser.add_argument(
+        "--resolution-schedule-type", default="ramp", type=str,
+        choices=["ramp", "fixed"],
+        help="the resolution schedule type (default: ramp)"
+    )
+    # fixed_res
+    parser.add_argument(
+        "--fixed-resolution", default=224, type=int,
+        help="the fixed resolution (default: 224)"
+    )
+    # min_res
+    parser.add_argument(
+        "--min-resolution", default=160, type=int,
+        help="the minimum resolution (default: 160)"
+    )
+    # max_res
+    parser.add_argument(
+        "--max-resolution", default=192, type=int,
+        help="the maximum resolution (default: 192)"
+    )
+    # start_ramp
+    parser.add_argument(
+        "--start-ramp", default=65, type=int,
+        help="the start ramp (default: 65)"
+    )
+    # end_ramp
+    parser.add_argument(
+        "--end-ramp", default=76, type=int,
+        help="the end ramp (default: 76)"
     )
 
     # Hardware
