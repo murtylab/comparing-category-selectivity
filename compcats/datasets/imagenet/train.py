@@ -31,9 +31,13 @@ def get_loader(root, transform=None, batch_size=768, num_workers=12, ffcv=True, 
             os_cache=kwargs.get("os_cache", True),
             order=order,
             drop_last=True,
-            pipelines=transform,
+            pipelines=transform['pipeline'],
             distributed=False
         )
+        dataloader_dict = {
+            'decoder': transform['decoder'],
+            'dataloader': dataloader,
+        }
         # TODO: Implement distributed loading
     else:
         raise NotImplementedError("FFCV is the only supported data loader")
@@ -43,7 +47,7 @@ def get_loader(root, transform=None, batch_size=768, num_workers=12, ffcv=True, 
             dataset, batch_size=batch_size, num_workers=num_workers,
             pin_memory=True, drop_last=False, shuffle=False
         )
-    return dataloader
+    return dataloader_dict
 
 def get_dataset(root, transform):
     """

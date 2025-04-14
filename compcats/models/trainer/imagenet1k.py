@@ -27,10 +27,15 @@ class ImageNet1kTrainer:
         self.args = args
         self.uid = str(uuid4())
         # Setup dataloders
-        self.train_loader = self._create_train_loader(
+        # Train dataloader
+        train_loader_dict = self._create_train_loader(
             self.args.train_data_path, self.args.batch_size, self.args.workers,
             self.args.device, self.args.os_cache
         )
+        self.train_loader = train_loader_dict['dataloader']
+        # Decoder to control the resolution
+        self.train_image_decoder = train_loader_dict['decoder']
+        # Validation dataloader
         self.val_loader = self._create_val_loader(
             self.args.val_data_path, self.args.batch_size, self.args.workers,
             self.args.device
@@ -167,11 +172,16 @@ class ImageNet1kTrainer:
         for epoch in range(epochs):
             # Run one epoch of training
             start_train_loop_time = time.time()
-            train_loss = self._train_loop(epoch)
+            resolution = self.resolution_schedule[epoch]
+            # Update the resolution of the train image decoder
+            self.train_image_decoder.output_size = (resolution, resolution)
+            # Train loop
+            self._train_loop(epoch)
             train_loop_time = time.time() - start_train_loop_time
             # Validate the model and log the results
             self._eval_and_log({
                 'epoch': epoch,
+                'resolution': resolution,
                 'train_loop_time': train_loop_time
             })
             # Save the model checkpoint

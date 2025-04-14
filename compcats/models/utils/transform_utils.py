@@ -164,10 +164,13 @@ def get_imagenet_train_transforms(ffcv=False, device='cuda:0'):
     Get transforms for ImageNet training dataset
     """
     transforms = None
+    default_imagenet_size = 224
     if ffcv:
-        cropper = RandomResizedCropRGBImageDecoder((224, 224))
+        train_image_decoder = RandomResizedCropRGBImageDecoder((
+            default_imagenet_size, default_imagenet_size
+        ))
         image_pipeline = [
-            cropper,
+            train_image_decoder,
             ffcv_transforms.RandomHorizontalFlip(),
             ffcv_transforms.ToTensor(),
             ffcv_transforms.ToDevice(torch.device(device), non_blocking=True),
@@ -185,8 +188,11 @@ def get_imagenet_train_transforms(ffcv=False, device='cuda:0'):
             ffcv_transforms.ToDevice(torch.device(device), non_blocking=True)
         ]
         transforms = {
-            'image': image_pipeline,
-            'label': label_pipeline
+            'decoder': train_image_decoder,
+            'pipeline': {
+                'image': image_pipeline,
+                'label': label_pipeline
+            }
         }
     else:
         # RandomResizedCrop to 224x224
