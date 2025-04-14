@@ -60,6 +60,19 @@ class ImageNet1kTrainer:
             self.args.lr_scheduler_type, self.args.lr, self.args.epochs,
             lr_peak_epoch=self.args.lr_peak_epoch
         )
+        # Resolution schedule
+        if self.args.resolution_schedule_type == 'fixed':
+            self.resolution_schedule = np.array(
+                [self.args.fixed_resolution] * (self.args.epochs + 1)
+            )
+        elif self.args.resolution_schedule_type == 'ramp':
+            self.resolution_schedule = self._create_resolution_ramp_schedule(
+                min_res=self.args.min_resolution, max_res=self.args.max_resolution,
+                start_ramp=self.args.start_ramp, end_ramp=self.args.end_ramp,
+                epochs=self.args.epochs
+            )
+        else:
+            raise ValueError(f"Unknown resolution schedule type {self.args.resolution_schedule_type}")
         # Validation, training time augmentation
         self.lr_tta = self.args.lr_tta
         # Device
@@ -82,6 +95,37 @@ class ImageNet1kTrainer:
         ys = [1e-4 * initial_lr, initial_lr, 0]
         epoch_lrs = np.interp(np.arange(epochs+1), xs, ys)
         return epoch_lrs
+
+    def _create_resolution_ramp_schedule(
+        self, min_res, max_res, start_ramp, end_ramp,
+        epochs, **kwargs
+    ):
+        """
+        Create the resolution schedule if variable resolution is used
+        """
+        # https://github.com/libffcv/ffcv-imagenet/blob/main/train_imagenet.py#L173
+        assert min_res <= max_res, "min_res should be less than max_res"
+        assert start_ramp < end_ramp, "start_ramp should be less than end_ramp"
+        assert start_ramp < epochs, "start_ramp should be less than epochs"
+        assert end_ramp <= epochs, "end_ramp should be less than or equal to epochs"
+
+        # While ramping up, linearly interpolate to the nearest multiple of 32
+        ramping_resolutions = []
+        for epoch_ in range(start_ramp, end_ramp):
+            # Interpolate the resolution to the nearest multiple of 32
+            epoch_ramping_resolution_interp = np.interp(
+                [epoch_], [start_ramp, end_ramp], [min_res, max_res]
+            )
+            epoch_ramping_resolution = int(np.round(epoch_ramping_resolution_interp[0] / 32)) * 32
+            # Append the ramping resolution
+            ramping_resolutions.append(epoch_ramping_resolution)
+
+        epoch_resolutions = [min_res] * start_ramp + \
+            ramping_resolutions + \
+            [max_res] * (epochs + 1 - end_ramp)
+        # [ramping_resolution] * (end_ramp - start_ramp) + \
+
+        return epoch_resolutions
 
     def _create_train_loader(
         self,
