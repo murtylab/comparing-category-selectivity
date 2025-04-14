@@ -37,6 +37,7 @@ from .pretrained.resnet import resnet50_sin
 from .pretrained.resnet import resnet50_sinandin
 from .pretrained.resnet import resnet50_sinthenin
 from .pretrained.resnet import resnet50_ecoset
+from .pretrained.resnet import resnet50_cessl
 
 # ResNet-101s
 from .pretrained.resnet import resnet101_imagenet1kv1
