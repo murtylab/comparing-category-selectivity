@@ -198,7 +198,7 @@ class ImageNet1kTrainer:
         }
 
         # Logging
-        log_folder = (Path(folder) / arch_name / str(uid)).absolute()
+        log_folder = (Path(folder)/ args.project_name / arch_name / str(uid)).absolute()
         log_folder.mkdir(parents=True)
         # Start time
         start_time = time.time()
@@ -248,8 +248,9 @@ class ImageNet1kTrainer:
         val_time = time.time() - start_val
         wandb.log(dict({
                 'current_lr': self.optimizer.param_groups[0]['lr'],
-                'top_1': stats['top_1'],
-                'top_5': stats['top_5'],
+                'val_top_1': stats['top_1'],
+                'val_top_5': stats['top_5'],
+                'val_loss': stats['loss'],
                 'val_loop_time': val_time
             }, **extra_metrics))
         return stats
