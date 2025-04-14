@@ -72,7 +72,9 @@ class ImageNet1kTrainer:
                 epochs=self.args.epochs
             )
         else:
-            raise ValueError(f"Unknown resolution schedule type {self.args.resolution_schedule_type}")
+            raise ValueError(
+                f"Unknown resolution schedule type {self.args.resolution_schedule_type}"
+            )
         # Validation, training time augmentation
         self.lr_tta = self.args.lr_tta
         # Device
@@ -98,7 +100,7 @@ class ImageNet1kTrainer:
 
     def _create_resolution_ramp_schedule(
         self, min_res, max_res, start_ramp, end_ramp,
-        epochs, **kwargs
+        epochs
     ):
         """
         Create the resolution schedule if variable resolution is used
@@ -175,8 +177,8 @@ class ImageNet1kTrainer:
 
         # Only do weight decay on non-batchnorm parameters
         all_params = list(self.model.named_parameters())
-        bn_params = [v for k, v in all_params if ('bn' in k)]
-        other_params = [v for k, v in all_params if not ('bn' in k)]
+        bn_params = [v for k, v in all_params if 'bn' in k]
+        other_params = [v for k, v in all_params if not 'bn' in k]
         param_groups = [{
             'params': bn_params,
             'weight_decay': 0.
