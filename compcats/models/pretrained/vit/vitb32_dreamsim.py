@@ -17,6 +17,8 @@ class ViTB32DreamSim(BaseModel):
     class for the model ViT-B/32 DreamSim
     """
     def __init__(self, **kwargs):
+        # Default values
+        self.DEFAULT_TYPE = 'open_clip_vitb32'
         super().__init__(**kwargs)
         # Transforms:
         # SquarePad(): Padding shorter side to make it square
@@ -45,8 +47,6 @@ class ViTB32DreamSim(BaseModel):
         """
         Load ViT-B/32 DreamSim
         """
-        # Default values
-        self.DEFAULT_TYPE = 'open_clip_vitb32'
         # Get DreamSim type
         self.dreamsim_type = self.kwargs.get('dreamsim_type', self.DEFAULT_TYPE)
         if self.dreamsim_type != self.DEFAULT_TYPE:
