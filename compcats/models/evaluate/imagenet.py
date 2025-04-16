@@ -6,7 +6,7 @@ import torch
 import torchmetrics
 from torch.amp import autocast
 
-from compcats.datasets.imagenet import validation
+from compcats.datasets.image import imagenet
 from ..utils import transform_utils
 
 def evaluate(
@@ -29,7 +29,7 @@ def evaluate(
     transforms = transform_utils.get_imagenet_val_transforms(ffcv=ffcv)
 
     # Load the validation dataset
-    val_dataloader = validation.get_loader(
+    val_dataloader = imagenet.get_val_loader(
         root, transforms, batch_size=batch_size, num_workers=num_workers, ffcv=ffcv
     )
 
