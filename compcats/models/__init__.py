@@ -23,6 +23,8 @@ from .pretrained.alexnet import alexnet_random
 from .pretrained.resnet import resnet18_imagenet1kv1
 from .pretrained.resnet import resnet18_faceobfuscation
 from .pretrained.resnet import resnet18_toponet
+from .pretrained.resnet import resnet18_tdannsimclr
+from .pretrained.resnet import resnet18_tdannsupervised
 
 # ResNet-50s
 from .pretrained.resnet import resnet50_random
