@@ -17,7 +17,7 @@ import torch
 from torch.amp import autocast, GradScaler
 
 from .. import architectures
-from ...datasets import imagenet
+from ...datasets.image import imagenet
 
 class ImageNet1kTrainer:
     """
@@ -140,7 +140,7 @@ class ImageNet1kTrainer:
         """
         Create the training dataloader
         """
-        return imagenet.train.get_loader(
+        return imagenet.get_train_loader(
             train_data_path, batch_size=batch_size, num_workers=num_workers, ffcv=True,
             device=device, os_cache=os_cache
         )
@@ -155,7 +155,7 @@ class ImageNet1kTrainer:
         """
         Create the validation dataloader
         """
-        return imagenet.validation.get_loader(
+        return imagenet.get_val_loader(
             val_data_path, batch_size=batch_size, num_workers=num_workers, ffcv=True,
             device=device
         )
