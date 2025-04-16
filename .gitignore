@@ -8,6 +8,7 @@
 # Ignore torch files
 *.pt
 *.pth
+*.torch
 
 # Ignore figures
 *.pdf
