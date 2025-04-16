@@ -1,4 +1,4 @@
-from compcats.datasets.stimuli import grillspector_localizer, \
+from compcats.datasets.localization import grillspector_localizer, \
     kanwisher_localizer, konkle_localizer, vinken23_localizer, kanwishergrayscale_localizer
 
 def get_localizerdataset_module(dataset_name):
