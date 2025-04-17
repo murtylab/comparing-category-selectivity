@@ -17,7 +17,7 @@ import torch
 from torch.amp import autocast, GradScaler
 
 from .. import architectures
-from ...datasets.image import imagenet
+from ...datasets.image import imagenet1k as imagenet
 from ...utils import seed_utils
 
 class ImageNet1kTrainer:
