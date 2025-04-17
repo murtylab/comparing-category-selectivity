@@ -57,7 +57,7 @@ def get_train_dataset(root, transform):
     dataset = ImageFolder(root, transform=transform)
     return dataset
 
-def get_val_loader(root, transform=None, batch_size=768, num_workers=12, ffcv=False, **kwargs):
+def get_val_loader(root, transform=None, batch_size=768, num_workers=12, ffcv=True, **kwargs):
     """
     Get ImageNet validation dataset
     """
