@@ -49,7 +49,7 @@ class ImageNet1kTrainer:
             self.args.architecture, self.args.device, self.args.model_seed
         )
         # Setup optimizer
-        self.optimizer, self.loss = self._create_optimizer(
+        self.optimizer, self.train_loss, self.val_loss = self._create_optimizer(
             self.args.momentum, self.args.optimizer, self.args.weight_decay,
             self.args.label_smoothing
         )
@@ -192,9 +192,10 @@ class ImageNet1kTrainer:
         }]
 
         optimizer = torch.optim.SGD(param_groups, lr=1, momentum=momentum)
-        loss = torch.nn.CrossEntropyLoss(label_smoothing=label_smoothing)
+        train_loss = torch.nn.CrossEntropyLoss(label_smoothing=label_smoothing)
+        val_loss = torch.nn.CrossEntropyLoss()
 
-        return optimizer, loss
+        return optimizer, train_loss, val_loss
 
     def _initialize_logger(self, folder, arch_name, uid, device, args):
         val_meters = {
@@ -279,7 +280,7 @@ class ImageNet1kTrainer:
             self.optimizer.zero_grad(set_to_none=True)
             with autocast(self.device):
                 output = self.model(images)
-                loss_train = self.loss(output, target)
+                loss_train = self.train_loss(output, target)
             wandb.log(
                 {
                     "global_step": self.global_step,
@@ -306,7 +307,7 @@ class ImageNet1kTrainer:
                     for k in ['top_1', 'top_5']:
                         self.val_meters[k](output, target)
                     # Calculate loss
-                    loss_val = self.loss(output, target)
+                    loss_val = self.val_loss(output, target)
                     self.val_meters['loss'](loss_val)
         # Compute stats over the entire validation set
         stats = {k: m.compute().item() for k, m in self.val_meters.items()}
