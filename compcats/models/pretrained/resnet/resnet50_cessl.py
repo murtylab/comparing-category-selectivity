@@ -3,6 +3,7 @@ ResNet-50 Contrastive Equivariant Self-Supervised Learning (CE-SSL)
 https://openreview.net/forum?id=AiMs8GPP5q
 https://github.com/ThomasYerxa/CE-SSL/tree/main
 """
+import os
 from collections import OrderedDict
 from urllib.request import urlretrieve
 import torch
@@ -78,6 +79,7 @@ class ResNet50CESSL(BaseModel):
             # Barlow top model
             url = "https://users.flatironinstitute.org/~tyerxa/equi_proj/training_checkpoints/final/resnet_50/Barlow/1000_epoch/ep1000-ba625000-rank0"
         else:
+            raise ValueError("There is some error in downloading using urlretrieve, instead please download the model yourself and rename appropriately")
             objective_name_map = {
                 'simclr': 'SimCLR',
                 'mmcr': 'MMCR',
@@ -94,11 +96,17 @@ class ResNet50CESSL(BaseModel):
         """
         # Get URL
         url = self._generate_url(objective, lambda_)
-        # Download weights
-        fh = urlretrieve(url, filename=f'{model_name}.pth')
+        # Download weights if not already downloaded
+        if os.path.exists(f'{model_name}.torch'):
+            file_header = f'{model_name}.torch'
+        else:
+            print(f'Downloading {model_name} weights from {url}')
+            # Download weights
+            file_header = urlretrieve(url, filename=f'{model_name}.torch')
+            file_header = file_header[0]
         # Load state dict
         state_dict = torch.load(
-            fh[0], map_location=torch.device("cpu"), weights_only=False
+            file_header, map_location=torch.device("cpu"), weights_only=False
         )["state"]["model"]
         # Load model
         model = torchvision.models.resnet.resnet50()
