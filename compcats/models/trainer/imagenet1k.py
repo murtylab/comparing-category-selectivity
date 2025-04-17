@@ -27,6 +27,8 @@ class ImageNet1kTrainer:
     def __init__(self, args):
         self.args = args
         self.uid = str(uuid4())
+        # Log uid
+        wandb.config.update({"uid": self.uid})
         # Seed
         self.seed = self.args.seed
         seed_utils.seed_everything(self.seed)
@@ -64,6 +66,8 @@ class ImageNet1kTrainer:
             self.args.lr_scheduler_type, self.args.lr, self.args.epochs,
             lr_peak_epoch=self.args.lr_peak_epoch
         )
+        # Log lr schedule
+        wandb.config.update({"lr_schedule": self.lr_schedule.tolist()})
         # Resolution schedule
         if self.args.resolution_schedule_type == 'fixed':
             self.resolution_schedule = np.array(
@@ -79,6 +83,8 @@ class ImageNet1kTrainer:
             raise ValueError(
                 f"Unknown resolution schedule type {self.args.resolution_schedule_type}"
             )
+        # Log resolution schedule
+        wandb.config.update({"resolution_schedule": self.resolution_schedule.tolist()})
         # Validation, training time augmentation
         self.lr_tta = self.args.lr_tta
         # Device
