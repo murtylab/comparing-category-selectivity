@@ -1,5 +1,5 @@
 """
-Trainer class to train an architecture on ImageNet dataset, 16 categories
+Trainer class to train an architecture on ImageNet dataset
 For Baseline training, ffcv only
 Sources:
 https://github.com/libffcv/ffcv-imagenet/blob/main/train_imagenet.py
@@ -29,9 +29,16 @@ class ImageNet16Trainer:
     def __init__(self, args):
         self.args = args
         self.uid = str(uuid4())
+        # Log uid
+        wandb.config.update({"uid": self.uid})
         # Seed
         self.seed = self.args.seed
         seed_utils.seed_everything(self.seed)
+        # Device
+        self.device = self.args.device
+        # Maps for conversion of imagenet1k to imagenet16c
+        self.imagenet1k_16c_map, self.imagenet16c_label_weights = \
+            self._imagenet1k_to_imagenet16c(self.device)
         # Setup dataloders
         # Train dataloader
         train_loader_dict = self._create_train_loader(
@@ -47,14 +54,18 @@ class ImageNet16Trainer:
             self.args.device
         )
         # Setup model
+        self.num_classes = 17
+        wandb.config.update({"num_classes": self.num_classes})
         self.model, self.scaler = self._create_model_and_scaler(
-            self.args.architecture, self.args.device, self.args.model_seed
+            self.args.architecture, self.args.device, self.args.model_seed,
+            num_classes=self.num_classes
         )
         # Setup optimizer
-        self.optimizer, self.loss = self._create_optimizer(
-            self.args.momentum, self.args.optimizer, self.args.weight_decay,
-            self.args.label_smoothing
-        )
+        self.optimizer, self.train_loss, self.val_loss, self.val_loss_unweighted = \
+            self._create_optimizer(
+                self.args.momentum, self.args.optimizer, self.args.weight_decay,
+                self.args.label_smoothing, self.imagenet16c_label_weights
+            )
         # Setup logger
         self.val_meters, self.log_folder, self.start_time = self._initialize_logger(
             self.args.output_dir, self.args.architecture, self.uid, self.args.device, self.args
@@ -66,6 +77,8 @@ class ImageNet16Trainer:
             self.args.lr_scheduler_type, self.args.lr, self.args.epochs,
             lr_peak_epoch=self.args.lr_peak_epoch
         )
+        # Log lr schedule
+        wandb.config.update({"lr_schedule": self.lr_schedule.tolist()})
         # Resolution schedule
         if self.args.resolution_schedule_type == 'fixed':
             self.resolution_schedule = np.array(
@@ -81,10 +94,10 @@ class ImageNet16Trainer:
             raise ValueError(
                 f"Unknown resolution schedule type {self.args.resolution_schedule_type}"
             )
+        # Log resolution schedule
+        wandb.config.update({"resolution_schedule": self.resolution_schedule.tolist()})
         # Validation, training time augmentation
         self.lr_tta = self.args.lr_tta
-        # Device
-        self.device = self.args.device
 
     def run(self):
         """
@@ -94,6 +107,19 @@ class ImageNet16Trainer:
             self._eval_and_log()
         else:
             self._train(self.args.epochs, self.log_folder)
+
+    def _imagenet1k_to_imagenet16c(self, device):
+        """
+        Maps to convert imagenet1k to imagenet16c, and the label weights to tackle the
+            class imbalance
+        """
+        imagenet1k_16c_map = imagenet16c.get_imagenet_1k_16_map()
+        imagenet1k_16c_map = imagenet1k_16c_map.to(device)
+        imagenet_16c_label_weights = imagenet16c.get_imagenet16_label_weights(
+            normalized=True
+        )
+        imagenet_16c_label_weights = imagenet_16c_label_weights.to(device)
+        return imagenet1k_16c_map, imagenet_16c_label_weights
 
     def _create_lr_schedule(self, lr_schedule_type, initial_lr, epochs, **kwargs):
         assert lr_schedule_type == 'cyclic', "Only cyclic LR schedule is implemented"
@@ -167,10 +193,12 @@ class ImageNet16Trainer:
         )
 
     def _create_model_and_scaler(
-        self, arch, device, model_seed
+        self, arch, device, model_seed, num_classes
     ):
         scaler = GradScaler()
-        model = getattr(architectures, arch).get_architecture(seed=model_seed)
+        model = getattr(architectures, arch).get_architecture(
+            seed=model_seed, num_classes=num_classes
+        )
 
         model = model.to(memory_format=torch.channels_last)
         model = model.to(device)
@@ -178,7 +206,7 @@ class ImageNet16Trainer:
         return model, scaler
 
     def _create_optimizer(self, momentum, optimizer, weight_decay,
-                         label_smoothing):
+                         label_smoothing, label_weights):
         assert optimizer == 'sgd'
 
         # Only do weight decay on non-batchnorm parameters
@@ -194,15 +222,18 @@ class ImageNet16Trainer:
         }]
 
         optimizer = torch.optim.SGD(param_groups, lr=1, momentum=momentum)
-        loss = torch.nn.CrossEntropyLoss(label_smoothing=label_smoothing)
+        train_loss = torch.nn.CrossEntropyLoss(weight=label_weights, label_smoothing=label_smoothing)
+        val_loss = torch.nn.CrossEntropyLoss(weight=label_weights)
+        val_loss_unweighted = torch.nn.CrossEntropyLoss()
 
-        return optimizer, loss
+        return optimizer, train_loss, val_loss, val_loss_unweighted
 
     def _initialize_logger(self, folder, arch_name, uid, device, args):
         val_meters = {
             'top_1': torchmetrics.Accuracy(task='multiclass', num_classes=1000, top_k=1).to(device),
             'top_5': torchmetrics.Accuracy(task='multiclass', num_classes=1000, top_k=5).to(device),
-            'loss': MeanScalarMetric().to(device)
+            'loss': MeanScalarMetric().to(device),
+            'loss_unweighted': MeanScalarMetric().to(device)
         }
 
         # Logging
@@ -274,6 +305,8 @@ class ImageNet16Trainer:
         iterator = tqdm(self.train_loader)
         for ix, (images, target) in enumerate(iterator):
             self.global_step += 1
+            # Transform target to Imagenet16c
+            target = self.imagenet1k_16c_map[target]
             ### Training start
             for param_group in self.optimizer.param_groups:
                 param_group['lr'] = lrs[ix]
@@ -281,7 +314,7 @@ class ImageNet16Trainer:
             self.optimizer.zero_grad(set_to_none=True)
             with autocast(self.device):
                 output = self.model(images)
-                loss_train = self.loss(output, target)
+                loss_train = self.train_loss(output, target)
             wandb.log(
                 {
                     "global_step": self.global_step,
@@ -304,12 +337,16 @@ class ImageNet16Trainer:
                     output = self.model(images)
                     if self.lr_tta:
                         output += self.model(torch.flip(images, dims=[3]))
+                    # Transform target to Imagenet16c
+                    target = self.imagenet1k_16c_map[target]
                     # Calculate accuracy
                     for k in ['top_1', 'top_5']:
                         self.val_meters[k](output, target)
                     # Calculate loss
-                    loss_val = self.loss(output, target)
+                    loss_val = self.val_loss(output, target)
+                    loss_val_unweighted = self.val_loss_unweighted(output, target)
                     self.val_meters['loss'](loss_val)
+                    self.val_meters['loss_unweighted'](loss_val_unweighted)
         # Compute stats over the entire validation set
         stats = {k: m.compute().item() for k, m in self.val_meters.items()}
         # Reset meters
