@@ -27,6 +27,10 @@ class ImageNet16Trainer:
     Trainer class to train an architecture on ImageNet dataset as a baseline
     """
     def __init__(self, args):
+        # Experiment name
+        self.experiment_name = 'Manipulation_ImageNet16c'
+        wandb.config.update({"experiment_name": self.experiment_name})
+        # Args
         self.args = args
         self.uid = str(uuid4())
         # Log uid

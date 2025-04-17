@@ -25,6 +25,10 @@ class ImageNet1kTrainer:
     Trainer class to train an architecture on ImageNet dataset as a baseline
     """
     def __init__(self, args):
+        # Experiment name
+        self.experiment_name = 'Baseline_ImageNet1k'
+        wandb.config.update({"experiment_name": self.experiment_name})
+        # Args
         self.args = args
         self.uid = str(uuid4())
         # Log uid
