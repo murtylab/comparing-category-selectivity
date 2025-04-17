@@ -6,7 +6,7 @@ import torch
 import torchmetrics
 from torch.amp import autocast
 
-from compcats.datasets.image import imagenet
+from ...datasets.image import imagenet1k as imagenet
 from ..utils import transform_utils
 
 def evaluate(
