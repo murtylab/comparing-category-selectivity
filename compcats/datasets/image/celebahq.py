@@ -1,0 +1,100 @@
+"""
+Script to load the CelebA-HQ dataset
+https://github.com/clovaai/stargan-v2/
+https://github.com/tkarras/progressive_growing_of_gans
+"""
+from pathlib import Path
+import torch
+from torchvision.datasets import ImageFolder
+from torch.utils.data import DataLoader
+
+from ffcv.loader import Loader, OrderOption
+
+from compcats.models.utils.transform_utils import \
+    get_contrastive_train_transforms, get_contrastive_val_transforms
+
+def get_train_loader(root, transform=None, batch_size=768, num_workers=12, ffcv=True, **kwargs):
+    """
+    Get CelebA-HQ training dataset
+    """
+    dataloader = None
+    if transform is None:
+        transform = get_contrastive_train_transforms(
+            ffcv=ffcv, device=kwargs.get("device", "cuda:0")
+        )
+    if ffcv:
+        train_path = Path(root)
+        assert train_path.is_file(), f"Path {train_path} is not a file"
+        order = OrderOption.RANDOM # if distributed else OrderOption.QUASI_RANDOM
+        torch.cuda.synchronize()
+        dataloader = Loader(
+            train_path,
+            batch_size=batch_size,
+            num_workers=num_workers,
+            os_cache=kwargs.get("os_cache", True),
+            order=order,
+            drop_last=True,
+            pipelines=transform['pipeline'],
+            distributed=False
+        )
+        dataloader_dict = {
+            'decoder': transform['decoder'],
+            'dataloader': dataloader,
+        }
+        # TODO: Implement distributed loading
+    else:
+        raise NotImplementedError("FFCV is the only supported data loader")
+        dataset = get_train_dataset(root, transform)
+        torch.cuda.synchronize()
+        dataloader = DataLoader(
+            dataset, batch_size=batch_size, num_workers=num_workers,
+            pin_memory=True, drop_last=False, shuffle=False
+        )
+    return dataloader_dict
+
+def get_train_dataset(root, transform):
+    """
+    Get CelebA-HQ training dataset
+    """
+    dataset = ImageFolder(root, transform=transform)
+    return dataset
+
+def get_val_loader(root, transform=None, batch_size=768, num_workers=12, ffcv=False, **kwargs):
+    """
+    Get CelebA-HQ validation dataset
+    """
+    dataloader = None
+    if transform is None:
+        transform = get_contrastive_val_transforms(
+            ffcv=ffcv, device=kwargs.get("device", "cuda:0")
+        )
+    if ffcv:
+        val_path = Path(root)
+        assert val_path.is_file(), f"Path {val_path} is not a file"
+        torch.cuda.synchronize()
+        dataloader = Loader(
+            val_path,
+            batch_size=batch_size,
+            num_workers=num_workers,
+            order=OrderOption.SEQUENTIAL,
+            drop_last=False,
+            pipelines=transform,
+            distributed=False
+        )
+        # TODO: Implement distributed loading
+    else:
+        raise NotImplementedError("FFCV is the only supported data loader")
+        dataset = get_val_dataset(root, transform)
+        torch.cuda.synchronize()
+        dataloader = DataLoader(
+            dataset, batch_size=batch_size, num_workers=num_workers,
+            pin_memory=True, drop_last=False, shuffle=False
+        )
+    return dataloader
+
+def get_val_dataset(root, transform):
+    """
+    Get CelebA-HQ validation dataset
+    """
+    dataset = ImageFolder(root, transform=transform)
+    return dataset

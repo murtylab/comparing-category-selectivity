@@ -206,3 +206,99 @@ def get_imagenet_train_transforms(ffcv=False, device='cuda:0'):
             v2.Normalize(constants.IMAGENET_DEFAULT_MEAN, constants.IMAGENET_DEFAULT_STD)
         ])
     return transforms
+
+# Transforms for datasets for contrastive objective
+
+def get_contrastive_train_transforms(ffcv=False, device='cuda:0'):
+    """
+    Get transforms for ImageNet training dataset
+    """
+    transforms = None
+    default_size = 224
+    if ffcv:
+        train_image_decoder = RandomResizedCropRGBImageDecoder((
+            default_size, default_size
+        ), scale=(0.08, 1.0), ratio=(0.75, 1.3333333333333333))
+        image_pipeline = [
+            train_image_decoder,
+            ffcv_transforms.RandomHorizontalFlip(flip_prob=0.5),
+            ffcv_transforms.RandomTranslate(padding=int(224/4)),
+            ffcv_transforms.RandomBrightness(magnitude=0.5, p=0.05),
+            ffcv_transforms.RandomContrast(magnitude=0.5, p=0.05),
+            ffcv_transforms.RandomSaturation(magnitude=0.5, p=0.05),
+            ffcv_transforms.ToTensor(),
+            ffcv_transforms.ToDevice(torch.device(device), non_blocking=True),
+            ffcv_transforms.ToTorchImage(),
+            ffcv_transforms.NormalizeImage(
+                np.array(constants.IMAGENET_DEFAULT_MEAN) * 255,
+                np.array(constants.IMAGENET_DEFAULT_STD) * 255,
+                np.float16
+            )
+        ]
+        label_pipeline = [
+            IntDecoder(),
+            ffcv_transforms.ToTensor(),
+            ffcv_transforms.Squeeze(),
+            ffcv_transforms.ToDevice(torch.device(device), non_blocking=True)
+        ]
+        transforms = {
+            'decoder': train_image_decoder,
+            'pipeline': {
+                'image': image_pipeline,
+                'label': label_pipeline
+            }
+        }
+    else:
+        # RandomResizedCrop to 224x224
+        # RandomHorizontalFlip
+        # Normalize to ImageNet mean and std
+        transforms = v2.Compose([
+            v2.RandomResizedCrop((224, 224)),
+            v2.RandomHorizontalFlip(),
+            v2.ToImage(),
+            v2.ToDtype(dtype=torch.float16, scale=True),
+            v2.Normalize(constants.IMAGENET_DEFAULT_MEAN, constants.IMAGENET_DEFAULT_STD)
+        ])
+    return transforms
+
+def get_contrastive_val_transforms(ffcv=False, device='cuda:0'):
+    """
+    Get transforms for ImageNet validation dataset
+    """
+    transforms = None
+    if ffcv:
+        cropper = CenterCropRGBImageDecoder((224, 224), ratio=224/256)
+        image_pipeline = [
+            cropper,
+            ffcv_transforms.ToTensor(),
+            ffcv_transforms.ToDevice(torch.device(device), non_blocking=True),
+            ffcv_transforms.ToTorchImage(),
+            ffcv_transforms.NormalizeImage(
+                np.array(constants.IMAGENET_DEFAULT_MEAN) * 255,
+                np.array(constants.IMAGENET_DEFAULT_STD) * 255,
+                np.float16
+            )
+        ]
+        label_pipeline = [
+            IntDecoder(),
+            ffcv_transforms.ToTensor(),
+            ffcv_transforms.Squeeze(),
+            ffcv_transforms.ToDevice(torch.device(device),
+            non_blocking=True)
+        ]
+        transforms = {
+            'image': image_pipeline,
+            'label': label_pipeline
+        }
+    else:
+        # Resize to 256x256
+        # CenterCrop to 224x224
+        # Normalize to ImageNet mean and std
+        transforms = v2.Compose([
+            v2.Resize((256, 256)),
+            v2.CenterCrop((224, 224)),
+            v2.ToImage(),
+            v2.ToDtype(dtype=torch.float32, scale=True),
+            v2.Normalize(constants.IMAGENET_DEFAULT_MEAN, constants.IMAGENET_DEFAULT_STD)
+        ])
+    return transforms
