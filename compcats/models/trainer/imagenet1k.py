@@ -18,6 +18,7 @@ from torch.amp import autocast, GradScaler
 
 from .. import architectures
 from ...datasets.image import imagenet
+from ...utils import seed_utils
 
 class ImageNet1kTrainer:
     """
@@ -26,6 +27,9 @@ class ImageNet1kTrainer:
     def __init__(self, args):
         self.args = args
         self.uid = str(uuid4())
+        # Seed
+        self.seed = self.args.seed
+        seed_utils.seed_everything(self.seed)
         # Setup dataloders
         # Train dataloader
         train_loader_dict = self._create_train_loader(
@@ -42,7 +46,7 @@ class ImageNet1kTrainer:
         )
         # Setup model
         self.model, self.scaler = self._create_model_and_scaler(
-            self.args.architecture, self.args.device
+            self.args.architecture, self.args.device, self.args.model_seed
         )
         # Setup optimizer
         self.optimizer, self.loss = self._create_optimizer(
@@ -161,10 +165,10 @@ class ImageNet1kTrainer:
         )
 
     def _create_model_and_scaler(
-        self, arch, device
+        self, arch, device, model_seed
     ):
         scaler = GradScaler()
-        model = getattr(architectures, arch).get_architecture()
+        model = getattr(architectures, arch).get_architecture(seed=model_seed)
 
         model = model.to(memory_format=torch.channels_last)
         model = model.to(device)

@@ -26,6 +26,14 @@ def get_args_parser(add_help=True):
         description="PyTorch Classification Training", add_help=add_help
     )
 
+    # Seed
+    parser.add_argument(
+        "--seed", default=42, type=int, help="global seed for initializing training"
+    )
+    parser.add_argument(
+        "--model-seed", default=42, type=int, help="seed for initializing model"
+    )
+
     # Dirs
     parser.add_argument(
         "--train-data-path", default=None, type=str, help="training ffcv dataset path"
