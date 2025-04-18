@@ -216,7 +216,9 @@ class ImageNet1kTrainer:
         }
 
         # Logging
-        log_folder = (Path(folder)/ args.project.name / arch_name / str(uid)).absolute()
+        log_folder = (
+            Path(folder)/ args.project.name / args.project.experiment / arch_name / str(uid)
+        ).absolute()
         log_folder.mkdir(parents=True)
         # Start time
         start_time = time.time()
