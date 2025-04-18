@@ -1,159 +1,105 @@
 """
 Script to train a model on ImageNet dataset using FFCV
+Args are a mix of torchvision classification and ffcv:
+https://github.com/pytorch/vision/blob/main/references/classification/train.py#L393
+https://github.com/libffcv/ffcv-imagenet/blob/main/train_imagenet.py#L36
 """
 import argparse
 import wandb
 
-from compcats.models.trainer.imagenet1k import ImageNet1kTrainer
+from fastargs import get_current_config
+from fastargs import Param, Section
+from fastargs.validation import And, OneOf
 
-def main(args):
+from compcats.models.trainer.imagenet1k import ImageNet1kTrainer
+from compcats.models import architectures
+from compcats.utils import logging_utils
+
+Section('seed', 'seed').params(
+    global_seed=Param(int, 'global seed', default=42),
+    model_seed=Param(int, 'model seed', default=42)
+)
+
+Section('data', 'data related stuff').params(
+    train_data_path=Param(str, '.ffcv file to use for training', required=True),
+    val_data_path=Param(str, '.ffcv file to use for validation', required=True),
+    output_dir=Param(str, 'directory for logging and storing checkpoints', required=True),
+    device=Param(str, 'device to use for training', default='cuda:0'),
+    num_workers=Param(int, 'The number of workers', required=True),
+    in_memory=Param(int, 'does the dataset fit in memory? (1/0)', required=True)
+)
+
+Section('project', 'project related stuff').params(
+    name=Param(str, 'wandb project name', required=True),
+    experiment=Param(str, 'experiment name', required=True),
+)
+
+Section('model', 'model details').params(
+    architecture=Param(And(str, OneOf(dir(architectures))), required=True),
+    pretrained=Param(int, 'is pretrained? (1/0)', default=0)
+)
+
+Section('resolution', 'resolution scheduling').params(
+    resolution_schedule_type=Param(OneOf(['fixed', 'ramp']), default='ramp'),
+    fixed_resolution=Param(int, 'the constant resolution', default=224),
+    min_resolution=Param(int, 'the minimum (starting) resolution', default=160),
+    max_resolution=Param(int, 'the maximum (starting) resolution', default=160),
+    end_ramp=Param(int, 'when to stop interpolating resolution', default=0),
+    start_ramp=Param(int, 'when to start interpolating resolution', default=0)
+)
+
+Section('lr', 'lr scheduling').params(
+    # Only implemented cyclic, not step
+    # https://github.com/libffcv/ffcv-imagenet/blob/main/train_imagenet.py#L100
+    # step_ratio=Param(float, 'learning rate step ratio', default=0.1),
+    # step_length=Param(int, 'learning rate step length', default=30),
+    lr_schedule_type=Param(OneOf(['cyclic']), default='cyclic'),
+    lr=Param(float, 'learning rate', default=0.5),
+    lr_peak_epoch=Param(int, 'Epoch at which LR peaks', default=2),
+)
+
+Section('validation', 'Validation parameters stuff').params(
+    batch_size=Param(int, 'The batch size for validation', default=512),
+    resolution=Param(int, 'final resized validation image size', default=224),
+    lr_tta=Param(int, 'should do lr flipping/avging at test time', default=1)
+)
+
+Section('training', 'training hyper param stuff').params(
+    eval_only=Param(int, 'eval only?', default=0),
+    batch_size=Param(int, 'The batch size', default=512),
+    optimizer=Param(And(str, OneOf(['sgd'])), 'The optimizer', default='sgd'),
+    momentum=Param(float, 'SGD momentum', default=0.9),
+    weight_decay=Param(float, 'weight decay', default=4e-5),
+    epochs=Param(int, 'number of epochs', default=30),
+    label_smoothing=Param(float, 'label smoothing parameter', default=0.1),
+    distributed=Param(int, 'is distributed?', default=0),
+    use_blurpool=Param(int, 'use blurpool?', default=0)
+)
+
+Section('dist', 'distributed training options').params(
+    world_size=Param(int, 'number gpus', default=1),
+    address=Param(str, 'address', default='localhost'),
+    port=Param(str, 'port', default='12355')
+)
+
+def main(fastargs_config):
     """
     Main function to parse arguments and train the model
     """
+    args = fastargs_config.get()
+    nested_args = logging_utils.namespace_to_dict(args)
     wandb.init(
-        project=args.project_name,
-        config = args
+        project = args.project.name,
+        config = nested_args
     )
     trainer = ImageNet1kTrainer(args)
     trainer.run()
 
-def get_args_parser(add_help=True):
-    """
-    https://github.com/pytorch/vision/blob/main/references/classification/train.py#L393
-    """
-
-    parser = argparse.ArgumentParser(
-        description="PyTorch Classification Training", add_help=add_help
-    )
-
-    # Seed
-    parser.add_argument(
-        "--seed", default=42, type=int, help="global seed for initializing training"
-    )
-    parser.add_argument(
-        "--model-seed", default=42, type=int, help="seed for initializing model"
-    )
-
-    # Dirs
-    parser.add_argument(
-        "--train-data-path", default=None, type=str, help="training ffcv dataset path"
-    )
-    parser.add_argument(
-        "--val-data-path", default=None, type=str, help="validation ffcv dataset path"
-    )
-    parser.add_argument("--output-dir", default=".", type=str, help="path to save outputs")
-
-    # Model parameters
-    parser.add_argument(
-        "--architecture", default="resnet18", type=str,
-        choices=["resnet18", "resnet50", "alexnet"],
-        help="model name"
-    )
-
-    # Training parameters
-    ## Epochs
-    parser.add_argument(
-        "--epochs", default=88, type=int, metavar="N",
-        help="number of total epochs to run"
-    )
-    ## Optimizer
-    parser.add_argument("--optimizer", default="sgd", type=str, help="optimizer")
-    ## Initial learning rate
-    parser.add_argument("--lr", default=0.1, type=float, help="initial learning rate")
-    ## Momentum
-    parser.add_argument("--momentum", default=0.9, type=float, metavar="M", help="momentum")
-    ## Weight decay
-    parser.add_argument(
-        "--wd",
-        "--weight-decay",
-        default=1e-4,
-        type=float,
-        metavar="W",
-        help="weight decay (default: 1e-4)",
-        dest="weight_decay",
-    )
-    ## Label smoothing
-    parser.add_argument(
-        "--label-smoothing", default=0.0, type=float, 
-        help="label smoothing (default: 0.0)", dest="label_smoothing"
-    )
-    ## lr scheduler
-    parser.add_argument(
-        "--lr-scheduler-type", default="cyclic", type=str,
-        help="the lr scheduler (default: cyclic)"
-    )
-    parser.add_argument(
-        "--lr-peak-epoch", default=0, type=int,
-        help="the number of epochs to warmup (default: 0)"
-    )
-    ## Resolution scheduler
-    # resolution_schedule_type
-    parser.add_argument(
-        "--resolution-schedule-type", default="ramp", type=str,
-        choices=["ramp", "fixed"],
-        help="the resolution schedule type (default: ramp)"
-    )
-    # fixed_res
-    parser.add_argument(
-        "--fixed-resolution", default=224, type=int,
-        help="the fixed resolution (default: 224)"
-    )
-    # min_res
-    parser.add_argument(
-        "--min-resolution", default=160, type=int,
-        help="the minimum resolution (default: 160)"
-    )
-    # max_res
-    parser.add_argument(
-        "--max-resolution", default=192, type=int,
-        help="the maximum resolution (default: 192)"
-    )
-    # start_ramp
-    parser.add_argument(
-        "--start-ramp", default=65, type=int,
-        help="the start ramp (default: 65)"
-    )
-    # end_ramp
-    parser.add_argument(
-        "--end-ramp", default=76, type=int,
-        help="the end ramp (default: 76)"
-    )
-
-    # Hardware
-    parser.add_argument(
-        "--device", default="cuda:0", type=str,
-        help="device (Use cuda or cpu Default: cuda)"
-    )
-    parser.add_argument(
-        "-b", "--batch-size", default=32, type=int,
-        help="images per gpu, the total batch size is $NGPU x batch_size"
-    )
-    parser.add_argument(
-        "-j", "--workers", default=12, type=int, metavar="N",
-        help="number of data loading workers (default: 16)"
-    )
-    parser.add_argument(
-        "--os-cache", default=True, type=bool,
-        help="Whether the OS cache should be used for data loading"
-    )
-
-    # Misc
-    # parser.add_argument("--resume", default="", type=str, help="path of checkpoint")
-    parser.add_argument(
-        "--lr-tta", default=False, type=bool,
-        help="use test-time augmentation for validation"
-    )
-    parser.add_argument(
-        "--eval-only", action="store_true", help="perform evaluation only"
-    )
-    parser.add_argument(
-        "--project-name", default=False, type=str,
-        help="project name for wandb"
-    )
-
-    return parser
-
 if __name__ == "__main__":
-    args = get_args_parser().parse_args()
-    print(vars(args))
-    main(args)
+    config = get_current_config()
+    parser = argparse.ArgumentParser()
+    config.augment_argparse(parser)
+    config.collect_argparse_args(parser)
+    config.validate(mode='stderr')
+    config.summary()
+    main(config)
