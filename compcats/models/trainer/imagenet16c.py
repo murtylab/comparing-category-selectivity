@@ -22,7 +22,7 @@ from ...datasets.image import imagenet1k as imagenet
 from ...datasets.image import imagenet16 as imagenet16c
 from ...utils import seed_utils
 
-class ImageNet16Trainer:
+class ImageNet16cTrainer:
     """
     Trainer class to train an architecture on ImageNet dataset as a baseline
     """
