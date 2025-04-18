@@ -18,90 +18,90 @@ from torch.amp import autocast, GradScaler
 
 from .. import architectures
 from ...datasets.image import imagenet1k as imagenet
-from ...utils import seed_utils
+from ...utils import seed_utils, logging_utils
 
 class ImageNet1kTrainer:
     """
     Trainer class to train an architecture on ImageNet dataset as a baseline
     """
     def __init__(self, args):
-        # Experiment name
-        self.experiment_name = 'Baseline_ImageNet1k'
-        wandb.config.update({"experiment_name": self.experiment_name})
         # Args
         self.args = args
         self.uid = str(uuid4())
+        print(f'\nUID: {self.uid}\n')
         # Log uid
         wandb.config.update({"uid": self.uid})
         # Seed
-        self.seed = self.args.seed
-        seed_utils.seed_everything(self.seed)
+        seed_utils.seed_everything(self.args.seed.global_seed)
         # Setup dataloders
         # Train dataloader
         train_loader_dict = self._create_train_loader(
-            self.args.train_data_path, self.args.batch_size, self.args.workers,
-            self.args.device, self.args.os_cache
+            self.args.data.train_data_path, self.args.training.batch_size,
+            self.args.data.num_workers, self.args.data.device, self.args.data.in_memory
         )
         self.train_loader = train_loader_dict['dataloader']
         # Decoder to control the resolution
         self.train_image_decoder = train_loader_dict['decoder']
         # Validation dataloader
         self.val_loader = self._create_val_loader(
-            self.args.val_data_path, self.args.batch_size, self.args.workers,
-            self.args.device
+            self.args.data.val_data_path, self.args.validation.resolution,
+            self.args.validation.batch_size, self.args.data.num_workers, self.args.data.device
         )
         # Setup model
         self.model, self.scaler = self._create_model_and_scaler(
-            self.args.architecture, self.args.device, self.args.model_seed
+            self.args.model.architecture, self.args.data.device, self.args.seed.model_seed
         )
         # Setup optimizer
         self.optimizer, self.train_loss, self.val_loss = self._create_optimizer(
-            self.args.momentum, self.args.optimizer, self.args.weight_decay,
-            self.args.label_smoothing
+            self.args.training.momentum, self.args.training.optimizer,
+            self.args.training.weight_decay, self.args.training.label_smoothing
         )
         # Setup logger
         self.val_meters, self.log_folder, self.start_time = self._initialize_logger(
-            self.args.output_dir, self.args.architecture, self.uid, self.args.device, self.args
+            self.args.data.output_dir, self.args.model.architecture, self.uid,
+            self.args.data.device, self.args
         )
         # Initialize global step
         self.global_step = 0
         # lr schedule
         self.lr_schedule = self._create_lr_schedule(
-            self.args.lr_scheduler_type, self.args.lr, self.args.epochs,
-            lr_peak_epoch=self.args.lr_peak_epoch
+            self.args.lr.lr_schedule_type, self.args.lr.lr, self.args.training.epochs,
+            lr_peak_epoch=self.args.lr.lr_peak_epoch
         )
         # Log lr schedule
-        wandb.config.update({"lr_schedule": self.lr_schedule.tolist()})
+        wandb.config.update({"lr_schedule": self.lr_schedule})
         # Resolution schedule
-        if self.args.resolution_schedule_type == 'fixed':
+        if self.args.resolution.resolution_schedule_type == 'fixed':
             self.resolution_schedule = np.array(
-                [self.args.fixed_resolution] * (self.args.epochs + 1)
+                [self.args.resolution.fixed_resolution] * (self.args.training.epochs + 1)
             )
-        elif self.args.resolution_schedule_type == 'ramp':
+        elif self.args.resolution.resolution_schedule_type == 'ramp':
             self.resolution_schedule = self._create_resolution_ramp_schedule(
-                min_res=self.args.min_resolution, max_res=self.args.max_resolution,
-                start_ramp=self.args.start_ramp, end_ramp=self.args.end_ramp,
-                epochs=self.args.epochs
+                min_res=self.args.resolution.min_resolution,
+                max_res=self.args.resolution.max_resolution,
+                start_ramp=self.args.resolution.start_ramp,
+                end_ramp=self.args.resolution.end_ramp,
+                epochs=self.args.training.epochs
             )
         else:
             raise ValueError(
-                f"Unknown resolution schedule type {self.args.resolution_schedule_type}"
+                f"Unknown resolution schedule type {self.args.resolution.resolution_schedule_type}"
             )
         # Log resolution schedule
-        wandb.config.update({"resolution_schedule": self.resolution_schedule.tolist()})
+        wandb.config.update({"resolution_schedule": self.resolution_schedule})
         # Validation, training time augmentation
-        self.lr_tta = self.args.lr_tta
+        self.lr_tta = self.args.validation.lr_tta
         # Device
-        self.device = self.args.device
+        self.device = self.args.data.device
 
     def run(self):
         """
         Run the training loop
         """
-        if self.args.eval_only:
+        if self.args.training.eval_only:
             self._eval_and_log()
         else:
-            self._train(self.args.epochs, self.log_folder)
+            self._train(self.args.training.epochs, self.log_folder)
 
     def _create_lr_schedule(self, lr_schedule_type, initial_lr, epochs, **kwargs):
         assert lr_schedule_type == 'cyclic', "Only cyclic LR schedule is implemented"
@@ -162,6 +162,7 @@ class ImageNet1kTrainer:
     def _create_val_loader(
         self,
         val_data_path,
+        resolution,
         batch_size,
         num_workers,
         device,
@@ -171,7 +172,7 @@ class ImageNet1kTrainer:
         """
         return imagenet.get_val_loader(
             val_data_path, batch_size=batch_size, num_workers=num_workers, ffcv=True,
-            device=device
+            device=device, resolution=resolution
         )
 
     def _create_model_and_scaler(
@@ -215,14 +216,14 @@ class ImageNet1kTrainer:
         }
 
         # Logging
-        log_folder = (Path(folder)/ args.project_name / arch_name / str(uid)).absolute()
+        log_folder = (Path(folder)/ args.project.name / arch_name / str(uid)).absolute()
         log_folder.mkdir(parents=True)
         # Start time
         start_time = time.time()
         # Save params
         print(f'=> Logging in {log_folder}')
         with open(log_folder / 'params.json', 'w+', encoding='utf-8') as handle:
-            json.dump(vars(args), handle, indent=4)
+            json.dump(logging_utils.nestednamespace_to_dict(args), handle, indent=4)
 
         return val_meters, log_folder, start_time
 
