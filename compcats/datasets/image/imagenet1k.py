@@ -57,14 +57,16 @@ def get_train_dataset(root, transform):
     dataset = ImageFolder(root, transform=transform)
     return dataset
 
-def get_val_loader(root, transform=None, batch_size=768, num_workers=12, ffcv=True, **kwargs):
+def get_val_loader(
+    root, resolution=256, transform=None, batch_size=768, num_workers=12, ffcv=True, **kwargs
+):
     """
     Get ImageNet validation dataset
     """
     dataloader = None
     if transform is None:
         transform = get_imagenet_val_transforms(
-            ffcv=ffcv, device=kwargs.get("device", "cuda:0")
+            ffcv=ffcv, device=kwargs.get("device", "cuda:0"), resolution=resolution
         )
     if ffcv:
         val_path = Path(root)
