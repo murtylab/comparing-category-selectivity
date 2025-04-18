@@ -117,13 +117,15 @@ def get_clip_transforms(
 
     return transforms
 
-def get_imagenet_val_transforms(ffcv=False, device='cuda:0'):
+def get_imagenet_val_transforms(ffcv=False, resolution=256, device='cuda:0'):
     """
     Get transforms for ImageNet validation dataset
     """
     transforms = None
     if ffcv:
-        cropper = CenterCropRGBImageDecoder((224, 224), ratio=224/256)
+        cropper = CenterCropRGBImageDecoder(
+            (resolution, resolution), ratio=constants.IMAGENET_DEFAULT_VAL_CROP_RATIO
+        )
         image_pipeline = [
             cropper,
             ffcv_transforms.ToTensor(),
