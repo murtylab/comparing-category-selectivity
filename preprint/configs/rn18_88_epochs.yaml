@@ -14,8 +14,8 @@ model:
 resolution:
   resolution_schedule_type: ramp
   end_ramp: 76
-  max_res: 192
-  min_res: 160
+  max_resolution: 192
+  min_resolution: 160
   start_ramp: 65
 training:
   batch_size: 1024
