@@ -2,6 +2,7 @@
 **/preprint/*models*/*
 **/preprint/wandb/*
 **/preprint/results/*
+**/preprint/logs/*
 **/generate_data/*
 **/misc/*
 
