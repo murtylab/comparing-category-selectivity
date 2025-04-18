@@ -56,6 +56,8 @@ MODELS = {
     'vgg16imagenet1kv1': vgg16_imagenet1kv1, # Done
     # # ResNet-18s
     'resnet18imagenet1kv1': resnet18_imagenet1kv1, # Done
+    'resnet18tdannsupervisedlw10': resnet18_tdannsupervised, # Done
+    'resnet18tdannsimclrlw1': resnet18_tdannsimclr, # Done
     # # ResNet-50s
     'resnet50imagenet1kv2': resnet50_imagenet1kv2, # Done
     'resnet50openaiclip': resnet50_openaiclip, # Done
@@ -65,6 +67,7 @@ MODELS = {
     'resnet50ecoset': resnet50_ecoset, # Done
     'resnet50faceobfuscation': resnet50_faceobfuscation, # Done
     'resnet50toponettau30': resnet50_toponet, # Done
+    'resnet50cesslbarlowtop': resnet50_cessl, # Done
     # # ResNet-101s
     'resnet101imagenet1kv1': resnet101_imagenet1kv1, # Done
     'resnet101openaiclip': resnet101_openaiclip, # Done
