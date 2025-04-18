@@ -9,6 +9,7 @@ https://github.com/fh295/semanticCNN/blob/master/imagenet_labels/mapping.txt
 List of all sysids: https://files.fast.ai/data/classids.txt
 Some of sysids mentioned in imagenet 16 are not present in the imagenet1k dataset.
 """
+from importlib import resources
 import os
 import json
 import torch
@@ -17,9 +18,11 @@ def get_imagenet_1k_16_map():
     """
     Get the ImageNet 1k to 16 mapping.
     """
-    if not os.path.exists('./utils/imagenet_1k_16_map.pt'):
-        process_imagenet_labels()
-    imagenet_1k_16_tensor = torch.load('./utils/imagenet_1k_16_map.pt')
+    map_tensor_filename = 'imagenet_1k_16_map.pt'
+    with resources.path('compcats.datasets.image.utils', map_tensor_filename) as path:
+        if not path.exists():
+            process_imagenet_labels()
+        imagenet_1k_16_tensor = torch.load(path)
     return imagenet_1k_16_tensor
 
 def get_imagenet16_label_weights(normalized=True, imagenet_train_path=None):
@@ -29,10 +32,14 @@ def get_imagenet16_label_weights(normalized=True, imagenet_train_path=None):
         normalized: If True, return the normalized weights.
         imagenet_train_path: Path to the ImageNet training dataset for counting samples per folder
     """
-    weights_tensor_pt_name = 'imagenet16_label_weights_normalized.pt' if normalized else 'imagenet16_label_weights.pt'
-    if not os.path.exists(f'./utils/{weights_tensor_pt_name}'):
-        process_imagenet16_label_weights(imagenet_train_path)
-    folder_weights_tensor = torch.load(f'./utils/{weights_tensor_pt_name}')
+    if normalized:
+        weights_tensor_pt_name = 'imagenet16_label_weights_normalized.pt'
+    else:
+        weights_tensor_pt_name = 'imagenet16_label_weights.pt'
+    with resources.path('compcats.datasets.image.utils', weights_tensor_pt_name) as path:
+        if not path.exists():
+            process_imagenet16_label_weights(imagenet_train_path)
+        folder_weights_tensor = torch.load(path)
     # Check if the tensor is of the correct shape
     if folder_weights_tensor.shape != (17,):
         raise ValueError(f"Expected tensor shape (17,), but got {folder_weights_tensor.shape}")
@@ -227,7 +234,7 @@ def process_imagenet_labels():
                         f"Foldername {imagenet1k_foldername} corresponding to {imagenet_16_cat} from Imagenet 16 not found in ImageNet1k folders\n"
                     )
     # Convert to tensor
-    imagenet_1k_16_tensor = torch.full((1000,), 16, dtype=torch.int16)
+    imagenet_1k_16_tensor = torch.full((1000,), 16, dtype=torch.int64)
     for imagenet16_idx, imagenet1k_indices in imagenet_16_idx_to_1k_idx.items():
         for imagenet1k_index in imagenet1k_indices:
             imagenet_1k_16_tensor[imagenet1k_index] = imagenet16_idx
