@@ -50,3 +50,10 @@ class ResNet18ImageNet1kv1(BaseModel):
         resnet_utils.fix_resnet_blocks_name_relus(model)
         model_name = 'resnet18imagenet1kv1'
         return model, model_name
+
+    def replace_fc(self, num_classes):
+        """
+        Replace the fully connected layer with a new one
+        """
+        # Replace the last fully connected layer with a new one
+        self.model.fc = nn.Linear(self.model.fc.in_features, num_classes)
