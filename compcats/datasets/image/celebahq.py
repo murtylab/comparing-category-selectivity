@@ -10,16 +10,24 @@ from torch.utils.data import DataLoader
 
 from ffcv.loader import Loader, OrderOption
 
-from compcats.models.utils.transform_utils import \
+from ...models.utils.transform_utils import \
     get_contrastive_train_transforms, get_contrastive_val_transforms
+from ...models.utils.transform_utils import \
+    get_imagenet_train_transforms, get_imagenet_val_transforms
 
 def get_train_loader(root, transform=None, batch_size=768, num_workers=12, ffcv=True, **kwargs):
     """
     Get CelebA-HQ training dataset
     """
     dataloader = None
+    if isinstance(transform, str):
+        transform = transform.lower()
     if transform is None:
         transform = get_contrastive_train_transforms(
+            ffcv=ffcv, device=kwargs.get("device", "cuda:0")
+        )
+    elif transform == 'imagenet':
+        transform = get_imagenet_train_transforms(
             ffcv=ffcv, device=kwargs.get("device", "cuda:0")
         )
     if ffcv:
@@ -59,14 +67,20 @@ def get_train_dataset(root, transform):
     dataset = ImageFolder(root, transform=transform)
     return dataset
 
-def get_val_loader(root, transform=None, batch_size=768, num_workers=12, ffcv=False, **kwargs):
+def get_val_loader(root, transform=None, batch_size=768, num_workers=12, ffcv=True, **kwargs):
     """
     Get CelebA-HQ validation dataset
     """
     dataloader = None
+    if isinstance(transform, str):
+        transform = transform.lower()
     if transform is None:
         transform = get_contrastive_val_transforms(
             ffcv=ffcv, device=kwargs.get("device", "cuda:0")
+        )
+    elif transform == 'imagenet':
+        transform = get_imagenet_val_transforms(
+            ffcv=ffcv, device=kwargs.get("device", "cuda:0"), resolution=256
         )
     if ffcv:
         val_path = Path(root)
