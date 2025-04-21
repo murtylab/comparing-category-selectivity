@@ -18,6 +18,7 @@ from torch.amp import autocast, GradScaler
 
 from .. import architectures
 from .. import pretrained as pretrained_module
+from ...datasets.image import celebahq, afhqv2
 from ...datasets.image import imagenet1k as imagenet
 from ...utils import seed_utils, logging_utils
 
@@ -110,6 +111,58 @@ class FaceContrastiveImageNet1kTrainer:
             self._eval_and_log()
         else:
             self._train(self.args.training.epochs, self.log_folder)
+
+    def _model_freeze_except_population(self, model, layer, population_mask):
+        """
+        Freeze all layers except a population in the layer
+        """
+        for name, param in model.named_parameters():
+            if layer in name:
+                if population_mask is not None:
+                    if name in population_mask:
+                        param.requires_grad = False
+                else:
+                    param.requires_grad = False
+        return model
+
+    def _create_contrative_train_loaders(
+        self,
+        celebahq_train_data_path,
+        afhqv2_train_data_path,
+        batch_size,
+        num_workers,
+        device,
+        os_cache,
+    ):
+        return {
+            'celebahq': celebahq.get_train_loader(
+                celebahq_train_data_path, batch_size=batch_size, num_workers=num_workers, ffcv=True,
+                device=device, os_cache=os_cache
+            ),
+            'afhqv2': afhqv2.get_train_loader(
+                afhqv2_train_data_path, batch_size=batch_size, num_workers=num_workers, ffcv=True,
+                device=device, os_cache=os_cache
+            )
+        }
+    def _create_contrative_train_loaders(
+        self,
+        celebahq_val_data_path,
+        afhqv2_val_data_path,
+        batch_size,
+        num_workers,
+        device,
+        os_cache,
+    ):
+        return {
+            'celebahq': celebahq.get_val_loader(
+                celebahq_val_data_path, batch_size=batch_size, num_workers=num_workers, ffcv=True,
+                device=device, os_cache=os_cache
+            ),
+            'afhqv2': afhqv2.get_val_loader(
+                afhqv2_val_data_path, batch_size=batch_size, num_workers=num_workers, ffcv=True,
+                device=device, os_cache=os_cache
+            )
+        }
 
     def _create_lr_schedule(self, lr_schedule_type, initial_lr, epochs, **kwargs):
         assert lr_schedule_type == 'cyclic', "Only cyclic LR schedule is implemented"
