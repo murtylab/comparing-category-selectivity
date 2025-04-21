@@ -17,6 +17,7 @@ import torch
 from torch.amp import autocast, GradScaler
 
 from .. import architectures
+from .. import pretrained as pretrained_module
 from ...datasets.image import imagenet1k as imagenet
 from ...utils import seed_utils, logging_utils
 
@@ -187,8 +188,7 @@ class FaceContrastiveImageNet1kTrainer:
     ):
         scaler = GradScaler()
         if pretrained:
-            # TODO: Add support for pretrained models
-            pass
+            model = getattr(pretrained_module, pretrained_model).get_model()
         else:
             model = getattr(architectures, arch).get_architecture(seed=model_seed)
 
