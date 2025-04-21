@@ -26,9 +26,9 @@ def get_trainer():
     """
     Get the trainer class
     """
-    return FaceContrastiveImageNet1kTrainer
+    return MaskedPretrainedFaceContrastiveImageNet1kTrainer
 
-class FaceContrastiveImageNet1kTrainer:
+class MaskedPretrainedFaceContrastiveImageNet1kTrainer:
     """
     Trainer class to train an architecture on ImageNet dataset as a baseline
     """
