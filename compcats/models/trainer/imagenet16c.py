@@ -22,6 +22,12 @@ from ...datasets.image import imagenet1k as imagenet
 from ...datasets.image import imagenet16 as imagenet16c
 from ...utils import seed_utils, logging_utils
 
+def get_trainer():
+    """
+    Get the trainer class
+    """
+    return ImageNet16cTrainer
+
 class ImageNet16cTrainer:
     """
     Trainer class to train an architecture on ImageNet dataset as a baseline
