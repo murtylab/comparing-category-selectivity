@@ -285,7 +285,7 @@ class FaceClassificationTrainer:
 
     def _initialize_logger(self, folder, arch_name, uid, device, args):
         val_meters = {
-            'top_1': torchmetrics.Accuracy(task='multiclass', num_classes=1000, top_k=1).to(device),
+            'top_1': torchmetrics.Accuracy(task='multiclass', num_classes=self.num_classes, top_k=1).to(device),
             'loss': MeanScalarMetric().to(device)
         }
 
