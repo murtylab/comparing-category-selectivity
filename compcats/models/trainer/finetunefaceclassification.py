@@ -243,11 +243,11 @@ class FinetuneFaceClassificationTrainer:
         scaler = GradScaler()
         if pretrained:
             model = getattr(pretrained_module, pretrained_model).get_model()
+            model.replace_fc(num_classes=num_classes)
         else:
             model = getattr(architectures, arch).get_architecture(
                 seed=model_seed, num_classes=num_classes
             )
-            model.replace_fc(num_classes=num_classes)
 
         model = model.to(memory_format=torch.channels_last)
         model = model.to(device)
