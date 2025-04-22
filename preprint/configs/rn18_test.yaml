@@ -14,13 +14,13 @@ model:
 resolution:
   resolution_schedule_type: ramp
   end_ramp: 2
-  max_res: 64
-  min_res: 32
+  max_resolution: 64
+  min_resolution: 32
   start_ramp: 1
 training:
   batch_size: 1024
   distributed: 0
-  epochs: 2
+  epochs: 3
   label_smoothing: 0.1
   momentum: 0.9
   optimizer: sgd
