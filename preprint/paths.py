@@ -27,3 +27,7 @@ CELEBAHQ_FFCV_VAL_DIR = '/om/user/alishd/datasets/celebahq/ffcv/val_500_0.50_90.
 # AFHQv2
 AFHQV2_FFCV_TRAIN_DIR = '/om/user/alishd/datasets/afhqv2/ffcv/train_500_0.50_90.ffcv'
 AFHQV2_FFCV_VAL_DIR = '/om/user/alishd/datasets/afhqv2/ffcv/val_500_0.50_90.ffcv'
+
+# LHQ
+LHQ_FFCV_TRAIN_DIR = '/om/user/alishd/datasets/lhq/ffcv/train_500_0.50_90.ffcv'
+LHQ_FFCV_VAL_DIR = '/om/user/alishd/datasets/lhq/ffcv/val_500_0.50_90.ffcv'
