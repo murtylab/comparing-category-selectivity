@@ -41,17 +41,34 @@ class FinetuneFaceClassificationTrainer:
         # Seed
         seed_utils.seed_everything(self.args.seed.global_seed)
         # Setup dataloders
+        # Mixing ratios
+        self.mixing_ratios = {
+            'celebahq': 0.25,
+            'afhqv2': 0.25,
+            'lhq': 0.5
+        }
+        wandb.config.update({"mixing_ratios": self.mixing_ratios})
         # Train dataloader
+        train_data_paths = {
+            'celebahq': self.args.data.celebahq_train_data_path,
+            'afhqv2': self.args.data.afhqv2_train_data_path,
+            'lhq': self.args.data.lhq_train_data_path
+        }
         train_loader_dict = self._create_train_loader(
-            self.args.data.train_data_path, self.args.training.batch_size,
+            train_data_paths, self.args.training.batch_size,
             self.args.data.num_workers, self.args.data.device, self.args.data.in_memory
         )
-        self.train_loader = train_loader_dict['dataloader']
+        self.train_loaders = {k: v['dataloader'] for k, v in train_loader_dict.items()}
         # Decoder to control the resolution
-        self.train_image_decoder = train_loader_dict['decoder']
+        self.train_image_decoders = {k: v['decoder'] for k, v in train_loader_dict.items()}
         # Validation dataloader
-        self.val_loader = self._create_val_loader(
-            self.args.data.val_data_path, self.args.validation.resolution,
+        val_data_paths = {
+            'celebahq': self.args.data.celebahq_val_data_path,
+            'afhqv2': self.args.data.afhqv2_val_data_path,
+            'lhq': self.args.data.lhq_val_data_path
+        }
+        self.val_loaders = self._create_val_loader(
+            val_data_paths, self.args.validation.resolution,
             self.args.validation.batch_size, self.args.data.num_workers, self.args.data.device
         )
         # Setup model
@@ -158,7 +175,7 @@ class FinetuneFaceClassificationTrainer:
 
     def _create_train_loader(
         self,
-        train_data_path,
+        train_data_paths,
         batch_size,
         num_workers,
         device,
@@ -167,10 +184,26 @@ class FinetuneFaceClassificationTrainer:
         """
         Create the training dataloader
         """
-        return imagenet.get_train_loader(
-            train_data_path, batch_size=batch_size, num_workers=num_workers, ffcv=True,
-            device=device, os_cache=os_cache
-        )
+        batch_sizes = {
+            'celebahq': int(batch_size * self.mixing_ratios['celebahq']),
+            'afhqv2': int(batch_size * self.mixing_ratios['afhqv2']),
+            'lhq': int(batch_size * self.mixing_ratios['lhq'])
+        }
+        train_loaders = {
+            'celebahq': celebahq.get_train_loader(
+                train_data_paths['celebahq'], batch_size=batch_sizes['celebahq'], transform = 'imagenet',
+                num_workers=num_workers, ffcv=True, device=device, os_cache=os_cache
+            ),
+            'afhqv2': afhqv2.get_train_loader(
+                train_data_paths['afhqv2'], batch_size=batch_sizes['afhqv2'], transform = 'imagenet',
+                num_workers=num_workers, ffcv=True, device=device, os_cache=os_cache
+            ),
+            'lhq': lhq.get_train_loader(
+                train_data_paths['lhq'], batch_size=batch_sizes['lhq'], transform = 'imagenet',
+                num_workers=num_workers, ffcv=True, device=device, os_cache=os_cache
+            )
+        }
+        return train_loaders
 
     def _create_val_loader(
         self,
@@ -183,10 +216,26 @@ class FinetuneFaceClassificationTrainer:
         """
         Create the validation dataloader
         """
-        return imagenet.get_val_loader(
-            val_data_path, batch_size=batch_size, num_workers=num_workers, ffcv=True,
-            device=device, resolution=resolution
-        )
+        batch_sizes = {
+            'celebahq': int(batch_size * self.mixing_ratios['celebahq']),
+            'afhqv2': int(batch_size * self.mixing_ratios['afhqv2']),
+            'lhq': int(batch_size * self.mixing_ratios['lhq'])
+        }
+        val_loaders = {
+            'celebahq': celebahq.get_val_loader(
+                val_data_path['celebahq'], batch_size=batch_sizes['celebahq'], transform = 'imagenet',
+                num_workers=num_workers, ffcv=True, device=device, resolution=resolution
+            ),
+            'afhqv2': afhqv2.get_val_loader(
+                val_data_path['afhqv2'], batch_size=batch_sizes['afhqv2'], transform = 'imagenet',
+                num_workers=num_workers, ffcv=True, device=device, resolution=resolution
+            ),
+            'lhq': lhq.get_val_loader(
+                val_data_path['lhq'], batch_size=batch_sizes['lhq'], transform = 'imagenet',
+                num_workers=num_workers, ffcv=True, device=device, resolution=resolution
+            )
+        }
+        return val_loaders
 
     def _create_model_and_scaler(
         self, arch, device, model_seed, pretrained, pretrained_model, num_classes=None
@@ -230,7 +279,6 @@ class FinetuneFaceClassificationTrainer:
     def _initialize_logger(self, folder, arch_name, uid, device, args):
         val_meters = {
             'top_1': torchmetrics.Accuracy(task='multiclass', num_classes=1000, top_k=1).to(device),
-            'top_5': torchmetrics.Accuracy(task='multiclass', num_classes=1000, top_k=5).to(device),
             'loss': MeanScalarMetric().to(device)
         }
 
@@ -257,7 +305,8 @@ class FinetuneFaceClassificationTrainer:
             start_train_loop_time = time.time()
             resolution = self.resolution_schedule[epoch]
             # Update the resolution of the train image decoder
-            self.train_image_decoder.output_size = (resolution, resolution)
+            for ds_name in self.train_image_decoders.items():
+                self.train_image_decoders[ds_name].output_size = (resolution, resolution)
             # Train loop
             self._train_loop(epoch)
             train_loop_time = time.time() - start_train_loop_time
@@ -288,7 +337,6 @@ class FinetuneFaceClassificationTrainer:
         wandb.log(dict({
                 'current_lr': self.optimizer.param_groups[0]['lr'],
                 'val_top_1': stats['top_1'],
-                'val_top_5': stats['top_5'],
                 'val_loss': stats['loss'],
                 'val_loop_time': val_time
             }, **extra_metrics))
@@ -299,15 +347,34 @@ class FinetuneFaceClassificationTrainer:
         model.train()
 
         lr_start, lr_end = self.lr_schedule[epoch].item(), self.lr_schedule[epoch + 1].item()
-        iters = len(self.train_loader)
+        # Get the dataloader with the minimum number of iterations
+        iters_lens = [len(loader) for loader in self.train_loaders.values()]
+        iters = min(iters_lens)
         lrs = np.interp(np.arange(iters), [0, iters], [lr_start, lr_end])
 
-        iterator = tqdm(self.train_loader)
-        for ix, (images, target) in enumerate(iterator):
+        iterator = tqdm(
+            zip(*[iter(loader) for loader in self.train_loaders.values()]),
+            total=iters,
+            desc=f"Epoch {epoch + 1}/{self.args.training.epochs}",
+            bar_format='{l_bar}{r_bar}'
+        )
+        for ix, ((images_celebahq, _), (images_afhqv2, _), (images_lhq, _)) in enumerate(iterator):
             self.global_step += 1
             ### Training start
             for param_group in self.optimizer.param_groups:
                 param_group['lr'] = lrs[ix]
+
+            # Get the images and targets
+            images = torch.cat([images_celebahq, images_afhqv2, images_lhq], dim=0).to(self.device)
+            target = torch.cat([
+                torch.zeros(images_celebahq.shape[0], dtype=torch.long),
+                torch.ones(images_afhqv2.shape[0], dtype=torch.long),
+                2 * torch.ones(images_lhq.shape[0], dtype=torch.long)
+            ], dim=0).to(self.device)
+            # Shuffle the images
+            shuffled_indices = torch.randperm(images.shape[0])
+            images = images[shuffled_indices]
+            target = target[shuffled_indices]
 
             self.optimizer.zero_grad(set_to_none=True)
             with autocast(self.device):
@@ -331,12 +398,25 @@ class FinetuneFaceClassificationTrainer:
         model.eval()
         with torch.no_grad():
             with autocast(self.device):
-                for images, target in tqdm(self.val_loader):
+                iterator = tqdm(
+                    zip(*[iter(loader) for loader in self.val_loaders.values()]),
+                    total=min(len(loader) for loader in self.val_loaders.values()),
+                )
+                for ((images_celebahq, _), (images_afhqv2, _), (images_lhq, _)) in iterator:
+                    # Get the images and targets
+                    images = torch.cat(
+                        [images_celebahq, images_afhqv2, images_lhq], dim=0
+                    ).to(self.device)
+                    target = torch.cat([
+                        torch.zeros(images_celebahq.shape[0], dtype=torch.long),
+                        torch.ones(images_afhqv2.shape[0], dtype=torch.long),
+                        2 * torch.ones(images_lhq.shape[0], dtype=torch.long)
+                    ], dim=0).to(self.device)
                     output = self.model(images)
                     if self.lr_tta:
                         output += self.model(torch.flip(images, dims=[3]))
                     # Calculate accuracy
-                    for k in ['top_1', 'top_5']:
+                    for k in ['top_1']:
                         self.val_meters[k](output, target)
                     # Calculate loss
                     loss_val = self.val_loss(output, target)
