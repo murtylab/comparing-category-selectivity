@@ -375,8 +375,8 @@ class FaceClassificationTrainer:
             images = torch.cat([images_celebahq, images_afhqv2, images_lhq], dim=0).to(self.device)
             target = torch.cat([
                 torch.zeros(images_celebahq.shape[0], dtype=torch.long),
-                torch.ones(images_afhqv2.shape[0], dtype=torch.long),
-                2 * torch.ones(images_lhq.shape[0], dtype=torch.long)
+                torch.zeros(images_afhqv2.shape[0], dtype=torch.long),
+                torch.ones(images_lhq.shape[0], dtype=torch.long)
             ], dim=0).to(self.device)
             # Shuffle the images
             shuffled_indices = torch.randperm(images.shape[0])
@@ -416,8 +416,8 @@ class FaceClassificationTrainer:
                     ).to(self.device)
                     target = torch.cat([
                         torch.zeros(images_celebahq.shape[0], dtype=torch.long),
-                        torch.ones(images_afhqv2.shape[0], dtype=torch.long),
-                        2 * torch.ones(images_lhq.shape[0], dtype=torch.long)
+                        torch.zeros(images_afhqv2.shape[0], dtype=torch.long),
+                        torch.ones(images_lhq.shape[0], dtype=torch.long)
                     ], dim=0).to(self.device)
                     output = self.model(images)
                     if self.lr_tta:
