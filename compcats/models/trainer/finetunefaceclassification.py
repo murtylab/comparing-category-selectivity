@@ -5,6 +5,7 @@ Sources:
 https://github.com/libffcv/ffcv-imagenet/blob/main/train_imagenet.py
 https://github.com/pytorch/vision/blob/main/references/classification/train.py
 """
+from argparse import Namespace
 import time
 from uuid import uuid4
 from pathlib import Path
@@ -36,6 +37,10 @@ class FinetuneFaceClassificationTrainer:
         self.args = args
         self.uid = str(uuid4())
         print(f'\nUID: {self.uid}\n')
+        # Add identifiers
+        self.args.identifier = Namespace()
+        self.args.identifier.uid = self.uid
+        self.args.identifier.training_strategy = "finetune_face_classification"
         # Log uid
         wandb.config.update({"uid": self.uid})
         # Seed
@@ -47,6 +52,7 @@ class FinetuneFaceClassificationTrainer:
             'afhqv2': 0.25,
             'lhq': 0.5
         }
+        self.args.identifier.mixing_ratios = Namespace(**self.mixing_ratios)
         wandb.config.update({"mixing_ratios": self.mixing_ratios})
         # Train dataloader
         train_data_paths = {
@@ -73,6 +79,7 @@ class FinetuneFaceClassificationTrainer:
         )
         # Setup model
         self.num_classes = 2
+        self.args.identifier.num_classes = self.num_classes
         wandb_config_model = dict(wandb.config["model"])
         wandb_config_model["num_classes"] = self.num_classes
         wandb.config.update({"model": wandb_config_model}, allow_val_change=True)
