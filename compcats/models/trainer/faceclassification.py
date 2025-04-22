@@ -26,9 +26,9 @@ def get_trainer():
     """
     Get the trainer class
     """
-    return FinetuneFaceClassificationTrainer
+    return FaceClassificationTrainer
 
-class FinetuneFaceClassificationTrainer:
+class FaceClassificationTrainer:
     """
     Trainer class to train an architecture on ImageNet dataset as a baseline
     """

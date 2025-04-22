@@ -1,4 +1,4 @@
-python train_finetunefaceclassification.py \
+python train_faceclassification.py \
 --config-file=configs/rn18_dev.yaml \
 --data.celebahq_train_data_path=/om/user/alishd/datasets/celebahq/ffcv/train_500_0.50_90.ffcv \
 --data.celebahq_val_data_path=/om/user/alishd/datasets/celebahq/ffcv/val_500_0.50_90.ffcv \
@@ -11,5 +11,8 @@ python train_finetunefaceclassification.py \
 --model.pretrained_model=resnet18_imagenet1kv1 \
 --seed.global_seed=42 \
 --seed.model_seed=42 \
---project.name=compcats_finetuning \
---project.experiment=dev \
+--project.name=compcats_face_classification \
+--project.experiment=finetune \
+# --training.epochs=10 \
+# --resolution.resolution_schedule_type=fixed \
+# --resolution.fixed_resolution=224 \

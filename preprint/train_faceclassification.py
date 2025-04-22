@@ -11,7 +11,7 @@ from fastargs import get_current_config
 from fastargs import Param, Section
 from fastargs.validation import And, OneOf
 
-from compcats.models.trainer import finetunefaceclassification
+from compcats.models.trainer import faceclassification
 from compcats.models import architectures, pretrained as pretrained_module
 from compcats.utils import logging_utils
 
@@ -97,7 +97,7 @@ def main(fastargs_config):
         project = args.project.name,
         config = nested_args
     )
-    trainer = finetunefaceclassification.get_trainer()(args)
+    trainer = faceclassification.get_trainer()(args)
     trainer.run()
 
 if __name__ == "__main__":
