@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from collections.abc import Mapping, Sequence
 
 def namespace_to_dict(obj):
     """
@@ -29,3 +30,18 @@ def nestednamespace_to_dict(ns):
         return [namespace_to_dict(v) for v in ns]
     else:
         return ns
+
+def dict_to_namespace(obj):
+    """
+    Recursively convert a dict (or list/tuple of dicts) into a namespace
+    with dot-accessible attributes.
+    """
+    if isinstance(obj, Mapping):
+        # for dicts, recurse into values and wrap as SimpleNamespace
+        return SimpleNamespace(**{k: dict_to_namespace(v) for k, v in obj.items()})
+    elif isinstance(obj, Sequence) and not isinstance(obj, (str, bytes)):
+        # for lists/tuples, recurse into each element
+        return type(obj)(dict_to_namespace(v) for v in obj)
+    else:
+        # everything else stays as is
+        return obj
