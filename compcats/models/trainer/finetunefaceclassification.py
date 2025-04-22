@@ -305,7 +305,7 @@ class FinetuneFaceClassificationTrainer:
             start_train_loop_time = time.time()
             resolution = self.resolution_schedule[epoch]
             # Update the resolution of the train image decoder
-            for ds_name in self.train_image_decoders.items():
+            for ds_name in self.train_image_decoders.keys():
                 self.train_image_decoders[ds_name].output_size = (resolution, resolution)
             # Train loop
             self._train_loop(epoch)

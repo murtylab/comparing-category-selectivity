@@ -1,9 +1,15 @@
-python train_imagenet1k.py \
---config-file=configs/rn18_88_epochs.yaml \
---data.train_data_path=/om/user/alishd/datasets/imagenet/ffcv/train_256_0.5_90.ffcv \
---data.val_data_path=/om/user/alishd/datasets/imagenet/ffcv/val_256_0.5_90.ffcv \
+python train_finetunefaceclassification.py \
+--config-file=configs/rn18_dev.yaml \
+--data.celebahq_train_data_path=/om/user/alishd/datasets/celebahq/ffcv/train_500_0.50_90.ffcv \
+--data.celebahq_val_data_path=/om/user/alishd/datasets/celebahq/ffcv/val_500_0.50_90.ffcv \
+--data.afhqv2_train_data_path=/om/user/alishd/datasets/afhqv2/ffcv/train_500_0.50_90.ffcv \
+--data.afhqv2_val_data_path=/om/user/alishd/datasets/afhqv2/ffcv/val_500_0.50_90.ffcv \
+--data.lhq_train_data_path=/om/user/alishd/datasets/lhq/ffcv/train_500_0.50_90.ffcv \
+--data.lhq_val_data_path=/om/user/alishd/datasets/lhq/ffcv/val_500_0.50_90.ffcv \
 --data.output_dir=/om2/user/alishd/github/comparing-category-selectivity/preprint/trained_models \
---seed.global_seed=2 \
---seed.model_seed=5 \
---project.name=compcats_category_collapse \
---project.experiment=baseline_imagenet1k \
+--model.pretrained=1 \
+--model.pretrained_model=resnet18_imagenet1kv1 \
+--seed.global_seed=42 \
+--seed.model_seed=42 \
+--project.name=compcats_finetuning \
+--project.experiment=dev \
