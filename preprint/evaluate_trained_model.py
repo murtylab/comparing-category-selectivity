@@ -42,6 +42,159 @@ Section('model', 'model related stuff').params(
 #     model_tthreshold=Param(float, 'model tthreshold to use', default=0.0),
 # )
 
+def get_model_nsd515_correlations(
+    nsd_dir, output_dir, log_dir, localizer_dir, model, layers, model_fmri_frois,
+    model_localizer, tthreshold, uid, experiment_name
+):
+    """
+    Correlations of model's frois with NSD515 frois
+    """
+    fmri_frois = list({i[1] for i in model_fmri_frois})
+    # Subjects
+    subjects = [1, 2, 3, 4, 5, 6, 7, 8]
+    subset = 515
+
+    # Storing results
+    modelsubject_correlations_csv_path = os.path.join(
+        log_dir, 'nsd515_correlations.csv'
+    )
+    # Check if modelsubject correlations csv exists
+    if os.path.exists(modelsubject_correlations_csv_path):
+        modelsubject_correlations_csv = pd.read_csv(modelsubject_correlations_csv_path)
+        modelsubject_correlations_csv_list = modelsubject_correlations_csv.to_dict('records')
+    else:
+        modelsubject_correlations_csv_list = []
+
+    subjects_data, subjects_splithalf_pearsonrs, subjects_splithalf_rdmrs = \
+        get_allsubjects_nsd515_data(nsd_dir, fmri_frois, tthreshold)
+    model_data = {}
+    # Get model data
+    # Get model data for each froi
+    for (model_froi, fmri_froi) in model_fmri_frois:
+        if layers[(model_froi, fmri_froi)] is None:
+            model_froi_data = None
+        else:
+            model_froi_data = model_utils.get_dataset_activations(
+                output_dir, nsd_dir, model, layers[(model_froi, fmri_froi)], dataset='nsd', \
+                froi=model_froi, tthreshold=tthreshold, froi_localizer=model_localizer, \
+                froi_localizer_dir=localizer_dir, subset=subset
+            )
+        model_data[(model_froi, fmri_froi)] = model_froi_data
+
+    for subject in subjects:
+        for (model_froi, fmri_froi) in model_fmri_frois:
+            row_params = {
+                'experiment': experiment_name,
+                'model_uid': uid,
+                'model_name': model.name,
+                'model_layer': layers[(model_froi, fmri_froi)],
+                'model_froi': model_froi,
+                'model_tthreshold': tthreshold,
+                'model_localizer': model_localizer,
+                'fmri_dataset': f'nsd{subset}',
+                'fmri_froi': fmri_froi,
+                'fmri_tthreshold': tthreshold,
+                'subject': subject
+            }
+            # Check if row is present
+            if misc_utils.check_row_present(row_params, modelsubject_correlations_csv_list):
+                continue
+            # Run model-subject correlation
+            # Get data
+            model_froi_data = model_data[(model_froi, fmri_froi)]
+            subject_data = subjects_data[fmri_froi][subject]
+            subject_splithalf_pearsonr = subjects_splithalf_pearsonrs[fmri_froi][subject]
+            subject_splithalf_rdmr = subjects_splithalf_rdmrs[fmri_froi][subject]
+            if model_froi_data is not None:
+                # RDMr
+                rdmr, pvalue_rdmr = rcutils.rdmr(
+                    model_froi_data, subject_data, return_pvalue=True
+                )
+                # Normalize by split-half correlation
+                normed_rdmr = rdmr / np.sqrt(subject_splithalf_rdmr)
+                # Pearsonr
+                pearsonr, pvalue_pearsonr = scipy.stats.pearsonr(
+                    model_froi_data.mean(axis=-1).cpu().numpy(), 
+                    subject_data.mean(axis=-1).cpu().numpy()
+                )
+                # Normalize by split-half correlation
+                normed_pearsonr = pearsonr / np.sqrt(subject_splithalf_pearsonr)
+            else:
+                rdmr = np.nan
+                pvalue_rdmr = np.nan
+                normed_rdmr = np.nan
+                pearsonr = np.nan
+                pvalue_pearsonr = np.nan
+                normed_pearsonr = np.nan
+            # Save results
+            modelsubject_correlations_csv_list.append({
+                **row_params,
+                'normed_pearsonr': normed_pearsonr,
+                'pearsonr': pearsonr,
+                'normed_rdmr': normed_rdmr,
+                'rdmr': rdmr,
+                'pvalue_rdmr': pvalue_rdmr,
+                'pvalue_pearsonr': pvalue_pearsonr,
+                'fmri_splithalf_pearsonr': subject_splithalf_pearsonr,
+                'fmri_splithalf_rdmr': subject_splithalf_rdmr
+            })
+            modelsubject_correlations_csv = pd.DataFrame(modelsubject_correlations_csv_list)
+            modelsubject_correlations_csv.to_csv(
+                modelsubject_correlations_csv_path, index=False
+            )
+
+def get_allsubjects_nsd515_data(nsd_dir, frois, tthreshold, tensors=True):
+    """
+    Get NSD individual mean of repetitions data for all subjects
+    Args:
+        frois (list): List of frois
+        tthreshold (float): Threshold for t-values
+    Returns:
+        subjects_data (dict): Dictionary of subject data
+    """
+    # Variables
+    subjects = [1, 2, 3, 4, 5, 6, 7, 8]
+    subset = 515
+    # Storing results
+    subjects_data = {}
+    splithalf_pearsonrs = {}
+    splithalf_rdmrs = {}
+    # Get subject froi mean-repetition mean-voxels data
+    for froi in frois:
+        subjects_data[froi] = {}
+        for subject in subjects:
+            subject_froi_data, _ = nsd.get_betas(
+                nsd_dir, subject, subset=subset, voxels=True, repetition_mean=True, \
+                froi=froi, tthreshold=tthreshold
+            )
+            subjects_data[froi][subject] = subject_froi_data
+    # Get subject froi split-half correlations
+    for froi in frois:
+        splithalf_pearsonrs[froi] = {}
+        splithalf_rdmrs[froi] = {}
+        for subject in subjects:
+            subject_data, _ = nsd.get_betas(
+                nsd_dir, subject, froi=froi, tthreshold=tthreshold, \
+                subset=subset, voxels=True, repetition_mean=False
+            )
+            if subject_data is None:
+                splithalf_pearsonr_ = np.nan
+                splithalf_rdmr_ = np.nan
+            else:
+                splithalf_pearsonr_ = reliability_utils.get_voxelmean_splithalf_correlation(
+                    subject_data.mean(axis=-1)
+                )
+                splithalf_rdmr_ = reliability_utils.get_rdm_splithalf_correlation(
+                    subject_data
+                )
+            splithalf_pearsonrs[froi][subject] = splithalf_pearsonr_
+            splithalf_rdmrs[froi][subject] = splithalf_rdmr_
+    if not tensors:
+        for froi in frois:
+            for subject in subjects:
+                subjects_data[froi][subject] = subjects_data[froi][subject].cpu().numpy()
+    return subjects_data, splithalf_pearsonrs, splithalf_rdmrs
+
 def get_nsddata_layersweep(nsd_dir, subjects, frois, tthreshold, subset):
     """
     Get NSD mean of voxels, mean of repetitions data for specified subjects
@@ -316,10 +469,13 @@ def main(fastargs_config):
     )
     log['layersweep_info'] = layersweep_info
     log['best_layers'] = {'_'.join(k): v for k, v in best_layers.items()}
-    # Evaluate similarity
-    # TODO
-    # Store results
-    # TODO: results_csv
+    # Evaluate similarity and store results
+    get_model_nsd515_correlations(
+        args.data.nsd_dir, output_dir, log_dir, args.data.localizer_dir,
+        model, best_layers, layersweep_info['model_fmri_frois'],
+        layersweep_info['model_localizer'], layersweep_info['tthreshold'],
+        training_params.identifier.uid, training_params.project.experiment
+    )
     # Store logs
     with open(os.path.join(log_dir, 'log.json'), 'w', encoding='utf-8') as f:
         json.dump(log, f, indent=4)
