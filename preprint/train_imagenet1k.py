@@ -11,8 +11,8 @@ from fastargs import get_current_config
 from fastargs import Param, Section
 from fastargs.validation import And, OneOf
 
-from compcats.models.trainer.imagenet1k import ImageNet1kTrainer
-from compcats.models import architectures
+from compcats.models.trainer import imagenet1k
+from compcats.models import architectures, pretrained as pretrained_module
 from compcats.utils import logging_utils
 
 Section('seed', 'seed').params(
@@ -36,7 +36,8 @@ Section('project', 'project related stuff').params(
 
 Section('model', 'model details').params(
     architecture=Param(And(str, OneOf(dir(architectures))), required=True),
-    pretrained=Param(int, 'is pretrained? (1/0)', default=0)
+    pretrained=Param(int, 'is pretrained? (1/0)', default=0, required=True),
+    pretrained_model=Param(And(str, OneOf(dir(pretrained_module)))),
 )
 
 Section('resolution', 'resolution scheduling').params(
@@ -92,7 +93,7 @@ def main(fastargs_config):
         project = args.project.name,
         config = nested_args
     )
-    trainer = ImageNet1kTrainer(args)
+    trainer = imagenet1k.get_trainer()(args)
     trainer.run()
 
 if __name__ == "__main__":

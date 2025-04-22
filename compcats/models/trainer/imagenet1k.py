@@ -5,6 +5,7 @@ Sources:
 https://github.com/libffcv/ffcv-imagenet/blob/main/train_imagenet.py
 https://github.com/pytorch/vision/blob/main/references/classification/train.py
 """
+from argparse import Namespace
 import time
 from uuid import uuid4
 from pathlib import Path
@@ -17,6 +18,7 @@ import torch
 from torch.amp import autocast, GradScaler
 
 from .. import architectures
+from .. import pretrained as pretrained_module
 from ...datasets.image import imagenet1k as imagenet
 from ...utils import seed_utils, logging_utils
 
@@ -35,6 +37,10 @@ class ImageNet1kTrainer:
         self.args = args
         self.uid = str(uuid4())
         print(f'\nUID: {self.uid}\n')
+        # Add identifiers
+        self.args.identifier = Namespace()
+        self.args.identifier.uid = self.uid
+        self.args.identifier.training_strategy = "imagenet1k_classification"
         # Log uid
         wandb.config.update({"uid": self.uid})
         # Seed
@@ -54,8 +60,15 @@ class ImageNet1kTrainer:
             self.args.validation.batch_size, self.args.data.num_workers, self.args.data.device
         )
         # Setup model
+        self.num_classes = 1000
+        self.args.identifier.num_classes = self.num_classes
+        wandb_config_model = dict(wandb.config["model"])
+        wandb_config_model["num_classes"] = self.num_classes
+        wandb.config.update({"model": wandb_config_model}, allow_val_change=True)
         self.model, self.scaler = self._create_model_and_scaler(
-            self.args.model.architecture, self.args.data.device, self.args.seed.model_seed
+            self.args.model.architecture, self.args.data.device, self.args.seed.model_seed,
+            self.args.model.pretrained, self.args.model.pretrained_model,
+            num_classes=self.num_classes
         )
         # Setup optimizer
         self.optimizer, self.train_loss, self.val_loss = self._create_optimizer(
@@ -64,7 +77,7 @@ class ImageNet1kTrainer:
         )
         # Setup logger
         self.val_meters, self.log_folder, self.start_time = self._initialize_logger(
-            self.args.data.output_dir, self.args.model.architecture, self.uid,
+            self.args.data.output_dir, self.args.model.architecture, self.uid, self.num_classes,
             self.args.data.device, self.args
         )
         # Initialize global step
@@ -182,10 +195,16 @@ class ImageNet1kTrainer:
         )
 
     def _create_model_and_scaler(
-        self, arch, device, model_seed
+        self, arch, device, model_seed, pretrained, pretrained_model, num_classes
     ):
         scaler = GradScaler()
-        model = getattr(architectures, arch).get_architecture(seed=model_seed)
+        if pretrained:
+            model = getattr(pretrained_module, pretrained_model).get_model()
+            model.replace_fc(num_classes=num_classes)
+        else:
+            model = getattr(architectures, arch).get_architecture(
+                seed=model_seed, num_classes=num_classes
+            )
 
         model = model.to(memory_format=torch.channels_last)
         model = model.to(device)
@@ -214,10 +233,14 @@ class ImageNet1kTrainer:
 
         return optimizer, train_loss, val_loss
 
-    def _initialize_logger(self, folder, arch_name, uid, device, args):
+    def _initialize_logger(self, folder, arch_name, uid, device, num_classes, args):
         val_meters = {
-            'top_1': torchmetrics.Accuracy(task='multiclass', num_classes=1000, top_k=1).to(device),
-            'top_5': torchmetrics.Accuracy(task='multiclass', num_classes=1000, top_k=5).to(device),
+            'top_1': torchmetrics.Accuracy(
+                task='multiclass', num_classes=num_classes, top_k=1
+            ).to(device),
+            'top_5': torchmetrics.Accuracy(
+                task='multiclass', num_classes=num_classes, top_k=5
+            ).to(device),
             'loss': MeanScalarMetric().to(device)
         }
 
