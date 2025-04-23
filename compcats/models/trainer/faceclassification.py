@@ -91,7 +91,8 @@ class FaceClassificationTrainer:
         # Setup optimizer
         self.optimizer, self.train_loss, self.val_loss = self._create_optimizer(
             self.args.training.momentum, self.args.training.optimizer,
-            self.args.training.weight_decay, self.args.training.label_smoothing
+            self.args.training.weight_decay, self.args.training.label_smoothing,
+            initial_lr=self.args.lr.lr
         )
         # Setup logger
         self.val_meters, self.log_folder, self.start_time = self._initialize_logger(
@@ -147,6 +148,8 @@ class FaceClassificationTrainer:
         xs = [0, kwargs.get('lr_peak_epoch'), epochs]
         ys = [1e-4 * initial_lr, initial_lr, 0]
         epoch_lrs = np.interp(np.arange(epochs+1), xs, ys)
+        # Add an extra element at the start for first validation epoch
+        epoch_lrs = [1e-4 * initial_lr] + epoch_lrs.tolist()
         return epoch_lrs
 
     def _create_resolution_ramp_schedule(
@@ -176,7 +179,9 @@ class FaceClassificationTrainer:
         epoch_resolutions = [min_res] * start_ramp + \
             ramping_resolutions + \
             [max_res] * (epochs + 1 - end_ramp)
-        # [ramping_resolution] * (end_ramp - start_ramp) + \
+
+        # Add an extra element at the start for first validation epoch
+        epoch_resolutions = [min_res] + epoch_resolutions
 
         return epoch_resolutions
 
@@ -262,7 +267,8 @@ class FaceClassificationTrainer:
         return model, scaler
 
     def _create_optimizer(self, momentum, optimizer, weight_decay,
-                         label_smoothing):
+                         label_smoothing, initial_lr):
+        # Initial lr is just for logging purposes
         assert optimizer == 'sgd'
 
         # Only do weight decay on non-batchnorm parameters
@@ -277,7 +283,7 @@ class FaceClassificationTrainer:
             'weight_decay': weight_decay
         }]
 
-        optimizer = torch.optim.SGD(param_groups, lr=1, momentum=momentum)
+        optimizer = torch.optim.SGD(param_groups, lr=initial_lr, momentum=momentum)
         train_loss = torch.nn.CrossEntropyLoss(label_smoothing=label_smoothing)
         val_loss = torch.nn.CrossEntropyLoss()
 
@@ -307,7 +313,14 @@ class FaceClassificationTrainer:
         """
         Train the model for the given number of epochs
         """
-        for epoch in range(epochs):
+        # Validate the model and log the results without training
+        # This is to get the first validation results
+        # before training starts
+        self._eval_and_log({
+            'epoch': 0,
+            'resolution': self.resolution_schedule[0]
+        })
+        for epoch in range(1, epochs+1):
             # Run one epoch of training
             start_train_loop_time = time.time()
             resolution = self.resolution_schedule[epoch]
@@ -353,7 +366,7 @@ class FaceClassificationTrainer:
         model = self.model
         model.train()
 
-        lr_start, lr_end = self.lr_schedule[epoch].item(), self.lr_schedule[epoch + 1].item()
+        lr_start, lr_end = self.lr_schedule[epoch], self.lr_schedule[epoch + 1]
         # Get the dataloader with the minimum number of iterations
         iters_lens = [len(loader) for loader in self.train_loaders.values()]
         iters = min(iters_lens)
