@@ -5,5 +5,5 @@ python train_imagenet1k.py \
 --data.output_dir=/om2/user/alishd/github/comparing-category-selectivity/preprint/trained_models \
 --seed.global_seed=42 \
 --seed.model_seed=42 \
---project.name=compcats_baseline_tmp \
---project.experiment=baseline_imagenet1k \
+--project.name=compcats_baseline \
+--project.experiment=imagenet1k \
