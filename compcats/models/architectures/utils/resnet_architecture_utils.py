@@ -8,6 +8,8 @@
 # 2. Added separate out-of-place ReLUs for each conv layer instead of a common relu in
 #   Bottleneck Block
 # 3. Replaced in-place ReLU with out-of-place ReLU in ResNet before Basic/Bottleneck Blocks
+# 4. Added kwargs to ResNet to allow for extra agrs, especially projector
+# 5. Added projector to ResNet
 ################################################################################
 
 from typing import Callable, List, Optional, Type, Union
@@ -208,6 +210,13 @@ class ResNet(nn.Module):
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.fc = nn.Linear(512 * block.expansion, num_classes)
 
+        # Check for projector
+        projector = kwargs.get("projector", None)
+        if projector is not None:
+            assert isinstance(projector, int), "Projector should be an integer for embedding dimension"
+            assert projector > 0, "Projector should be a positive integer"
+            self.projector = nn.Linear(512 * block.expansion, projector)
+
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
@@ -280,10 +289,15 @@ class ResNet(nn.Module):
 
         x = self.avgpool(x)
         x = torch.flatten(x, 1)
-        x = self.fc(x)
+        fc_out = self.fc(x)
 
-        return x
+        # Check for projector
+        if hasattr(self, "projector"):
+            proj = self.projector(x)
+            return fc_out, proj
+        # If no projector, return only the output
+
+        return fc_out
 
     def forward(self, x: Tensor) -> Tensor:
         return self._forward_impl(x)
-
