@@ -37,7 +37,9 @@ Section('project', 'project related stuff').params(
 Section('model', 'model details').params(
     architecture=Param(And(str, OneOf(dir(architectures))), required=True),
     pretrained=Param(int, 'is pretrained? (1/0)', default=0, required=True),
-    pretrained_model=Param(And(str, OneOf(dir(pretrained_module))), default='none'),
+    pretrained_model=Param(
+        And(str, OneOf(dir(pretrained_module) + ['none'])), default='none'
+    ),
 )
 
 Section('resolution', 'resolution scheduling').params(
