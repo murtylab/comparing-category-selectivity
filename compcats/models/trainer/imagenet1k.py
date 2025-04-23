@@ -77,8 +77,8 @@ class ImageNet1kTrainer:
         )
         # Setup logger
         self.val_meters, self.log_folder, self.start_time = self._initialize_logger(
-            self.args.data.output_dir, self.args.model.architecture, self.uid, self.num_classes,
-            self.args.data.device, self.args
+            self.args.data.output_dir, self.args.model.architecture, self.uid,
+            self.args.data.device, self.num_classes, self.args
         )
         # Initialize global step
         self.global_step = 0
@@ -200,7 +200,6 @@ class ImageNet1kTrainer:
         scaler = GradScaler()
         if pretrained:
             model = getattr(pretrained_module, pretrained_model).get_model()
-            model.replace_fc(num_classes=num_classes)
         else:
             model = getattr(architectures, arch).get_architecture(
                 seed=model_seed, num_classes=num_classes
