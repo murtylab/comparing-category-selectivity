@@ -46,6 +46,7 @@ Section('model', 'model details').params(
     pretrained_model=Param(
         And(str, OneOf(dir(pretrained_module) + ['none'])), default='none'
     ),
+    projector_dim=Param(int, 'projector dimension', default=512),
 )
 
 Section('resolution', 'resolution scheduling').params(
@@ -68,14 +69,14 @@ Section('lr', 'lr scheduling').params(
 )
 
 Section('validation', 'Validation parameters stuff').params(
-    batch_size=Param(int, 'The batch size for validation', default=512),
+    batch_size=Param(int, 'The batch size for validation', default=2048),
     resolution=Param(int, 'final resized validation image size', default=224),
     lr_tta=Param(int, 'should do lr flipping/avging at test time', default=1)
 )
 
 Section('training', 'training hyper param stuff').params(
     eval_only=Param(int, 'eval only?', default=0),
-    batch_size=Param(int, 'The batch size', default=512),
+    batch_size=Param(int, 'The batch size', default=2048),
     optimizer=Param(And(str, OneOf(['sgd'])), 'The optimizer', default='sgd'),
     momentum=Param(float, 'SGD momentum', default=0.9),
     weight_decay=Param(float, 'weight decay', default=4e-5),
@@ -84,6 +85,8 @@ Section('training', 'training hyper param stuff').params(
     distributed=Param(int, 'is distributed?', default=0),
     use_blurpool=Param(int, 'use blurpool?', default=0),
     loss_weight=Param(float, 'loss weight of contrastive loss', default=0.1),
+    loss_version=Param(And(str, OneOf(['v1', 'v2'])), default='v1'),
+    loss_temperature=Param(float, 'loss temperature', default=0.1),
 )
 
 Section('dist', 'distributed training options').params(
