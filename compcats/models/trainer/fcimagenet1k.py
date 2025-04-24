@@ -19,8 +19,10 @@ from torch.amp import autocast, GradScaler
 
 from .. import architectures
 from .. import pretrained as pretrained_module
+from ..losses import facecontrastive as fcloss
 from ...datasets.image import imagenet1k as imagenet
-from ...utils import seed_utils, logging_utils
+from ...datasets.image import celebahq, afhqv2, lhq
+from ...utils import seed_utils, logging_utils, iterator_utils
 
 def get_trainer():
     """
@@ -47,15 +49,30 @@ class FaceContrastiveImageNet1kTrainer:
         seed_utils.seed_everything(self.args.seed.global_seed)
         # Setup dataloders
         # Train dataloader
+        # Mixing ratios
+        self.mixing_ratios = {
+            'celebahq': 0.25,
+            'afhqv2': 0.25,
+            'lhq': 0.5
+        }
+        self.args.identifier.mixing_ratios = Namespace(**self.mixing_ratios)
+        wandb.config.update({"mixing_ratios": self.mixing_ratios})
+        # Train dataloader
+        train_data_paths = {
+            'imagenet1k': self.args.data.imagenet1k_train_data_path,
+            'celebahq': self.args.data.celebahq_train_data_path,
+            'afhqv2': self.args.data.afhqv2_train_data_path,
+            'lhq': self.args.data.lhq_train_data_path
+        }
         train_loader_dict = self._create_train_loader(
-            self.args.data.train_data_path, self.args.training.batch_size,
+            train_data_paths, self.args.training.batch_size,
             self.args.data.num_workers, self.args.data.device, self.args.data.in_memory
         )
-        self.train_loader = train_loader_dict['dataloader']
+        self.train_loaders = {k: v['dataloader'] for k, v in train_loader_dict.items()}
         # Decoder to control the resolution
-        self.train_image_decoder = train_loader_dict['decoder']
+        self.train_image_decoders = {k: v['decoder'] for k, v in train_loader_dict.items()}
         # Validation dataloader
-        self.val_loader = self._create_val_loader(
+        self.val_loaders = self._create_val_loader(
             self.args.data.val_data_path, self.args.validation.resolution,
             self.args.validation.batch_size, self.args.data.num_workers, self.args.data.device
         )
@@ -68,14 +85,18 @@ class FaceContrastiveImageNet1kTrainer:
         self.model, self.scaler = self._create_model_and_scaler(
             self.args.model.architecture, self.args.data.device, self.args.seed.model_seed,
             self.args.model.pretrained, self.args.model.pretrained_model,
-            num_classes=self.num_classes
+            num_classes=self.num_classes, projector_dim=self.args.model.projector_dim
         )
         # Setup optimizer
-        self.optimizer, self.train_loss, self.val_loss = self._create_optimizer(
-            self.args.training.momentum, self.args.training.optimizer,
-            self.args.training.weight_decay, self.args.training.label_smoothing,
-            initial_lr=self.args.lr.lr
-        )
+        self.optimizer, self.train_ce_loss, self.train_contrastive_loss, \
+            self.val_ce_loss, self.val_contrastive_loss = \
+                self._create_optimizer(
+                self.args.training.momentum, self.args.training.optimizer,
+                self.args.training.weight_decay, self.args.training.label_smoothing,
+                self.args.data.device, initial_lr=self.args.lr.lr,
+                loss_version=self.args.training.loss_version,
+                loss_temperature=self.args.training.loss_temperature
+            )
         # Setup logger
         self.val_meters, self.log_folder, self.start_time = self._initialize_logger(
             self.args.data.output_dir, self.args.model.architecture, self.uid,
@@ -169,7 +190,7 @@ class FaceContrastiveImageNet1kTrainer:
 
     def _create_train_loader(
         self,
-        train_data_path,
+        train_data_paths,
         batch_size,
         num_workers,
         device,
@@ -178,14 +199,38 @@ class FaceContrastiveImageNet1kTrainer:
         """
         Create the training dataloader
         """
-        return imagenet.get_train_loader(
-            train_data_path, batch_size=batch_size, num_workers=num_workers, ffcv=True,
-            device=device, os_cache=os_cache
-        )
+        batch_sizes = {
+            'imagenet1k': int(batch_size/2),
+            'celebahq': int(batch_size / 2 * self.mixing_ratios['celebahq']),
+            'afhqv2': int(batch_size / 2 * self.mixing_ratios['afhqv2']),
+            'lhq': int(batch_size / 2 * self.mixing_ratios['lhq'])
+        }
+        train_loaders = {
+            'imagenet1k': imagenet.get_train_loader(
+                train_data_paths['imagenet1k'], batch_size=batch_sizes['imagenet1k'],
+                num_workers=num_workers, ffcv=True, device=device, os_cache=os_cache
+            ),
+            'celebahq': celebahq.get_train_loader(
+                train_data_paths['celebahq'], batch_size=batch_sizes['celebahq'],
+                transform = 'contrastive',
+                num_workers=num_workers, ffcv=True, device=device, os_cache=os_cache
+            ),
+            'afhqv2': afhqv2.get_train_loader(
+                train_data_paths['afhqv2'], batch_size=batch_sizes['afhqv2'],
+                transform = 'contrastive',
+                num_workers=num_workers, ffcv=True, device=device, os_cache=os_cache
+            ),
+            'lhq': lhq.get_train_loader(
+                train_data_paths['lhq'], batch_size=batch_sizes['lhq'],
+                transform = 'contrastive',
+                num_workers=num_workers, ffcv=True, device=device, os_cache=os_cache
+            )
+        }
+        return train_loaders
 
     def _create_val_loader(
         self,
-        val_data_path,
+        val_data_paths,
         resolution,
         batch_size,
         num_workers,
@@ -194,20 +239,48 @@ class FaceContrastiveImageNet1kTrainer:
         """
         Create the validation dataloader
         """
-        return imagenet.get_val_loader(
-            val_data_path, batch_size=batch_size, num_workers=num_workers, ffcv=True,
-            device=device, resolution=resolution
-        )
+        batch_sizes = {
+            'imagenet1k': int(batch_size/2),
+            'celebahq': int(batch_size / 2 * self.mixing_ratios['celebahq']),
+            'afhqv2': int(batch_size / 2 * self.mixing_ratios['afhqv2']),
+            'lhq': int(batch_size / 2 * self.mixing_ratios['lhq'])
+        }
+        val_loaders = {
+            'imagenet1k': imagenet.get_val_loader(
+                val_data_paths['imagenet1k'], batch_size=batch_sizes['imagenet1k'],
+                resolution=resolution,
+                num_workers=num_workers, ffcv=True, device=device
+            ),
+            'celebahq': celebahq.get_val_loader(
+                val_data_paths['celebahq'], batch_size=batch_sizes['celebahq'],
+                transform='contrastive', resolution=resolution,
+                num_workers=num_workers, ffcv=True, device=device
+            ),
+            'afhqv2': afhqv2.get_val_loader(
+                val_data_paths['afhqv2'], batch_size=batch_sizes['afhqv2'],
+                transform='contrastive', resolution=resolution,
+                num_workers=num_workers, ffcv=True, device=device
+            ),
+            'lhq': lhq.get_val_loader(
+                val_data_paths['lhq'], batch_size=batch_sizes['lhq'],
+                transform='contrastive', resolution=resolution,
+                num_workers=num_workers, ffcv=True, device=device
+            )
+        }
+        return val_loaders
 
     def _create_model_and_scaler(
-        self, arch, device, model_seed, pretrained, pretrained_model, num_classes
+        self, arch, device, model_seed, pretrained, pretrained_model, num_classes, projector_dim
     ):
         scaler = GradScaler()
         if pretrained:
+            raise NotImplementedError(
+                "Projector for Pretrained models are not implemented yet"
+            )
             model = getattr(pretrained_module, pretrained_model).get_model()
         else:
             model = getattr(architectures, arch).get_architecture(
-                seed=model_seed, num_classes=num_classes
+                seed=model_seed, num_classes=num_classes, projector=projector_dim
             )
 
         model = model.to(memory_format=torch.channels_last)
@@ -215,8 +288,10 @@ class FaceContrastiveImageNet1kTrainer:
 
         return model, scaler
 
-    def _create_optimizer(self, momentum, optimizer, weight_decay,
-                         label_smoothing, initial_lr):
+    def _create_optimizer(
+        self, momentum, optimizer, weight_decay,
+        label_smoothing, device, initial_lr, loss_version, loss_temperature
+    ):
         # Initial lr is just for logging purposes
         assert optimizer == 'sgd'
 
@@ -233,10 +308,17 @@ class FaceContrastiveImageNet1kTrainer:
         }]
 
         optimizer = torch.optim.SGD(param_groups, lr=initial_lr, momentum=momentum)
-        train_loss = torch.nn.CrossEntropyLoss(label_smoothing=label_smoothing)
-        val_loss = torch.nn.CrossEntropyLoss()
+        train_ce_loss = torch.nn.CrossEntropyLoss(label_smoothing=label_smoothing).to(device)
+        train_contrastive_loss = fcloss.get_loss_fn(
+            loss_version=loss_version, loss_temperature=loss_temperature
+        ).to(device)
+        # Validation loss
+        val_ce_loss = torch.nn.CrossEntropyLoss().to(device)
+        val_contrastive_loss = fcloss.get_loss_fn(
+            loss_version=loss_version, loss_temperature=loss_temperature
+        ).to(device)
 
-        return optimizer, train_loss, val_loss
+        return optimizer, train_ce_loss, train_contrastive_loss, val_ce_loss, val_contrastive_loss
 
     def _initialize_logger(self, folder, arch_name, uid, device, num_classes, args):
         val_meters = {
@@ -246,7 +328,9 @@ class FaceContrastiveImageNet1kTrainer:
             'top_5': torchmetrics.Accuracy(
                 task='multiclass', num_classes=num_classes, top_k=5
             ).to(device),
-            'loss': MeanScalarMetric().to(device)
+            'loss': MeanScalarMetric().to(device),
+            'ce_loss': MeanScalarMetric().to(device),
+            'contrastive_loss': MeanScalarMetric().to(device)
         }
 
         # Logging
@@ -278,8 +362,9 @@ class FaceContrastiveImageNet1kTrainer:
             # Run one epoch of training
             start_train_loop_time = time.time()
             resolution = self.resolution_schedule[epoch]
-            # Update the resolution of the train image decoder
-            self.train_image_decoder.output_size = (resolution, resolution)
+            # Update the resolution of the train image decoders
+            for ds_name in self.train_image_decoders.keys():
+                self.train_image_decoders[ds_name].output_size = (resolution, resolution)
             # Train loop
             self._train_loop(epoch)
             train_loop_time = time.time() - start_train_loop_time
@@ -312,6 +397,8 @@ class FaceContrastiveImageNet1kTrainer:
                 'val_top_1': stats['top_1'],
                 'val_top_5': stats['top_5'],
                 'val_loss': stats['loss'],
+                'val_ce_loss': stats['ce_loss'],
+                'val_contrastive_loss': stats['contrastive_loss'],
                 'val_loop_time': val_time
             }, **extra_metrics))
         return stats
@@ -321,24 +408,55 @@ class FaceContrastiveImageNet1kTrainer:
         model.train()
 
         lr_start, lr_end = self.lr_schedule[epoch], self.lr_schedule[epoch + 1]
-        iters = len(self.train_loader)
+        iters = len(self.train_loaders['imagenet1k'])
+        # Interpolate the learning rate
         lrs = np.interp(np.arange(iters), [0, iters], [lr_start, lr_end])
 
-        iterator = tqdm(self.train_loader)
-        for ix, (images, target) in enumerate(iterator):
+        # Convert dataloaders for contrastive loss to cyclic iterators to compensate for
+        # large number of samples in imagenet
+        # 1st positive dataset
+        dataloader_pos1 = iterator_utils.convert_to_cyclic(
+            self.train_loaders['celebahq']
+        )
+        # 2nd positive dataset
+        dataloader_pos2 = iterator_utils.convert_to_cyclic(
+            self.train_loaders['afhqv2']
+        )
+        # Negative dataset
+        dataloader_neg = iterator_utils.convert_to_cyclic(
+            self.train_loaders['lhq']
+        )
+
+        imagenet1k_iterator = tqdm(self.train_loaders['imagenet1k'], desc='Training loop')
+        for ix, (imagenet1k_images, imagenet1k_target) in enumerate(imagenet1k_iterator):
             self.global_step += 1
             ### Training start
             for param_group in self.optimizer.param_groups:
                 param_group['lr'] = lrs[ix]
+            # Get images for contrastive loss
+            images_pos1, _ = next(dataloader_pos1)
+            images_pos2, _ = next(dataloader_pos2)
+            images_neg, _ = next(dataloader_neg)
 
             self.optimizer.zero_grad(set_to_none=True)
             with autocast(self.device):
-                output = self.model(images)
-                loss_train = self.train_loss(output, target)
+                # Cross Entropy loss
+                fc_output, _ = self.model(imagenet1k_images)
+                ce_loss = self.train_ce_loss(fc_output, imagenet1k_target)
+                # Contrastive loss
+                _, embed_pos1 = self.model(images_pos1)
+                _, embed_pos2 = self.model(images_pos2)
+                _, embed_neg = self.model(images_neg)
+                contrastive_loss = self.train_contrastive_loss(
+                    embed_pos1, embed_pos2, embed_neg
+                )
+                loss_train = ce_loss + self.args.training.loss_weight * contrastive_loss
             wandb.log(
                 {
                     "global_step": self.global_step,
                     "train_loss": loss_train,
+                    "train_ce_loss": ce_loss,
+                    "train_contrastive_loss": contrastive_loss,
                     "learning_rate": lrs[ix],
                     "epoch": epoch
                 }
@@ -351,17 +469,56 @@ class FaceContrastiveImageNet1kTrainer:
     def _val_loop(self):
         model = self.model
         model.eval()
+        # Convert dataloaders for contrastive loss to cyclic iterators to compensate for
+        # large number of samples in imagenet
+        # 1st positive dataset
+        dataloader_pos1 = iterator_utils.convert_to_cyclic(
+            self.val_loaders['celebahq']
+        )
+        # 2nd positive dataset
+        dataloader_pos2 = iterator_utils.convert_to_cyclic(
+            self.val_loaders['afhqv2']
+        )
+        # Negative dataset
+        dataloader_neg = iterator_utils.convert_to_cyclic(
+            self.val_loaders['lhq']
+        )
+        contrastive_iterator = tqdm(
+            zip([dataloader_pos1, dataloader_pos2, dataloader_neg]),
+            desc='Validation loop',
+            total=max(
+                len(dataloader_pos1), len(dataloader_pos2), len(dataloader_neg)
+            )
+        )
         with torch.no_grad():
             with autocast(self.device):
-                for images, target in tqdm(self.val_loader):
-                    output = self.model(images)
+                # Imagenet1k validation
+                for images, target in tqdm(self.val_loaders['imagenet1k']):
+                    fc_output, _ = self.model(images)
                     if self.lr_tta:
-                        output += self.model(torch.flip(images, dims=[3]))
+                        fc_output_tta, _ = self.model(torch.flip(images, dims=[3]))
+                        # Add the outputs
+                        fc_output += fc_output_tta
                     # Calculate accuracy
                     for k in ['top_1', 'top_5']:
-                        self.val_meters[k](output, target)
-                    # Calculate loss
-                    loss_val = self.val_loss(output, target)
+                        self.val_meters[k](fc_output, target)
+                    # Calculate cross-entropy loss
+                    ce_loss = self.val_ce_loss(fc_output, target)
+                    # Update loss meters
+                    self.val_meters['ce_loss'](ce_loss)
+                # Contrastive validation
+                for ((images_pos1, _), (images_pos2, _), (images_neg, _)) in contrastive_iterator:
+                    # Get the outputs
+                    _, projector_output_pos1 = self.model(images_pos1)
+                    _, projector_output_pos2 = self.model(images_pos2)
+                    _, projector_output_neg = self.model(images_neg)
+                    # Calculate contrastive loss
+                    contrastive_loss = self.val_contrastive_loss(
+                        projector_output_pos1, projector_output_pos2, projector_output_neg
+                    )
+                    loss_val = ce_loss + self.args.training.loss_weight * contrastive_loss
+                    # Update loss meters
+                    self.val_meters['contrastive_loss'](contrastive_loss)
                     self.val_meters['loss'](loss_val)
         # Compute stats over the entire validation set
         stats = {k: m.compute().item() for k, m in self.val_meters.items()}
