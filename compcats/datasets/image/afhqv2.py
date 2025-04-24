@@ -21,7 +21,7 @@ def get_train_loader(root, transform=None, batch_size=768, num_workers=12, ffcv=
     dataloader = None
     if isinstance(transform, str):
         transform = transform.lower()
-    if transform is None:
+    if transform is None or transform == 'contrastive':
         transform = get_contrastive_train_transforms(
             ffcv=ffcv, device=kwargs.get("device", "cuda:0")
         )
