@@ -11,6 +11,7 @@ from ffcv.fields.rgb_image import CenterCropRGBImageDecoder, RandomResizedCropRG
 from ffcv.fields.basics import IntDecoder
 
 from compcats import constants
+from ..transforms import ColorJitter, RandomChoice
 
 class SquarePad:
     """
@@ -228,6 +229,8 @@ def get_contrastive_train_transforms(ffcv=False, device='cuda:0'):
             ffcv_transforms.RandomBrightness(magnitude=0.5, p=0.05),
             ffcv_transforms.RandomContrast(magnitude=0.5, p=0.05),
             ffcv_transforms.RandomSaturation(magnitude=0.5, p=0.05),
+            RandomChoice(),
+            ColorJitter(),
             ffcv_transforms.ToTensor(),
             ffcv_transforms.ToDevice(torch.device(device), non_blocking=True),
             ffcv_transforms.ToTorchImage(),
