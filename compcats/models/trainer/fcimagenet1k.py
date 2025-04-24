@@ -489,9 +489,14 @@ class FaceContrastiveImageNet1kTrainer:
         dataloader_neg = iterator_utils.convert_to_cyclic(
             self.val_loaders['lhq']
         )
+        # Get the number of batches for contrastive loss
+        # Limit the number of batches since the dataloaders are cyclic
+        num_contrastive_batches = max(
+            len(dataloader) for dataloader in [dataloader_pos1, dataloader_pos2, dataloader_neg]
+        )
         contrastive_iterator = tqdm(
-            zip([dataloader_pos1, dataloader_pos2, dataloader_neg]),
-            desc='Validation loop',
+            zip(*[dataloader_pos1, dataloader_pos2, dataloader_neg]),
+            desc='Contrastive val',
             total=max(
                 len(dataloader_pos1), len(dataloader_pos2), len(dataloader_neg)
             )
@@ -499,7 +504,9 @@ class FaceContrastiveImageNet1kTrainer:
         with torch.no_grad():
             with autocast(self.device):
                 # Imagenet1k validation
-                for images, target in tqdm(self.val_loaders['imagenet1k']):
+                for images, target in tqdm(
+                    self.val_loaders['imagenet1k'], desc = 'Imagenet1k val'
+                ):
                     fc_output, _ = self.model(images)
                     if self.lr_tta:
                         fc_output_tta, _ = self.model(torch.flip(images, dims=[3]))
@@ -513,7 +520,10 @@ class FaceContrastiveImageNet1kTrainer:
                     # Update loss meters
                     self.val_meters['ce_loss'](ce_loss)
                 # Contrastive validation
-                for ((images_pos1, _), (images_pos2, _), (images_neg, _)) in contrastive_iterator:
+                for cidx, ((images_pos1, _), (images_pos2, _), (images_neg, _)) in \
+                        enumerate(contrastive_iterator):
+                    if cidx >= num_contrastive_batches:
+                        break
                     # Get the outputs
                     _, projector_output_pos1 = self.model(images_pos1)
                     _, projector_output_pos2 = self.model(images_pos2)

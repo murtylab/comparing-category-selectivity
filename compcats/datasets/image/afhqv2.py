@@ -73,10 +73,12 @@ def get_val_loader(root, transform=None, batch_size=768, num_workers=12, ffcv=Tr
     dataloader = None
     if isinstance(transform, str):
         transform = transform.lower()
+    drop_last = False
     if transform is None or transform == 'contrastive':
         transform = get_contrastive_val_transforms(
             ffcv=ffcv, device=kwargs.get("device", "cuda:0")
         )
+        drop_last = True
     elif transform == 'imagenet':
         transform = get_imagenet_val_transforms(
             ffcv=ffcv, device=kwargs.get("device", "cuda:0"), resolution=256
@@ -90,7 +92,7 @@ def get_val_loader(root, transform=None, batch_size=768, num_workers=12, ffcv=Tr
             batch_size=batch_size,
             num_workers=num_workers,
             order=OrderOption.SEQUENTIAL,
-            drop_last=False,
+            drop_last=drop_last,
             pipelines=transform,
             distributed=False
         )
