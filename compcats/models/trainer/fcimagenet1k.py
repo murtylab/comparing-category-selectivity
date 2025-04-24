@@ -433,7 +433,10 @@ class FaceContrastiveImageNet1kTrainer:
             self.train_loaders['lhq']
         )
 
-        imagenet1k_iterator = tqdm(self.train_loaders['imagenet1k'], desc='Training loop')
+        imagenet1k_iterator = tqdm(
+            self.train_loaders['imagenet1k'], desc='Training loop',
+            total=len(self.train_loaders['imagenet1k'])
+        )
         for ix, (imagenet1k_images, imagenet1k_target) in enumerate(imagenet1k_iterator):
             self.global_step += 1
             ### Training start

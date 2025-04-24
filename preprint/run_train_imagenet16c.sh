@@ -5,5 +5,11 @@ python train_imagenet16c.py \
 --data.output_dir=/om2/user/alishd/github/comparing-category-selectivity/preprint/trained_models \
 --seed.global_seed=42 \
 --seed.model_seed=42 \
---project.name=compcats_baseline_tmp \
---project.experiment=manipulation_imagenet16c \
+--project.name=compcats_category_collapse \
+--project.experiment=hparamopt_manipulation_imagenet16c \
+--resolution.resolution_schedule_type=ramp \
+--resolution.fixed_resolution=224 \
+--resolution.min_resolution=192 \
+--resolution.max_resolution=224 \
+--lr.lr=1.0 \
+--lr.lr_peak_epoch=5 \
