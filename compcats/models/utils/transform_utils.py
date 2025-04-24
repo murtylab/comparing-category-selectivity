@@ -229,11 +229,11 @@ def get_contrastive_train_transforms(ffcv=False, device='cuda:0'):
             ffcv_transforms.RandomBrightness(magnitude=0.5, p=0.05),
             ffcv_transforms.RandomContrast(magnitude=0.5, p=0.05),
             ffcv_transforms.RandomSaturation(magnitude=0.5, p=0.05),
-            RandomChoice(),
-            ColorJitter(),
             ffcv_transforms.ToTensor(),
             ffcv_transforms.ToDevice(torch.device(device), non_blocking=True),
             ffcv_transforms.ToTorchImage(),
+            # RandomChoice(),
+            # ColorJitter(),
             ffcv_transforms.NormalizeImage(
                 np.array(constants.IMAGENET_DEFAULT_MEAN) * 255,
                 np.array(constants.IMAGENET_DEFAULT_STD) * 255,
