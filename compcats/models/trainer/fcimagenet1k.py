@@ -72,8 +72,14 @@ class FaceContrastiveImageNet1kTrainer:
         # Decoder to control the resolution
         self.train_image_decoders = {k: v['decoder'] for k, v in train_loader_dict.items()}
         # Validation dataloader
+        val_data_paths = {
+            'imagenet1k': self.args.data.imagenet1k_val_data_path,
+            'celebahq': self.args.data.celebahq_val_data_path,
+            'afhqv2': self.args.data.afhqv2_val_data_path,
+            'lhq': self.args.data.lhq_val_data_path
+        }
         self.val_loaders = self._create_val_loader(
-            self.args.data.val_data_path, self.args.validation.resolution,
+            val_data_paths, self.args.validation.resolution,
             self.args.validation.batch_size, self.args.data.num_workers, self.args.data.device
         )
         # Setup model

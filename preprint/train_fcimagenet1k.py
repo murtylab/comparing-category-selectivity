@@ -11,7 +11,7 @@ from fastargs import get_current_config
 from fastargs import Param, Section
 from fastargs.validation import And, OneOf
 
-from compcats.models.trainer import imagenet1k
+from compcats.models.trainer import fcimagenet1k
 from compcats.models import architectures, pretrained as pretrained_module
 from compcats.utils import logging_utils
 
@@ -21,8 +21,8 @@ Section('seed', 'seed').params(
 )
 
 Section('data', 'data related stuff').params(
-    imagenet1k_train_path=Param(str, '.ffcv file to use for training', required=True),
-    imagenet1k_val_path=Param(str, '.ffcv file to use for validation', required=True),
+    imagenet1k_train_data_path=Param(str, '.ffcv file to use for training', required=True),
+    imagenet1k_val_data_path=Param(str, '.ffcv file to use for validation', required=True),
     celebahq_train_data_path=Param(str, '.ffcv file to use for training', required=True),
     celebahq_val_data_path=Param(str, '.ffcv file to use for validation', required=True),
     afhqv2_train_data_path=Param(str, '.ffcv file to use for training', required=True),
@@ -105,7 +105,7 @@ def main(fastargs_config):
         project = args.project.name,
         config = nested_args
     )
-    trainer = imagenet1k.get_trainer()(args)
+    trainer = fcimagenet1k.get_trainer()(args)
     trainer.run()
 
 if __name__ == "__main__":
