@@ -473,7 +473,13 @@ class FaceContrastiveImageNet1kTrainer:
             self.scaler.scale(loss_train).backward()
             self.scaler.step(self.optimizer)
             self.scaler.update()
-            ### Training end
+
+            # Clear the cache
+            del imagenet1k_images, imagenet1k_target
+            del images_pos1, images_pos2, images_neg
+            del embed_pos1, embed_pos2, embed_neg
+            torch.cuda.empty_cache()
+        ### Training end
 
     def _val_loop(self):
         model = self.model

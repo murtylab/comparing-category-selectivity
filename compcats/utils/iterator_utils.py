@@ -1,3 +1,4 @@
+import torch
 from collections.abc import Iterator
 from typing import Iterator as TypingIterator
 
@@ -26,6 +27,10 @@ class CyclicIterator(Iterator):
         return len(self.original_iterator)
 
     def _reset(self):
+        # Free up CUDA memory
+        del self.iterator
+        torch.cuda.empty_cache()
+        # Reset the iterator
         iterator = iter(self.original_iterator)
         return iterator
 
