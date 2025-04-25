@@ -7,6 +7,7 @@ https://github.com/pytorch/vision/blob/main/references/classification/train.py
 """
 from argparse import Namespace
 import time
+import gc
 from uuid import uuid4
 from pathlib import Path
 import json
@@ -16,6 +17,10 @@ import numpy as np
 import torchmetrics
 import torch
 from torch.amp import autocast, GradScaler
+torch.backends.cudnn.benchmark = True
+torch.autograd.profiler.emit_nvtx(False)
+torch.autograd.profiler.profile(False)
+
 
 from .. import architectures
 from .. import pretrained as pretrained_module
@@ -479,6 +484,11 @@ class FaceContrastiveImageNet1kTrainer:
             del images_pos1, images_pos2, images_neg
             del embed_pos1, embed_pos2, embed_neg
             torch.cuda.empty_cache()
+            gc.collect()
+        # Delete iterators
+        del dataloader_pos1, dataloader_pos2, dataloader_neg, imagenet1k_iterator
+        torch.cuda.empty_cache()
+        gc.collect()
         ### Training end
 
     def _val_loop(self):
@@ -528,6 +538,10 @@ class FaceContrastiveImageNet1kTrainer:
                     ce_loss = self.val_ce_loss(fc_output, target)
                     # Update loss meters
                     self.val_meters['ce_loss'](ce_loss)
+                    # Delete images and target
+                    del images, target, fc_output, fc_output_tta
+                    torch.cuda.empty_cache()
+                    gc.collect()
                 # Contrastive validation
                 for cidx, ((images_pos1, _), (images_pos2, _), (images_neg, _)) in \
                         enumerate(contrastive_iterator):
@@ -545,10 +559,19 @@ class FaceContrastiveImageNet1kTrainer:
                     # Update loss meters
                     self.val_meters['contrastive_loss'](contrastive_loss)
                     self.val_meters['loss'](loss_val)
+                    # Delete images and target
+                    del images_pos1, images_pos2, images_neg
+                    del projector_output_pos1, projector_output_pos2, projector_output_neg
+                    torch.cuda.empty_cache()
+                    gc.collect()
         # Compute stats over the entire validation set
         stats = {k: m.compute().item() for k, m in self.val_meters.items()}
         # Reset meters
         _ = [meter.reset() for meter in self.val_meters.values()]
+        # Delete iterators
+        del dataloader_pos1, dataloader_pos2, dataloader_neg
+        torch.cuda.empty_cache()
+        gc.collect()
         return stats
 
 # Utils
