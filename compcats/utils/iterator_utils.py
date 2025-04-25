@@ -27,9 +27,12 @@ class CyclicIterator(Iterator):
         return len(self.original_iterator)
 
     def _reset(self):
-        # Free up CUDA memory
-        del self.iterator
-        torch.cuda.empty_cache()
+        if hasattr(self, 'iterator'):
+            # If the iterator is already set, we need to free up CUDA memory
+            # before resetting it.
+            del self.iterator
+            # Free up CUDA cache
+            torch.cuda.empty_cache()
         # Reset the iterator
         iterator = iter(self.original_iterator)
         return iterator
