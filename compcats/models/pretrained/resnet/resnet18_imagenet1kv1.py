@@ -7,6 +7,7 @@ import torchvision
 
 from ...basemodel import BaseModel
 from ...utils import transform_utils, layer_utils, resnet_utils
+from ...architectures import resnet18
 
 def get_model(**kwargs):
     model = ResNet18ImageNet1kv1(**kwargs)
@@ -40,6 +41,8 @@ class ResNet18ImageNet1kv1(BaseModel):
             layer for layer in self.all_layer_names
             if layer not in self.irrelevant_layer_names
         ]
+        # Number of classes
+        self.num_classes = 1000
 
     def _load_model(self):
         """
@@ -55,5 +58,27 @@ class ResNet18ImageNet1kv1(BaseModel):
         """
         Replace the fully connected layer with a new one
         """
+        # Update the number of classes
+        self.num_classes = num_classes
         # Replace the last fully connected layer with a new one
         self.model.fc = nn.Linear(self.model.fc.in_features, num_classes)
+
+    def add_projector(self, projector):
+        """
+        Add a projector to the model
+        """
+        # Initialize the architecture with the projector
+        model_with_projector = resnet18.get_architecture(
+            num_classes=self.num_classes, projector=projector
+        )
+        # Not passing kwargs to the architecture, this may create issues
+        # Load the state dict of the current model into the new one
+        load_info = model_with_projector.model.load_state_dict(
+            self.model.state_dict(), strict=False
+        )
+        # Assert the missing keys are the ones we expect
+        assert all(
+            key.startswith('projector') for key in load_info.missing_keys
+        ), f"Unexpected missing keys: {load_info.missing_keys}"
+        # Update the model
+        self.model = model_with_projector
