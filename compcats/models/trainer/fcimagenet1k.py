@@ -285,10 +285,8 @@ class FaceContrastiveImageNet1kTrainer:
     ):
         scaler = GradScaler()
         if pretrained:
-            raise NotImplementedError(
-                "Projector for Pretrained models are not implemented yet"
-            )
             model = getattr(pretrained_module, pretrained_model).get_model()
+            model.add_projector(projector_dim)
         else:
             model = getattr(architectures, arch).get_architecture(
                 seed=model_seed, num_classes=num_classes, projector=projector_dim
