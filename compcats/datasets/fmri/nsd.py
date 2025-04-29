@@ -6,7 +6,7 @@ import torch
 from torch.utils.data import Dataset
 from torchvision import transforms
 
-from compcats.datasets.fmri.utils import nsd_ds_utils
+from .utils import nsd_ds_utils
 
 # Useful functions from utils
 def get_subset_stimuli(root_dir, subset=None):
@@ -41,7 +41,7 @@ def get_froi_mask(root_dir, froi, subject, tthreshold):
     return nsd_ds_utils.get_froi_mask(root_dir, froi, subject, tthreshold)
 
 # Dataset name
-def get_stumli_dataset_name(subset=None):
+def get_stimuli_dataset_name(subset=None):
     """
     Get dataset name
     Args:
@@ -66,7 +66,7 @@ class NSDStimuli(Dataset):
         self.subset = subset
         self.all_stimuli, self.nsdids = get_subset_stimuli(root_dir, self.subset)
         # Name of the dataset to store activations
-        self.name = get_stumli_dataset_name(subset)
+        self.name = get_stimuli_dataset_name(subset)
 
     def __len__(self):
         return len(self.all_stimuli)
