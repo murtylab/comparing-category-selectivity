@@ -384,7 +384,7 @@ def load_model(model_dir, epoch):
     assert os.path.isdir(model_dir), f"Model directory {model_dir} is not a directory"
     # epoch substring
     if epoch > 0:
-        epoch_substring = f'_{epoch}'
+        epoch_substring = f'_epoch{epoch}'
     elif epoch == -1:
         epoch_substring = '_final'
     # Find checkpoints available
