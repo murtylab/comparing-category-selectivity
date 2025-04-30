@@ -45,7 +45,7 @@ def get_dataset_activations(
     if dataset == 'nsd':
         subset = kwargs.get('subset', None)
         save_dir = f'{models_dir}/{model.name}/nsd'
-        dataset_name = nsd.get_stumli_dataset_name(subset=subset)
+        dataset_name = nsd.get_stimuli_dataset_name(subset=subset)
         # Check if dataset activations are already present
         dataset_activations_present, _ = model.check_dataset_activations_present(
             layers_list, dataset_name, save_dir
