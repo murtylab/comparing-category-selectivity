@@ -81,4 +81,4 @@ class ResNet18ImageNet1kv1(BaseModel):
             key.startswith('projector') for key in load_info.missing_keys
         ), f"Unexpected missing keys: {load_info.missing_keys}"
         # Update the model
-        self.model = model_with_projector
+        self.model = model_with_projector.model
