@@ -69,3 +69,6 @@ from .vit import vitb14_dinov2register
 # ViT-L/14
 from .vit import vitl14_openaiclip
 from .vit import vitl14_kosmos2
+
+# Misc
+from .efficientnet import efficientnet_mnasnet
