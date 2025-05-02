@@ -211,7 +211,7 @@ class FaceContrastiveImageNet1kTrainer:
         Create the training dataloader
         """
         batch_sizes = {
-            'imagenet1k': int(batch_size/2),
+            'imagenet1k': int(batch_size / 2),
             'celebahq': int(batch_size / 2 * self.mixing_ratios['celebahq']),
             'afhqv2': int(batch_size / 2 * self.mixing_ratios['afhqv2']),
             'lhq': int(batch_size / 2 * self.mixing_ratios['lhq'])
@@ -251,7 +251,7 @@ class FaceContrastiveImageNet1kTrainer:
         Create the validation dataloader
         """
         batch_sizes = {
-            'imagenet1k': int(batch_size/2),
+            'imagenet1k': int(batch_size / 2),
             'celebahq': int(batch_size / 2 * self.mixing_ratios['celebahq']),
             'afhqv2': int(batch_size / 2 * self.mixing_ratios['afhqv2']),
             'lhq': int(batch_size / 2 * self.mixing_ratios['lhq'])
