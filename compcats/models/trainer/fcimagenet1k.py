@@ -466,9 +466,9 @@ class FaceContrastiveImageNet1kTrainer:
             wandb.log(
                 {
                     "global_step": self.global_step,
-                    "train_loss": loss_train,
-                    "train_ce_loss": ce_loss,
-                    "train_contrastive_loss": contrastive_loss,
+                    "train_loss": loss_train.detach().item(),
+                    "train_ce_loss": ce_loss.detach().item(),
+                    "train_contrastive_loss": contrastive_loss.detach().item(),
                     "learning_rate": lrs[ix],
                     "epoch": epoch
                 }
