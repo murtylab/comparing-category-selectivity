@@ -456,9 +456,9 @@ class FaceContrastiveImageNet1kTrainer:
                 fc_output, _ = self.model(imagenet1k_images)
                 ce_loss = self.train_ce_loss(fc_output, imagenet1k_target)
                 # Contrastive loss
-                _, embed_pos1 = self.model(images_pos1)
-                _, embed_pos2 = self.model(images_pos2)
-                _, embed_neg = self.model(images_neg)
+                logits_pos1, embed_pos1 = self.model(images_pos1)
+                logits_pos2, embed_pos2 = self.model(images_pos2)
+                logits_neg, embed_neg = self.model(images_neg)
                 contrastive_loss = self.train_contrastive_loss(
                     embed_pos1, embed_pos2, embed_neg
                 )
@@ -480,6 +480,7 @@ class FaceContrastiveImageNet1kTrainer:
             # Clear the cache
             del imagenet1k_images, imagenet1k_target
             del images_pos1, images_pos2, images_neg
+            del logits_pos1, logits_pos2, logits_neg
             del embed_pos1, embed_pos2, embed_neg
             torch.cuda.empty_cache()
             gc.collect()
@@ -546,9 +547,9 @@ class FaceContrastiveImageNet1kTrainer:
                     if cidx >= num_contrastive_batches:
                         break
                     # Get the outputs
-                    _, projector_output_pos1 = self.model(images_pos1)
-                    _, projector_output_pos2 = self.model(images_pos2)
-                    _, projector_output_neg = self.model(images_neg)
+                    logits_pos1, projector_output_pos1 = self.model(images_pos1)
+                    logits_pos2, projector_output_pos2 = self.model(images_pos2)
+                    logits_neg, projector_output_neg = self.model(images_neg)
                     # Calculate contrastive loss
                     contrastive_loss = self.val_contrastive_loss(
                         projector_output_pos1, projector_output_pos2, projector_output_neg
@@ -560,6 +561,7 @@ class FaceContrastiveImageNet1kTrainer:
                     # Delete images and target
                     del images_pos1, images_pos2, images_neg
                     del projector_output_pos1, projector_output_pos2, projector_output_neg
+                    del logits_pos1, logits_pos2, logits_neg
                     torch.cuda.empty_cache()
                     gc.collect()
         # Compute stats over the entire validation set
