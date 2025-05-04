@@ -40,6 +40,13 @@ class CyclicIterator(Iterator):
         iterator = iter(self.original_iterator)
         return iterator
 
+    def reset(self):
+        """
+        Resets the iterator to the beginning.
+        """
+        self.iterator = self._reset()
+        self.buffer = None
+
     def __next__(self) -> any:
         self.buffer = next(self.iterator, None)
         if self.buffer is None:
