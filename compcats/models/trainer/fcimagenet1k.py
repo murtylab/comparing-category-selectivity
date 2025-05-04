@@ -570,6 +570,10 @@ class FaceContrastiveImageNet1kTrainer:
         stats = {k: m.compute().item() for k, m in self.val_meters.items()}
         # Reset meters
         _ = [meter.reset() for meter in self.val_meters.values()]
+        # Reset the dataloaders
+        dataloader_pos1.reset()
+        dataloader_pos2.reset()
+        dataloader_neg.reset()
         # Delete iterators
         del contrastive_iterator
         torch.cuda.empty_cache()
