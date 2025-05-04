@@ -491,7 +491,6 @@ class FaceContrastiveImageNet1kTrainer:
             del logits_pos1, logits_pos2, logits_neg
             del embed_pos1, embed_pos2, embed_neg
             torch.cuda.empty_cache()
-            gc.collect()
         # Delete iterators
         del imagenet1k_iterator
         torch.cuda.empty_cache()
@@ -521,34 +520,32 @@ class FaceContrastiveImageNet1kTrainer:
                 len(dataloader_pos1), len(dataloader_pos2), len(dataloader_neg)
             )
         )
-        with torch.no_grad():
-            with autocast(self.device):
-                # Imagenet1k validation
-                for images, target in tqdm(
-                    self.val_loaders['imagenet1k'], desc = 'Imagenet1k val'
-                ):
-                    fc_output, _ = self.model(images)
+        with autocast(self.device):
+            # Imagenet1k validation
+            for images, target in tqdm(self.val_loaders['imagenet1k'], desc = 'Imagenet1k val'):
+                with torch.no_grad():
+                    fc_output, projector_output1 = self.model(images)
                     if self.lr_tta:
-                        fc_output_tta, projector_output = self.model(torch.flip(images, dims=[3]))
+                        fc_output_tta, projector_output2 = self.model(torch.flip(images, dims=[3]))
                         # Add the outputs
                         fc_output += fc_output_tta
-                    # Calculate accuracy
-                    for k in ['top_1', 'top_5']:
-                        self.val_meters[k](fc_output, target)
                     # Calculate cross-entropy loss
                     ce_loss = self.val_ce_loss(fc_output, target)
                     # Update loss meters
                     self.val_meters['ce_loss'](ce_loss)
-                    # Delete images and target
-                    del images, target, fc_output, fc_output_tta, projector_output
-                    torch.cuda.empty_cache()
-                    gc.collect()
-                # Contrastive validation
-                for cidx, ((images_pos1, _), (images_pos2, _), (images_neg, _)) in \
-                        enumerate(contrastive_iterator):
-                    if cidx >= num_contrastive_batches:
-                        break
-                    # Get the outputs
+                # Calculate accuracy
+                for k in ['top_1', 'top_5']:
+                    self.val_meters[k](fc_output, target)
+                # Delete images and target
+                del images, target, fc_output, fc_output_tta
+                del projector_output1, projector_output2
+                torch.cuda.empty_cache()
+            # Contrastive validation
+            for cidx, ((images_pos1, _), (images_pos2, _), (images_neg, _)) in enumerate(contrastive_iterator):
+                if cidx >= num_contrastive_batches:
+                    break
+                # Get the outputs
+                with torch.no_grad():
                     logits_pos1, projector_output_pos1 = self.model(images_pos1)
                     logits_pos2, projector_output_pos2 = self.model(images_pos2)
                     logits_neg, projector_output_neg = self.model(images_neg)
@@ -560,12 +557,11 @@ class FaceContrastiveImageNet1kTrainer:
                     # Update loss meters
                     self.val_meters['contrastive_loss'](contrastive_loss)
                     self.val_meters['loss'](loss_val)
-                    # Delete images and target
-                    del images_pos1, images_pos2, images_neg
-                    del projector_output_pos1, projector_output_pos2, projector_output_neg
-                    del logits_pos1, logits_pos2, logits_neg
-                    torch.cuda.empty_cache()
-                    gc.collect()
+                # Delete images and target
+                del images_pos1, images_pos2, images_neg
+                del projector_output_pos1, projector_output_pos2, projector_output_neg
+                del logits_pos1, logits_pos2, logits_neg
+                torch.cuda.empty_cache()
         # Compute stats over the entire validation set
         stats = {k: m.compute().item() for k, m in self.val_meters.items()}
         # Reset meters
