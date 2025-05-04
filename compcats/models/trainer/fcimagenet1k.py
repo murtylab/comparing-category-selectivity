@@ -453,7 +453,7 @@ class FaceContrastiveImageNet1kTrainer:
             self.optimizer.zero_grad(set_to_none=True)
             with autocast(self.device):
                 # Cross Entropy loss
-                fc_output, _ = self.model(imagenet1k_images)
+                fc_output, embed_output = self.model(imagenet1k_images)
                 ce_loss = self.train_ce_loss(fc_output, imagenet1k_target)
                 # Contrastive loss
                 logits_pos1, embed_pos1 = self.model(images_pos1)
@@ -478,6 +478,8 @@ class FaceContrastiveImageNet1kTrainer:
             self.scaler.update()
 
             # Clear the cache
+            del fc_output, embed_output
+            del ce_loss, contrastive_loss, loss_train
             del imagenet1k_images, imagenet1k_target
             del images_pos1, images_pos2, images_neg
             del logits_pos1, logits_pos2, logits_neg
@@ -485,7 +487,7 @@ class FaceContrastiveImageNet1kTrainer:
             torch.cuda.empty_cache()
             gc.collect()
         # Delete iterators
-        del dataloader_pos1, dataloader_pos2, dataloader_neg, imagenet1k_iterator
+        del imagenet1k_iterator
         torch.cuda.empty_cache()
         gc.collect()
         ### Training end
@@ -527,7 +529,7 @@ class FaceContrastiveImageNet1kTrainer:
                 ):
                     fc_output, _ = self.model(images)
                     if self.lr_tta:
-                        fc_output_tta, _ = self.model(torch.flip(images, dims=[3]))
+                        fc_output_tta, projector_output = self.model(torch.flip(images, dims=[3]))
                         # Add the outputs
                         fc_output += fc_output_tta
                     # Calculate accuracy
@@ -538,7 +540,7 @@ class FaceContrastiveImageNet1kTrainer:
                     # Update loss meters
                     self.val_meters['ce_loss'](ce_loss)
                     # Delete images and target
-                    del images, target, fc_output, fc_output_tta
+                    del images, target, fc_output, fc_output_tta, projector_output
                     torch.cuda.empty_cache()
                     gc.collect()
                 # Contrastive validation
@@ -569,7 +571,7 @@ class FaceContrastiveImageNet1kTrainer:
         # Reset meters
         _ = [meter.reset() for meter in self.val_meters.values()]
         # Delete iterators
-        del dataloader_pos1, dataloader_pos2, dataloader_neg
+        del contrastive_iterator
         torch.cuda.empty_cache()
         gc.collect()
         return stats
