@@ -230,7 +230,7 @@ def get_nsddata_layersweep(nsd_dir, subjects, frois, tthreshold, subset):
     return subjects_data, splithalf_pearsonrs
 
 def layer_sweep(
-    model_uid, output_dir, nsd_dir, localizer_dir, model, layers, model_fmri_frois,
+    model_uid, epoch_identifier, output_dir, nsd_dir, localizer_dir, model, layers, model_fmri_frois,
     model_localizer, tthreshold, subjects
 ):
     """
@@ -239,7 +239,7 @@ def layer_sweep(
     """
     # Replace model name with uid for compatibility with library
     model.original_name = model.name
-    model.name = model_uid
+    model.name = f'{model_uid}_{epoch_identifier}'
     # Load already computed results
     csv_pth = f'{output_dir}/{model.name}/nsd485_pearsonr_layersweep.csv'
     if os.path.exists(csv_pth):
@@ -351,12 +351,12 @@ def layer_sweep(
     best_layers_info = None
     for (model_froi, fmri_froi) in model_fmri_frois:
         rows = results_df[
-            (results_df['model_name'] == model_uid) &
+            (results_df['model_name'] == model.name) &
             (results_df['model_froi'] == model_froi) &
             (results_df['fmri_froi'] == fmri_froi)
         ]
         if rows.empty:
-            raise ValueError(f'No rows found for {model_uid}, {model_froi}, {fmri_froi}')
+            raise ValueError(f'No rows found for {model.name}, {model_froi}, {fmri_froi}')
         key = (model_froi, fmri_froi)
         if rows['normed_pearsonr_median'].isnull().all():
             tmp_row = rows.iloc[0].copy()
@@ -439,9 +439,14 @@ def main(fastargs_config):
     }
     # Convert training params to Namespace to easy dot-access
     training_params = logging_utils.dict_to_namespace(training_params)
+    # Epoch substring
+    epoch_identifier = f'epoch{args.model.epoch}' if args.model.epoch > 0 else 'epochfinal'
+    log['epoch_identifier'] = epoch_identifier
     # Create log dir
+    model_identifier = f'{training_params.identifier.uid}_{epoch_identifier}'
+    log['model_identifier'] = model_identifier
     log_dir = str((
-        Path(args.data.output_dir) / training_params.identifier.uid
+        Path(args.data.output_dir) / model_identifier
     ).absolute())
     os.makedirs(log_dir, exist_ok=True)
     log['log_dir'] = log_dir
@@ -457,7 +462,7 @@ def main(fastargs_config):
         'subjects': [1, 2, 5, 7],
     }
     best_layers, best_layers_info = layer_sweep(
-        training_params.identifier.uid,
+        training_params.identifier.uid, epoch_identifier,
         args.data.output_dir, args.data.nsd_dir, args.data.localizer_dir,
         model, layersweep_info['layers'], layersweep_info['model_fmri_frois'],
         layersweep_info['model_localizer'], layersweep_info['tthreshold'],
