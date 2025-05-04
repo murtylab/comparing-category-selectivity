@@ -73,7 +73,13 @@ class FaceContrastiveImageNet1kTrainer:
             train_data_paths, self.args.training.batch_size,
             self.args.data.num_workers, self.args.data.device, self.args.data.in_memory
         )
-        self.train_loaders = {k: v['dataloader'] for k, v in train_loader_dict.items()}
+        self.train_loaders = {}
+        for k, v in train_loader_dict.items():
+            if k == 'imagenet1k':
+                self.train_loaders[k] = v['dataloader']
+            else:
+                # Convert the dataloader to a cyclic iterator
+                self.train_loaders[k] = iterator_utils.convert_to_cyclic(v['dataloader'])
         # Decoder to control the resolution
         self.train_image_decoders = {k: v['decoder'] for k, v in train_loader_dict.items()}
         # Validation dataloader
@@ -87,6 +93,12 @@ class FaceContrastiveImageNet1kTrainer:
             val_data_paths, self.args.validation.resolution,
             self.args.validation.batch_size, self.args.data.num_workers, self.args.data.device
         )
+        for k, v in self.val_loaders.items():
+            if k == 'imagenet1k':
+                self.val_loaders[k] = v
+            else:
+                # Convert the dataloader to a cyclic iterator
+                self.val_loaders[k] = iterator_utils.convert_to_cyclic(v)
         # Setup model
         self.num_classes = 1000
         self.args.identifier.num_classes = self.num_classes
@@ -424,17 +436,11 @@ class FaceContrastiveImageNet1kTrainer:
         # Convert dataloaders for contrastive loss to cyclic iterators to compensate for
         # large number of samples in imagenet
         # 1st positive dataset
-        dataloader_pos1 = iterator_utils.convert_to_cyclic(
-            self.train_loaders['celebahq']
-        )
+        dataloader_pos1 = self.train_loaders['celebahq']
         # 2nd positive dataset
-        dataloader_pos2 = iterator_utils.convert_to_cyclic(
-            self.train_loaders['afhqv2']
-        )
+        dataloader_pos2 = self.train_loaders['afhqv2']
         # Negative dataset
-        dataloader_neg = iterator_utils.convert_to_cyclic(
-            self.train_loaders['lhq']
-        )
+        dataloader_neg = self.train_loaders['lhq']
 
         imagenet1k_iterator = tqdm(
             self.train_loaders['imagenet1k'], desc='Training loop',
@@ -498,17 +504,11 @@ class FaceContrastiveImageNet1kTrainer:
         # Convert dataloaders for contrastive loss to cyclic iterators to compensate for
         # large number of samples in imagenet
         # 1st positive dataset
-        dataloader_pos1 = iterator_utils.convert_to_cyclic(
-            self.val_loaders['celebahq']
-        )
+        dataloader_pos1 = self.val_loaders['celebahq']
         # 2nd positive dataset
-        dataloader_pos2 = iterator_utils.convert_to_cyclic(
-            self.val_loaders['afhqv2']
-        )
+        dataloader_pos2 = self.val_loaders['afhqv2']
         # Negative dataset
-        dataloader_neg = iterator_utils.convert_to_cyclic(
-            self.val_loaders['lhq']
-        )
+        dataloader_neg = self.val_loaders['lhq']
         # Get the number of batches for contrastive loss
         # Limit the number of batches since the dataloaders are cyclic
         num_contrastive_batches = max(
