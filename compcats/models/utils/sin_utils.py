@@ -21,8 +21,12 @@ def load_model(model_name):
     if "resnet50" in model_name:
         # print("Using the ResNet50 architecture.")
         model = torchvision.models.resnet50(weights=None)
-        model = torch.nn.DataParallel(model).cuda()
-        checkpoint = model_zoo.load_url(model_urls[model_name])
+        model = torch.nn.DataParallel(model)
+        if torch.cuda.is_available():
+            model.cuda()
+            checkpoint = model_zoo.load_url(model_urls[model_name])
+        else:
+            checkpoint = model_zoo.load_url(model_urls[model_name], map_location=torch.device('cpu'))
     elif "vgg16" in model_name:
         # print("Using the VGG-16 architecture.")
        
@@ -33,8 +37,11 @@ def load_model(model_name):
 
         model = torchvision.models.vgg16(weights=None)
         model.features = torch.nn.DataParallel(model.features)
-        model.cuda()
-        checkpoint = torch.load(filepath)
+        if torch.cuda.is_available():
+            model.cuda()
+            checkpoint = torch.load(filepath)
+        else:
+            checkpoint = torch.load(filepath, map_location='cpu')
 
 
     elif "alexnet" in model_name:
@@ -47,8 +54,11 @@ def load_model(model_name):
         
         model = torchvision.models.alexnet(weights=None)
         model.features = torch.nn.DataParallel(model.features)
-        model.cuda()
-        checkpoint = torch.load(filepath)
+        if torch.cuda.is_available():
+            model.cuda()
+            checkpoint = torch.load(filepath)
+        else:
+            checkpoint = torch.load(filepath, map_location='cpu')
     else:
         raise ValueError("unknown model architecture.")
 

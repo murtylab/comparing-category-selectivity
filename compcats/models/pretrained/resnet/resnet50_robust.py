@@ -84,7 +84,10 @@ def _model(arch, model_fn, pretrained, progress, use_data_parallel, **kwargs):
     model = model_fn(weights=None)
 
     if pretrained:
-        checkpoint = load_state_dict_from_url(model_urls[arch], progress=progress)
+        if not torch.cuda.is_available():
+            checkpoint = load_state_dict_from_url(model_urls[arch], progress=progress, map_location='cpu')
+        else:
+            checkpoint = load_state_dict_from_url(model_urls[arch], progress=progress)
         sd = {k[len('module.model.'):]:v for k,v in checkpoint['model'].items()\
               if k[:len('module.model.')] == 'module.model.'}  # Consider only the model and not normalizers or attacker
         model.load_state_dict(sd)

@@ -56,7 +56,11 @@ class ResNet50FaceObfuscation(BaseModel):
         Load ResNet50
         """
         self.checkpoints_dir = hf_hub_download(repo_id="kaiyuy/imagenet-blur-pretrained-models", filename="resnet50_blurred_ILSVRC.pth")
-        checkpoint = torch.load(self.checkpoints_dir)
+        if not torch.cuda.is_available():
+            # If no GPU, load the model on CPU
+            checkpoint = torch.load(self.checkpoints_dir, map_location='cpu')
+        else:
+            checkpoint = torch.load(self.checkpoints_dir)
         state_dict = OrderedDict({k.replace('module.', ''): v for k, v in checkpoint['state_dict'].items()})
         model = torchvision.models.resnet50(weights=None)
         model.load_state_dict(state_dict)

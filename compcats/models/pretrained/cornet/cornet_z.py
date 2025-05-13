@@ -47,7 +47,11 @@ class CORNetZ(BaseModel):
         # Download weights
         filename = 'cornet_z.pth'
         weights_path = download_utils.download_weights(self.url, filename)
-        weights = torch.load(weights_path, weights_only=False)
+        if not torch.cuda.is_available():
+            # If no GPU, load the model on CPU
+            weights = torch.load(weights_path, weights_only=False, map_location='cpu')
+        else:
+            weights = torch.load(weights_path, weights_only=False)
         weights = weights['state_dict']
         # Fix Keys
         fixed_weights = {k.replace("module.", ""): v for k, v in weights.items()}

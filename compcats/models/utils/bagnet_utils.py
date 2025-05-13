@@ -145,7 +145,10 @@ def bagnet33(pretrained=False, strides=[2, 2, 2, 1], **kwargs):
     """
     model = BagNet(Bottleneck, [3, 4, 6, 3], strides=strides, kernel3=[1,1,1,1], **kwargs)
     if pretrained:
-        model.load_state_dict(model_zoo.load_url(model_urls['bagnet33']))
+        if torch.cuda.is_available():
+            model.load_state_dict(model_zoo.load_url(model_urls['bagnet33']))
+        else:
+            model.load_state_dict(model_zoo.load_url(model_urls['bagnet33'], map_location='cpu'))
     return model
 
 def bagnet17(pretrained=False, strides=[2, 2, 2, 1], **kwargs):
@@ -156,7 +159,10 @@ def bagnet17(pretrained=False, strides=[2, 2, 2, 1], **kwargs):
     """
     model = BagNet(Bottleneck, [3, 4, 6, 3], strides=strides, kernel3=[1,1,1,0], **kwargs)
     if pretrained:
-        model.load_state_dict(model_zoo.load_url(model_urls['bagnet17']))
+        if torch.cuda.is_available():
+            model.load_state_dict(model_zoo.load_url(model_urls['bagnet17']))
+        else:
+            model.load_state_dict(model_zoo.load_url(model_urls['bagnet17'], map_location='cpu'))
     return model
 
 def bagnet9(pretrained=False, strides=[2, 2, 2, 1], **kwargs):
@@ -167,5 +173,8 @@ def bagnet9(pretrained=False, strides=[2, 2, 2, 1], **kwargs):
     """
     model = BagNet(Bottleneck, [3, 4, 6, 3], strides=strides, kernel3=[1,1,0,0], **kwargs)
     if pretrained:
-        model.load_state_dict(model_zoo.load_url(model_urls['bagnet9']))
+        if torch.cuda.is_available():
+            model.load_state_dict(model_zoo.load_url(model_urls['bagnet9']))
+        else:
+            model.load_state_dict(model_zoo.load_url(model_urls['bagnet9'], map_location='cpu'))
     return model

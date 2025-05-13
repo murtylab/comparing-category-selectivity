@@ -66,7 +66,11 @@ class ResNet18TDANNSimCLR(BaseModel):
             file_header = urlretrieve(self.url, filename=f'{model_name}.torch')
             file_header = file_header[0]
         # Load the weights
-        checkpoint = torch.load(file_header, weights_only=False)
+        if not torch.cuda.is_available():
+            # If no GPU, load the model on CPU
+            checkpoint = torch.load(file_header, weights_only=False, map_location='cpu')
+        else:
+            checkpoint = torch.load(file_header, weights_only=False)
         state_dict = checkpoint['classy_state_dict']['base_model']['model']['trunk']
         model = tdann_utils.EshedNet()
         model.load_state_dict(state_dict, strict=False)

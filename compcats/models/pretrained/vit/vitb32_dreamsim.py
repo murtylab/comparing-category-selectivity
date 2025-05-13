@@ -4,6 +4,7 @@ https://github.com/ssundaram21/dreamsim
 """
 import dreamsim
 from torch import nn
+import torch
 
 from ...basemodel import BaseModel
 from ...utils import transform_utils, layer_utils
@@ -52,9 +53,15 @@ class ViTB32DreamSim(BaseModel):
         if self.dreamsim_type != self.DEFAULT_TYPE:
             raise ValueError(f'DreamSim type {self.dreamsim_type} not yet implemented!')
         # Get model from hugingface hub
-        model, _ = dreamsim.dreamsim(
-            pretrained=True, dreamsim_type=self.dreamsim_type
-        )
+        if not torch.cuda.is_available():
+            # If no GPU, load the model on CPU
+            model, _ = dreamsim.dreamsim(
+                pretrained=True, dreamsim_type=self.dreamsim_type, device='cpu'
+            )
+        else:
+            model, _ = dreamsim.dreamsim(
+                pretrained=True, dreamsim_type=self.dreamsim_type
+            )
         model = model.base_model.model.extractor_list[0].model # Extract model from DreamSim
         self.transforms = transform_utils.get_clip_transforms()
         model_name = 'vitb32dreamsimopenclip'
