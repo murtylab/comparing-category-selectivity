@@ -3,12 +3,14 @@
 **/preprint/wandb/*
 **/preprint/results/*
 **/preprint/logs/*
+**/preprint/dev/*
 **/generate_data/*
 **/misc/*
 
 # Ignore torch files
 *.pt
 *.pth
+*.pth.tar
 *.torch
 
 # Ignore figures
