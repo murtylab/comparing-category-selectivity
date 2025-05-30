@@ -33,6 +33,7 @@ from .resnet import resnet50_sinandin
 from .resnet import resnet50_sinthenin
 from .resnet import resnet50_ecoset
 from .resnet import resnet50_cessl
+from .resnet import resnet50_blur
 
 # ResNet-101s
 from .resnet import resnet101_imagenet1kv1
@@ -50,6 +51,9 @@ from .bagnet import bagnet33
 # CORNets
 from .cornet import cornet_s
 from .cornet import cornet_z
+
+# ConvNeXts
+from .convnext import convnext_imagenet1kv1
 
 # ViTs
 # ViT-B/32
