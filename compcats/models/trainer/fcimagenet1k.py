@@ -593,3 +593,33 @@ class MeanScalarMetric(torchmetrics.Metric):
 
     def compute(self):
         return self.sum.float() / self.count
+
+def check_resolution_ramp_schedule(min_res, max_res, start_ramp, end_ramp, epochs):
+    """
+    Create the resolution schedule if variable resolution is used
+    """
+    # https://github.com/libffcv/ffcv-imagenet/blob/main/train_imagenet.py#L173
+    assert min_res <= max_res, "min_res should be less than max_res"
+    assert start_ramp < end_ramp, "start_ramp should be less than end_ramp"
+    assert start_ramp < epochs, "start_ramp should be less than epochs"
+    assert end_ramp <= epochs, "end_ramp should be less than or equal to epochs"
+
+    # While ramping up, linearly interpolate to the nearest multiple of 32
+    ramping_resolutions = []
+    for epoch_ in range(start_ramp, end_ramp):
+        # Interpolate the resolution to the nearest multiple of 32
+        epoch_ramping_resolution_interp = np.interp(
+            [epoch_], [start_ramp, end_ramp], [min_res, max_res]
+        )
+        epoch_ramping_resolution = int(np.round(epoch_ramping_resolution_interp[0] / 32)) * 32
+        # Append the ramping resolution
+        ramping_resolutions.append(epoch_ramping_resolution)
+
+    epoch_resolutions = [min_res] * start_ramp + \
+        ramping_resolutions + \
+        [max_res] * (epochs + 1 - end_ramp)
+
+    # Add an extra element at the start for first validation epoch
+    epoch_resolutions = [min_res] + epoch_resolutions
+
+    print(np.unique(epoch_resolutions, return_counts=True))
