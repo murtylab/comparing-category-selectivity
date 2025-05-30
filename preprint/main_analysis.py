@@ -463,6 +463,7 @@ def run_analysis_localizationvalidation():
     # froi_localizer = 'kanwishergrayscale'
     print('Validating localization for localizer: ', froi_localizer)
     validation_localizer = 'konkle'
+    # validation_localizer = 'kanwisher'
     frois_models_layers = {
         model_froi: get_froi_models_layers(model_froi, fmri_froi) \
             for (model_froi, fmri_froi) in model_fmri_frois
@@ -471,7 +472,7 @@ def run_analysis_localizationvalidation():
     # Storing results
     localization_validation_csv_path = '.'.join(
         LOCALIZATION_VALIDATION_CSV_PATH.split('.')[:-1]
-    ) + f'_{froi_localizer}.csv'
+    ) + f'_{froi_localizer}' + f'_val_{validation_localizer}.csv'
     if os.path.exists(localization_validation_csv_path):
         localization_validation_csv = pd.read_csv(localization_validation_csv_path)
         localization_validation_csv_list = localization_validation_csv.to_dict('records')
