@@ -120,6 +120,10 @@ def get_subject_stimuli(root_dir, subject, nowords, shared_only):
         stimuli = np.delete(stimuli, delete_idxs, axis=0)
     # Convert to torch tensor
     stimuli = torch.from_numpy(stimuli)
+    # Convert to square images if no words
+    if nowords:
+        # Make the stimuli square
+        stimuli = stimuli[:, :, 323:1037, :]
     # Save stimuli
     stimuli_path = f'{processed_stimuli_dir}/{processed_stimuli_file_name}'
     # Save the stimuli
@@ -169,7 +173,9 @@ def get_subject_betas(root_dir, subject, nowords, shared_only):
         # Get the trial ids for the current stimulus
         trial_ids = stim_row['trials']
         # Convert to list
-        trial_ids = ast.literal_eval(trial_ids)
+        if isinstance(trial_ids, str):
+            # If trial_ids is a string, convert it to a list
+            trial_ids = ast.literal_eval(trial_ids)
         # Get the number of repetitions
         num_reps = stim_row['num_repetitions']
         # Make a tensor to store the betas for this stimuli
@@ -238,7 +244,7 @@ class NSDSyntheticStimuli(Dataset):
             self.subject, nowords=self.nowords, shared_only=self.shared_only
         )
         # Check if words are to be used
-        if self.nowords:
+        # if self.nowords:
             # # Remove words from stimuli
             # words_idxs = self.stim_info[self.stim_info['Image class'] == 'Single words'].index
             # # Remove words from stimuli info
@@ -247,7 +253,7 @@ class NSDSyntheticStimuli(Dataset):
             # # Remove words from stimuli
             # self.all_stimuli = np.delete(self.all_stimuli, words_idxs, axis=0)
             # Make the stimuli square
-            self.all_stimuli = self.all_stimuli[:, :, 323:1037, :] # (N, H, W, C)
+            # self.all_stimuli = self.all_stimuli[:, :, 323:1037, :] # (N, H, W, C)
 
     def __len__(self):
         return len(self.all_stimuli)
