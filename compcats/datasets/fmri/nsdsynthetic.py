@@ -13,7 +13,7 @@ from torchvision import transforms
 
 from .utils import nsd_ds_utils
 
-def get_stimuli_info(root_dir, words):
+def get_stimuli_info(root_dir, nowords, shared_only):
     """
     Function to get the stimuli info, and generate if needed
     Trials and stimuli info were same across subjects
@@ -23,10 +23,14 @@ def get_stimuli_info(root_dir, words):
     """
     processed_stimuli_dir = f'{root_dir}/nsdsynthetic_processed'
     os.makedirs(processed_stimuli_dir, exist_ok=True)
-    if words:
-        processed_stim_info_file_name = 'allstimuli_info.csv'
-    else:
-        processed_stim_info_file_name = 'nowordsstimuli_info.csv'
+    processed_stim_info_file_name = ''
+    if shared_only:
+        processed_stim_info_file_name += 'shared'
+    if nowords:
+        processed_stim_info_file_name += 'nowords'
+    if not nowords and not shared_only:
+        processed_stim_info_file_name = 'all'
+    processed_stim_info_file_name += 'stimuli_info.csv'
     if os.path.exists(f'{processed_stimuli_dir}/{processed_stim_info_file_name}'):
         return pd.read_csv(f'{processed_stimuli_dir}/{processed_stim_info_file_name}')
     stim_info_csv_path = f'{root_dir}/nsddata/experiments/nsdsynthetic/nsdsyntheticimageinformation.csv'
@@ -50,7 +54,13 @@ def get_stimuli_info(root_dir, words):
     # Add the trial ids and number of repetitions to the dataframe
     stim_info['trials'] = stim_trial_ids
     stim_info['num_repetitions'] = stim_num_reps
-    if not words:
+    if shared_only:
+        # Remove subject specific stimuli
+        subjectspecific_idxs = stim_info[stim_info['Image class'] == 'Chromatic noise'].index
+        # Remove subject specific from stimuli info
+        stim_info = stim_info.drop(subjectspecific_idxs)
+        stim_info = stim_info.reset_index(drop=True)
+    if nowords:
         # Remove words from stimuli
         words_idxs = stim_info[stim_info['Image class'] == 'Single words'].index
         # Remove words from stimuli info
@@ -60,25 +70,29 @@ def get_stimuli_info(root_dir, words):
     stim_info.to_csv(f'{processed_stimuli_dir}/{processed_stim_info_file_name}')
     return stim_info
 
-def get_subject_stimuli(root_dir, subject, words):
+def get_subject_stimuli(root_dir, subject, nowords, shared_only):
     """
     Get subset of stimuli
     Args:
         root_dir(str): Root directory
         subject(int): Subject
-        words(bool): Whether to use words or not
+        nowords(bool): Whether to use words or not
     """
     # Error handling
     assert subject in range(1, 9), 'Invalid subject'
     # Stimuli info
-    stim_info = get_stimuli_info(root_dir, words)
+    stim_info = get_stimuli_info(root_dir, nowords, shared_only)
     # Processed stimuli directory
     processed_stimuli_dir = f'{root_dir}/nsdsynthetic_processed/subj0{subject}'
     os.makedirs(processed_stimuli_dir, exist_ok=True)
-    if words:
-        processed_stimuli_file_name = f'subj0{subject}_allstimuli.pt'
-    else:
-        processed_stimuli_file_name = f'subj0{subject}_nowordsstimuli.pt'
+    processed_stimuli_file_name = f'subj0{subject}_'
+    if shared_only:
+        processed_stimuli_file_name += 'shared'
+    if nowords:
+        processed_stimuli_file_name += 'nowords'
+    if not shared_only and not nowords:
+        processed_stimuli_file_name += 'all'
+    processed_stimuli_file_name += 'stimuli.pt'
     if os.path.exists(f'{processed_stimuli_dir}/{processed_stimuli_file_name}'):
         return torch.load(f'{processed_stimuli_dir}/{processed_stimuli_file_name}'), stim_info
     # Path to stimuli
@@ -87,12 +101,15 @@ def get_subject_stimuli(root_dir, subject, words):
     # Load stimuli
     with h5py.File(common_stimuli_path, 'r') as chdf5:
         common_stimuli = chdf5['imgBrick'][:]
-    with h5py.File(subject_stimuli_path, 'r') as shdf5:
-        subject_stimuli = shdf5['imgBrick'][:]
-    # Concatenate stimuli
-    stimuli = np.concatenate((common_stimuli, subject_stimuli), axis=0)
+    if not shared_only:
+        with h5py.File(subject_stimuli_path, 'r') as shdf5:
+            subject_stimuli = shdf5['imgBrick'][:]
+        # Concatenate stimuli
+        stimuli = np.concatenate((common_stimuli, subject_stimuli), axis=0)
+    else:
+        stimuli = common_stimuli
     # Check if words are to be used
-    if not words:
+    if nowords:
         # Get indexes to delete
         all_idxs = stim_info['Image number'].values
         # Convert to 0-indexed
@@ -109,7 +126,7 @@ def get_subject_stimuli(root_dir, subject, words):
     torch.save(stimuli, stimuli_path)
     return stimuli, stim_info
 
-def get_subject_betas(root_dir, subject, words):
+def get_subject_betas(root_dir, subject, nowords, shared_only):
     """
     Get subset of data
     Args:
@@ -118,10 +135,14 @@ def get_subject_betas(root_dir, subject, words):
     """
     processed_betas_dir = f'{root_dir}/nsdsynthetic_processed/subj0{subject}'
     os.makedirs(processed_betas_dir, exist_ok=True)
-    if words:
-        processed_betas_file_name = f'subj0{subject}_allstimuli_repmean_betas.pt'
-    else:
-        processed_betas_file_name = f'subj0{subject}_nowordsstimuli_repmean_betas.pt'
+    processed_betas_file_name = f'subj0{subject}_'
+    if shared_only:
+        processed_betas_file_name += 'shared'
+    if nowords:
+        processed_betas_file_name += 'nowords'
+    if not shared_only and not nowords:
+        processed_betas_file_name += 'all'
+    processed_betas_file_name += f'stimuli_repmean_betas.pt'
     if os.path.exists(f'{processed_betas_dir}/{processed_betas_file_name}'):
         return torch.load(f'{processed_betas_dir}/{processed_betas_file_name}')
     # Path to betas
@@ -138,7 +159,7 @@ def get_subject_betas(root_dir, subject, words):
         # Convert to torch tensor
         subject_betas_alltrials = torch.from_numpy(subject_betas_alltrials)
     # Take mean across repetitions
-    stim_info = get_stimuli_info(root_dir, words)
+    stim_info = get_stimuli_info(root_dir, nowords, shared_only)
     # Make a new tensor to store the betas
     betas = torch.zeros(
         (len(stim_info), subject_betas_alltrials.shape[1],
@@ -180,39 +201,44 @@ def get_froi_mask(root_dir, froi, subject, tthreshold):
     return nsd_ds_utils.get_froi_mask(root_dir, froi, subject, tthreshold)
 
 # Dataset name
-def get_stimuli_dataset_name(subject, words):
+def get_stimuli_dataset_name(subject, nowords, shared_only):
     """
     Get dataset name
     Args:
         subset(str): Subset of NSD dataset
     """
     dataset_name = 'nsdsynthetic'
-    if words:
-        dataset_name += 'all'
-    else:
+    if shared_only:
+        dataset_name += 'shared'
+    if nowords:
         dataset_name += 'nowords'
+    if not shared_only and not nowords:
+        dataset_name += 'all'
     return f'{dataset_name}subj0{subject}'
 
 # Stimuli
-class NSDStimuli(Dataset):
+class NSDSyntheticStimuli(Dataset):
     """
     Dataset for loading the stimuli in the NSD Synthetic dataset
     """
-    def __init__(self, root_dir, subject, transform, words=False):
+    def __init__(self, root_dir, subject, transform, nowords=False, shared_only=False):
         self.root_dir = root_dir # NSD base directory
         self.subject = subject # Subject number
-        self.words = words # Whether to use words or not
+        self.nowords = nowords # Whether to use words or not
+        self.shared_only = shared_only # Whether to use shared stimuli only
         # Set default transform
         if transform is None:
             transform = transforms.ToTensor()
         self.transform = transform # Transformations to be applied
         self.all_stimuli, self.stim_info = get_subject_stimuli(
-            self.root_dir, self.subject, self.words
+            self.root_dir, self.subject, self.nowords, self.shared_only
         ) # Get stimuli
         # Name of the dataset to store activations
-        self.name = get_stimuli_dataset_name(self.subject, words=self.words)
+        self.name = get_stimuli_dataset_name(
+            self.subject, nowords=self.nowords, shared_only=self.shared_only
+        )
         # Check if words are to be used
-        if not self.words:
+        if self.nowords:
             # # Remove words from stimuli
             # words_idxs = self.stim_info[self.stim_info['Image class'] == 'Single words'].index
             # # Remove words from stimuli info
@@ -232,15 +258,22 @@ class NSDStimuli(Dataset):
         image = self.transform(image)
         return image
 
-def convert_subset_to_words(subset):
+def get_subset_info(subset):
     """
     Convert subset arg to words
     """
-    assert subset in [None, 'all', 'nowords'], "Invalid subset, allowed: None/'all', 'nowords'"
-    words = True
-    if subset == 'nowords':
-        words = False
-    return words
+    subset = subset.lower() if isinstance(subset, str) else None
+    assert subset in [None, 'all', 'nowords', 'shared_nowords', 'shared'], \
+        "Invalid subset, allowed: None/'all', 'nowords'"
+    if subset is None:
+        subset = 'all'
+    nowords = False
+    shared_only = False
+    if 'shared' in subset:
+        shared_only = True
+    if 'nowords' in subset:
+        nowords = True
+    return nowords, shared_only
 
 def get_stimuli_dataset(root_dir, subject, transform=None, subset=None):
     """
@@ -249,8 +282,10 @@ def get_stimuli_dataset(root_dir, subject, transform=None, subset=None):
         root_dir(str): Root directory
         transform(torchvision.transforms): Image transformations
     """
-    words = convert_subset_to_words(subset)
-    dataset = NSDStimuli(root_dir, subject, transform=transform, words=words)
+    nowords, shared_only = get_subset_info(subset)
+    dataset = NSDSyntheticStimuli(
+        root_dir, subject, transform=transform, nowords=nowords, shared_only=shared_only
+    )
     return dataset
 
 def get_betas(root_dir, subject, froi=None, tthreshold=0, subset=None, voxels=False, **kwargs):
@@ -262,14 +297,14 @@ def get_betas(root_dir, subject, froi=None, tthreshold=0, subset=None, voxels=Fa
         froi(str): Path to froi mask
         tthreshold(float): Threshold for t-values
         subset(str): Subset of NSD Synthetic dataset
-            Options: None/'all', 'nowords'
+            Options: None/'all', 'nowords', 'shared_nowords', 'shared'
         voxels(bool): Return voxels or mean of voxels
     """
-    words = convert_subset_to_words(subset)
+    nowords, shared_only = get_subset_info(subset)
     # Get the betas
-    betas = get_subject_betas(root_dir, subject, words)
+    betas = get_subject_betas(root_dir, subject, nowords, shared_only)
     # Get stim info
-    stim_info = get_stimuli_info(root_dir, words)
+    stim_info = get_stimuli_info(root_dir, nowords, shared_only)
     # Check for repetition mean
     repetition_mean = kwargs.get('repetition_mean', True)
     assert repetition_mean is True, "Only repetition mean has been implemented for now"
