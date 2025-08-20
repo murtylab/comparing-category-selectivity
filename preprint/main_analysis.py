@@ -187,6 +187,22 @@ def get_froi_models_layers(model_froi, fmri_froi):
     # }
     return models_layers
 
+def get_best_median_worst_model_names():
+    """
+    Get best, median and worst model names for a given froi
+    Args:
+        froi (str): FMRI froi
+    Returns:
+        best_model_name (str): Best model name
+        median_model_name (str): Median model name
+        worst_model_name (str): Worst model name
+    """
+    return {
+        'best': 'vitb16siglip2res224',
+        'median': 'vitb16synclr',
+        'worst': 'alexnetipclref01'
+    }
+
 # Utils
 def get_localizer_dir(localizer_name):
     """
