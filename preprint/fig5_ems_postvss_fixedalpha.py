@@ -165,16 +165,22 @@ for froi in frois:
                     'train_subset': train_subset,
                     'test_subset': test_subset,
                     'seed': seed,
+                }
+                # Check if row is present
+                if misc_utils.check_row_present(row_params, results_csv_list):
+                    print(f'Skipping existing result for {row_params}')
+                    print()
+                    continue
+                results_dict = row_params.copy()
+
+                # Add splithalf results
+                results_dict.update({
                     'fmri_splithalf_pearsonr': splithalf_pearsonr,
                     'fmri_splithalf_rdmr': splithalf_rdmr,
                     'n_units_layer': n_units_layer,
                     'n_units_lesioned': n_units_lesioned,
                     'percent_units_lesioned': (n_units_lesioned / n_units_layer) * 100
-                }
-                # Check if row is present
-                if misc_utils.check_row_present(row_params, results_csv_list):
-                    continue
-                results_dict = row_params.copy()
+                })
 
                 print('\n')
                 print(f'FROI: {froi}, Model: {model_name}, Subject: {subject}, tthreshold: {model_tthreshold}, mapper: {mapper}')
