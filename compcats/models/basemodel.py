@@ -349,7 +349,18 @@ class BaseModel(torch.nn.Module):
 
         # Move activations to device
         for layer in layers_to_generate:
-            activations[layer] = activations[layer].to(device)
+            try:
+                activations[layer] = activations[layer].to(device)
+            except Exception as e:
+                if 'CUDA out of memory' in str(e):
+                    print(f"CUDA error when loading activations for layer {layer}. Keeping activations on CPU and returning.")
+                    device = 'cpu'
+                    # Ensure all activations are on CPU
+                    for l in activations.keys():
+                        activations[l] = activations[l].cpu()
+                    return activations
+                else:
+                    raise e
 
         # Return activations
         if isinstance(layers, str):

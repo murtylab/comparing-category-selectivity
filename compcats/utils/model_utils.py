@@ -55,7 +55,19 @@ def get_dataset_activations(
                 layers_list, dataset_name, save_dir
             )
             # Move activations to device
-            dataset_activations = {k: v.to(device) for k, v in dataset_activations.items()}
+            for k, v in dataset_activations.items():
+                try:
+                    v = v.to(device)
+                except Exception as e:
+                    if 'CUDA out of memory' in str(e):
+                        print(f"CUDA error when loading activations for layer {k}. Keeping activations on CPU and returning.")
+                        device = 'cpu'
+                        # Ensure all activations are on CPU
+                        for k, v in dataset_activations.items():
+                            v = v.cpu()
+                        return dataset_activations
+                    else:
+                        raise e
         else:
             nsd_dataset = nsd.get_stimuli_dataset(dataset_dir, model.transforms, subset=subset)
             dataset_activations = model.generate_dataset_activations(
