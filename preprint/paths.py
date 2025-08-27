@@ -19,7 +19,9 @@ IMAGENET_FFCV_VAL_DIR = '/om/user/alishd/datasets/imagenet/ffcv/val_500_0.50_90.
 
 # COCO
 COCO_TRAIN_ANNOTATIONS_PATH = '/om/user/alishd/datasets/COCO2017/annotations/instances_train2017.json'
+COCO_TRAIN_CAPTIONS_PATH = '/om/user/alishd/datasets/COCO2017/annotations/captions_train2017.json'
 COCO_VAL_ANNOTATIONS_PATH = '/om/user/alishd/datasets/COCO2017/annotations/instances_val2017.json'
+COCO_VAL_CAPTIONS_PATH = '/om/user/alishd/datasets/COCO2017/annotations/captions_val2017.json'
 
 # CelebA-HQ
 CELEBAHQ_FFCV_TRAIN_DIR = '/om/user/alishd/datasets/celebahq/ffcv/train_500_0.50_90.ffcv'
