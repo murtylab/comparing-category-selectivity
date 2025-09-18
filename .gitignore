@@ -15,6 +15,7 @@
 
 # Ignore figures
 *.pdf
+*.bmp
 
 # Ignore results
 **/*results_*.json
