@@ -323,6 +323,9 @@ class BaseModel(torch.nn.Module):
         with torch.no_grad():
             for batch in tqdm(dataloader):
                 # Send images to device
+                if isinstance(batch, (list, tuple)):
+                    # Ignore targets if present
+                    batch = batch[0]
                 batch = batch.to(device)
                 # Forward pass
                 outputs_batch_layers = self.get_activations(batch, layers_to_generate)
