@@ -24,6 +24,24 @@ def get_subject_cocoids(root_dir, subject):
     subject_cocoids = list(info_trials['cocoId'])
     return subject_cocoids
 
+def get_subject_nsdids(root_dir, subject):
+    # Estimate number of trials for a subject
+    betas_dir = f'{root_dir}/nsddata_betas/ppdata/subj0{subject}/func1pt8mm/betas_fithrf_GLMdenoise_RR/'
+    subject_nsessions = len(glob.glob(f'{betas_dir}/betas_session*.hdf5'))
+    subject_ntrials = subject_nsessions*750
+    # Get related stimuli coco ids
+    stim_info_csv_path = f'{root_dir}/nsddata/experiments/nsd/nsd_stim_info_merged.csv'
+    all_info_csv = pd.read_csv(stim_info_csv_path)
+    info = all_info_csv
+    info_trials = info[(info[f'subject{subject}_rep0']>0) & \
+                       (info[f'subject{subject}_rep0']<=subject_ntrials) & \
+                       (info[f'subject{subject}_rep1']>0) & \
+                       (info[f'subject{subject}_rep1']<=subject_ntrials) & \
+                       (info[f'subject{subject}_rep2']>0) & \
+                        (info[f'subject{subject}_rep2']<=subject_ntrials)]
+    subject_cocoids = list(info_trials['nsdId'])
+    return subject_cocoids
+
 def get_subset_nsdids(root_dir, subset):
     """
     Get nsdids of shared1000 and non-shared1000 stimuli
@@ -458,7 +476,10 @@ def threshold_froi_mask(root_dir, subject, froi, froi_mask, tthreshold):
             - froi_thresholded_tvals (numpy.ndarray): The corresponding t-values of the thresholded mask.
     """
     # Variables
-    face_areas = ['OFA', 'FFA_1', 'FFA_2', 'FFA', 'MTL_FACES', 'ATL_FACES']
+    face_areas = [
+        'OFA', 'FFA_1', 'FFA_2', 'FFA', 'MTL_FACES', 'ATL_FACES',
+        'RFFA', 'LFFA', 'ROFA', 'LOFA'
+        ]
     body_areas = ['EBA', 'FBA_1', 'FBA_2', 'FBA', 'MTL_BODIES']
     place_areas = ['OPA', 'PPA', 'RSC']
     word_areas = ['OVWFA', 'VWFA_1', 'VWFA_2', 'VWFA', 'MFS_WORDS', 'MTL_WORDS']
@@ -536,9 +557,13 @@ def get_froi_mask(root_dir, froi, subject, tthreshold=0):
         'ECC4+': {'prf-eccrois.nii.gz': [6]},
         # Higher-level regions
         'OFA': ('floc-faces.nii.gz', [1]),
+        'ROFA': ('rh.floc-faces.nii.gz', [1]),
+        'LOFA': ('lh.floc-faces.nii.gz', [1]),
         'FFA_1': ('floc-faces.nii.gz', [2]),
         'FFA_2': ('floc-faces.nii.gz', [3]),
         'FFA': ('floc-faces.nii.gz', [2, 3]),
+        'RFFA': ('rh.floc-faces.nii.gz', [2, 3]),
+        'LFFA': ('lh.floc-faces.nii.gz', [2, 3]),
         'MTL_FACES': ('floc-faces.nii.gz', [4]),
         'ATL_FACES': ('floc-faces.nii.gz', [5]),
         'EBA': ('floc-bodies.nii.gz', [1]),
@@ -560,6 +585,7 @@ def get_froi_mask(root_dir, froi, subject, tthreshold=0):
         mask_file_name = froi_info[froi][0]
         selected_areas_idxs = froi_info[froi][1]
     else:
+        import pdb; pdb.set_trace()
         raise NotImplementedError(f'{froi} mask not found in NSD dataset')
     # Load all areas in froi
     froi_all_areas = nib.load(f'{mask_dir}/{mask_file_name}').get_fdata()
