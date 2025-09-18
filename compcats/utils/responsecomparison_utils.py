@@ -2,6 +2,8 @@
 import torch
 import numpy as np
 from scipy.stats import spearmanr as scipy_spearmanr
+from sklearn.model_selection import KFold
+import ot # POT: Python Optimal Transport
 
 def pearsonr(vector1, vector2, return_pvalue=False):
     """
@@ -80,7 +82,8 @@ def spearmanr(vector1, vector2, return_pvalue=False):
 
         # Step 3: Compute Spearman's rank correlation
         n = vector1.size(0)
-        rho = 1 - (6 * torch.sum(d ** 2)) / (n * (n ** 2 - 1))
+        # rho = 1 - (6 * torch.sum(d ** 2)) / (n * (n ** 2 - 1))
+        rho = 1 - (6.0 * torch.sum(d.to(torch.float64) ** 2)) / (float(n) * (float(n)**2 - 1))
         rho = rho.item()
         assert -1 <= rho <= 1, f"Invalid Spearman correlation: {rho}"
 
@@ -88,3 +91,50 @@ def spearmanr(vector1, vector2, return_pvalue=False):
         del rank_x, rank_y, d
 
     return rho
+
+def util_cdist(X,Y):
+    norms_X = np.sum(X**2, axis=1)
+    norms_Y = np.sum(Y**2, axis=1)
+    cross_term = np.dot(X, Y.T)
+    dist_matrix = norms_X[:, np.newaxis] + norms_Y[np.newaxis, :] - 2 * cross_term
+    return dist_matrix  
+
+def softmatchingdistance(X, Y, itermax=400):
+    # https://github.com/anshksoni/NeuroAIMetrics/blob/main/utils/metrics.py#L111
+    if not torch.is_tensor(X):
+        X = X.cpu().numpy()
+    if not torch.is_tensor(Y):
+        Y = Y.cpu().numpy()
+    rem=[]
+    for i in range(X.shape[1]):
+        if np.all(X[:,i]==0):
+            rem.append(i)
+    X=np.delete(X, rem, axis=1)
+    rem=[]
+    for i in range(Y.shape[1]):
+        if np.all(Y[:,i]==0):
+            rem.append(i)
+    Y=np.delete(Y, rem, axis=1)
+            
+    score=[]   
+    kf = KFold(n_splits=5,  shuffle=True, random_state = 42)
+    for i, (train_idx, test_idx) in enumerate(kf.split(X)):
+        
+        nx = X[train_idx].shape[1]
+        ny = Y[train_idx].shape[1]
+        dist_matrix = util_cdist(X[train_idx].T, Y[train_idx].T) 
+        soft_assignments,log = ot.emd(
+            np.ones(nx) / nx,
+            np.ones(ny) / ny,
+            dist_matrix,
+            numItermax=100000*itermax,
+            log=True
+            
+        )
+        if log['warning'] != None:
+            print('Did not converge, increase itermax')
+            return np.nan
+        dist_matrix = util_cdist(X[test_idx].T, Y[test_idx].T)
+        score.append( np.sqrt(np.sum(soft_assignments * dist_matrix)) / len(test_idx))
+
+    return score
