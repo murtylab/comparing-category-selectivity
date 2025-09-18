@@ -1,6 +1,7 @@
 import torch
 
 from compcats.datasets.fmri import nsd, murty185
+from compcats.datasets.image import afhqv2, celebahq, ava
 from compcats.localizer import localizer
 from compcats.localizer import utils as localizer_utils
 
@@ -100,6 +101,36 @@ def get_dataset_activations(
             dataset_activations[layer] = {}
             for imgclass, imgclass_activation in imgclass_activations.items():
                 dataset_activations[layer][imgclass] = imgclass_activation[layer]
+    elif dataset == 'celebahq':
+        celebahq_dataset = celebahq.get_val_dataset(
+            dataset_dir, model.transforms
+        )
+        celebahq_dataset.name = 'celebahq'
+        save_dir = f'{models_dir}/{model.name}/{celebahq_dataset.name}'
+        dataset_activations = model.generate_dataset_activations(
+            layers_list, celebahq_dataset, save_dir, batch_size, device
+        )
+    elif dataset == 'afhqv2':
+        afhqv2_dataset = afhqv2.get_val_dataset(
+            dataset_dir, model.transforms
+        )
+        afhqv2_dataset.name = 'afhqv2'
+        save_dir = f'{models_dir}/{model.name}/{afhqv2_dataset.name}'
+        dataset_activations = model.generate_dataset_activations(
+            layers_list, afhqv2_dataset, save_dir, batch_size, device
+        )
+    elif dataset == 'ava':
+        landscape_only = kwargs.get('landscape_only', True)
+        vanishing_point_images = kwargs.get('vanishing_point_images', None)
+        ava_dataset = ava.get_stimuli_dataset(
+            dataset_dir, model.transforms,
+            landscape_only=landscape_only,
+            vanishing_point_images=vanishing_point_images
+        )
+        save_dir = f'{models_dir}/{model.name}/{ava_dataset.name}'
+        dataset_activations = model.generate_dataset_activations(
+            layers_list, ava_dataset, save_dir, batch_size, device
+        )
     else:
         raise ValueError(f'{dataset} unknown dataset')
 
