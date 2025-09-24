@@ -20,6 +20,7 @@
 # Ignore results
 **/*results_*.json
 *.csv
+*.npz
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
