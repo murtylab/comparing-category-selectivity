@@ -50,7 +50,8 @@ subjects = [1, 2, 5, 7]
 mappers = ['l1pos']  # For now, only one is used
 alpha_dict = {
     'ridge': 0.1,
-    'l1pos': 0.1
+    'l1pos': 0.01,
+    # 'l1pos': 0.1
 }
 
 # Dev
