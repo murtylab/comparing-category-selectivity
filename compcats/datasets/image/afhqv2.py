@@ -7,7 +7,11 @@ import torch
 from torchvision.datasets import ImageFolder
 from torch.utils.data import DataLoader
 
-from ffcv.loader import Loader, OrderOption
+try:
+    from ffcv.loader import Loader, OrderOption
+except ImportError:
+    # These libraries are optional, silently handle import error
+    pass
 
 from ...models.utils.transform_utils import \
     get_contrastive_train_transforms, get_contrastive_val_transforms

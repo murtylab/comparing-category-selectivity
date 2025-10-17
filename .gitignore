@@ -1,3 +1,5 @@
+**/.DS_Store
+
 # Folders to ignore
 **/preprint/*models*/*
 **/preprint/wandb/*
@@ -7,15 +9,19 @@
 **/generate_data/*
 **/misc/*
 
-# Ignore torch files
+# Ignore torch and numpy files
 *.pt
 *.pth
 *.pth.tar
 *.torch
+*.npy
 
 # Ignore figures
 *.pdf
 *.bmp
+*.png
+*.jpg
+*.jpeg
 
 # Ignore results
 **/*results_*.json

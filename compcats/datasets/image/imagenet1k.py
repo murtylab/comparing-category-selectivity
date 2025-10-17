@@ -6,7 +6,11 @@ import torch
 from torchvision.datasets import ImageFolder
 from torch.utils.data import DataLoader
 
-from ffcv.loader import Loader, OrderOption
+try:
+    from ffcv.loader import Loader, OrderOption
+except ImportError:
+    # FFCV is optional, silently handle import error
+    pass
 
 from compcats.models.utils.transform_utils import \
     get_imagenet_train_transforms, get_imagenet_val_transforms
