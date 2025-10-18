@@ -148,24 +148,31 @@ def get_layers_already_swept(results_df, model_name, model_fmri_frois=None):
         raise ValueError(f'No rows found for model {model_name}')
     layers_swept = model_rows['model_layer'].unique().tolist()
     return layers_swept
+
+def get_model_best_layer(results_df, model_name):
     """
     Get best layer for a model-froi pair
     Args:
         results_df (pd.DataFrame): Results DataFrame
         model_name (str): Model name
-        model_fmri_frois (list): List of tuples of model and fmri frois
     Returns:
         best_layers (dict): Dictionary of best layers
     """
     best_layers = {}
-    for (model_froi, fmri_froi) in model_fmri_frois:
-        rows = results_df[
-            (results_df['model_name'] == model_name) &
-            (results_df['model_froi'] == model_froi) &
-            (results_df['fmri_froi'] == fmri_froi)
+    # Get all unique fMRI ROIs for this model
+    model_rows = results_df[results_df['model_name'] == model_name]
+    if model_rows.empty:
+        raise ValueError(f'No rows found for model {model_name}')
+
+    # Get all unique combinations of model_froi and fmri_froi
+    froi_pairs = model_rows[['model_froi', 'fmri_froi']].drop_duplicates().values
+
+    for model_froi, fmri_froi in froi_pairs:
+        rows = model_rows[
+            (model_rows['model_froi'] == model_froi) &
+            (model_rows['fmri_froi'] == fmri_froi)
         ]
-        if rows.empty:
-            raise ValueError(f'No rows found for {model_name}, {model_froi}, {fmri_froi}')
+
         key = (model_froi, fmri_froi)
         if rows['normed_pearsonr_median'].isnull().all():
             tmp_row = rows.iloc[0].copy()
@@ -174,4 +181,5 @@ def get_layers_already_swept(results_df, model_name, model_fmri_frois=None):
         else:
             best_row = rows.loc[rows['normed_pearsonr_median'].idxmax(skipna=True)]
             best_layers[key] = best_row.to_dict()
+
     return best_layers
