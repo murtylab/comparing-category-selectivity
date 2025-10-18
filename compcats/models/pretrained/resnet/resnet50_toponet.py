@@ -4,7 +4,11 @@ https://github.com/toponets/toponets
 """
 from torch import nn
 
-import toponets
+try:
+    import toponets
+except ImportError:
+    # These libraries are optional, silently handle import error
+    pass
 
 from ...basemodel import BaseModel
 from ...utils import transform_utils, layer_utils, resnet_utils
