@@ -11,14 +11,18 @@ RETRY_COUNT=0
 mkdir -p "$LOG_DIR"
 
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+    # Run Python and capture both stdout and stderr
     python main_analysis.py --layersweep "$@" 2>&1 | tee "$OUTPUT_LOGFILE"
-    if grep -q "CUDA out of memory" "$OUTPUT_LOGFILE"; then
-        echo "CUDA OOM detected. Restarting script... (Attempt $((RETRY_COUNT+1))/$MAX_RETRIES)"
-        echo "$(date '+%Y-%m-%d %H:%M:%S') - Restarting due to CUDA OOM (Attempt $((RETRY_COUNT+1))/$MAX_RETRIES)" >> "$LOGFILE"
+
+    # Check for CUDA or MPS or Metal-related OOM messages
+    if grep -E -q "CUDA out of memory|MPS error: out of memory|Metal device failed allocation|resource_tracker: There appear to be" "$OUTPUT_LOGFILE"; then
+        echo "GPU/MPS OOM or resource warning detected. Restarting script... (Attempt $((RETRY_COUNT+1))/$MAX_RETRIES)"
+        echo "$(date '+%Y-%m-%d %H:%M:%S') - Restarting due to GPU/MPS OOM or resource warning (Attempt $((RETRY_COUNT+1))/$MAX_RETRIES)" >> "$LOGFILE"
+
         RETRY_COUNT=$((RETRY_COUNT+1))
-        # sleep 5  # Optional delay before retrying
     else
-        break  # Exit if no OOM error
+        # Exit if no OOM/resource warning found
+        break
     fi
 done
 
