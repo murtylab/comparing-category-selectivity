@@ -299,9 +299,16 @@ class BaseModel(torch.nn.Module):
                 layer_dir = f'{save_dir}/{layer}'
                 activations_file_name = f'{self.name}_{layer}_{dataset.name}.pt'
                 if layer not in layers_to_generate:
-                    layer_activations = torch.load(f'{layer_dir}/{activations_file_name}')
-                    layer_activations = layer_activations.to(device)
-                    activations[layer] = layer_activations
+                    file_path = f'{layer_dir}/{activations_file_name}'
+                    try:
+                        layer_activations = torch.load(file_path)
+                        layer_activations = layer_activations.to(device)
+                        activations[layer] = layer_activations
+                    except (FileNotFoundError, RuntimeError, EOFError, OSError) as e:
+                        print(f'Tried loading activations from {file_path} but failed ({e}), adding to generation list.')
+                        # If additional unexpected exceptions need handling, add them to the tuple above.
+                        layers_to_generate.append(layer)
+                        os.makedirs(layer_dir, exist_ok=True)
                 else:
                     os.makedirs(layer_dir, exist_ok=True)
 
