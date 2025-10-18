@@ -159,7 +159,10 @@ def get_froi_models_layers(model_froi, fmri_froi):
             (best_layers_csv['fmri_froi'] == fmri_froi)
         ]['model_layer']
         # Check if best layer is found
-        assert len(model_best_layer) == 1, 'Best layer not found'
+        if len(model_best_layer) == 0:
+            raise ValueError(f'Best layer not found for model: {model_name}, model_froi: {model_froi}, fmri_froi: {fmri_froi}')
+        elif len(model_best_layer) > 1:
+            raise ValueError(f'Multiple best layers found for model: {model_name}, model_froi: {model_froi}, fmri_froi: {fmri_froi}')
         model_best_layer = model_best_layer.values[0]
         # Save best layer
         models_layers[model_name] = model_best_layer
