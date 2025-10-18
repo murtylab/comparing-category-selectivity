@@ -126,7 +126,28 @@ def model_layer_sweep(
 
     return pd.DataFrame(results_list)
 
-def get_model_best_layer(results_df, model_name, model_fmri_frois):
+def get_layers_already_swept(results_df, model_name, model_fmri_frois=None):
+    """
+    Get layers already swept for a model
+    Args:
+        results_df (pd.DataFrame): Results DataFrame
+        model_name (str): Model name
+    Returns:
+        layers_swept (list): List of layers already swept
+    """
+    if model_fmri_frois is not None:
+        pairs = set(model_fmri_frois)
+        tuples = list(zip(results_df['model_froi'], results_df['fmri_froi']))
+        mask_pairs = pd.Series([t in pairs for t in tuples], index=results_df.index)
+        model_rows = results_df[
+            (results_df['model_name'] == model_name) & mask_pairs
+        ]
+    else:
+        model_rows = results_df[results_df['model_name'] == model_name]
+    if model_rows.empty:
+        raise ValueError(f'No rows found for model {model_name}')
+    layers_swept = model_rows['model_layer'].unique().tolist()
+    return layers_swept
     """
     Get best layer for a model-froi pair
     Args:
