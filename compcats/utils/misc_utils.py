@@ -2,6 +2,7 @@
 Miscellaneous utility functions.
 """
 import os
+import torch
 
 def check_row_present(row_params, results_list):
     """
@@ -46,3 +47,32 @@ def chunk_numbers(N, chunk_size=10):
         list of tuples: A list where each tuple contains the start and end indices of each chunk.
     """
     return [(i, min(i + chunk_size, N + 1)) for i in range(0, N + 1, chunk_size)]
+
+def get_device():
+    """
+    Get the available device (GPU if available, else CPU).
+    Returns:
+        device (torch.device): The available device.
+    """
+    if torch.cuda.is_available():
+        device = torch.device('cuda')
+    elif torch.backends.mps.is_available():
+        device = torch.device('mps')
+    else:
+        device = torch.device('cpu')
+    return device
+
+def clear_memory(device):
+    """
+    Clear memory by emptying CUDA cache if GPU is available.
+    Args:
+        device (torch.device): The device to clear memory for.
+    """
+    # Error handling
+    if isinstance(device, str):
+        device = torch.device(device)
+    # Clear memory
+    if device.type == 'cuda':
+        torch.cuda.empty_cache()
+    elif device.type == 'mps':
+        torch.mps.empty_cache()
