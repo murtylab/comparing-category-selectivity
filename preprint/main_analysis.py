@@ -36,7 +36,10 @@ SEED = 42
 seed_utils.seed_everything(SEED)
 
 # Batch size
-BATCH_SIZE = 768
+BATCH_SIZE = 64  # Adjust based on GPU memory
+
+# Device
+DEVICE = misc_utils.get_device()
 
 # Results dirs
 BEST_LAYERS_CSV_PATH = f'{RESULTS_DIR}/best_layers_nsd485_median_pearsonr.csv'
@@ -297,7 +300,8 @@ def get_allmodels_nsd515_data(model_fmri_frois, tthreshold, localizer, \
                 MODELS_DIR, NSD_DIR, model, layer, dataset='nsd', \
                 subset=subset, \
                 froi=model_froi, tthreshold=tthreshold, froi_localizer=localizer, \
-                froi_localizer_dir=get_localizer_dir(localizer), batch_size=BATCH_SIZE
+                froi_localizer_dir=get_localizer_dir(localizer), batch_size=BATCH_SIZE,
+                device=DEVICE
             )
             if unitmean:
                 model_froi_activations = model_froi_activations.mean(axis=-1)
@@ -325,7 +329,7 @@ def get_humandata_layersweep(subjects, frois, tthreshold, subset):
                 NSD_DIR, subject, froi=froi, tthreshold=tthreshold, \
                 subset=subset, voxels=False, repetition_mean=True
             )
-            subjects_data[froi][subject] = subject_data.cuda()
+            subjects_data[froi][subject] = subject_data.to(DEVICE)
     # Get subject froi split-half correlations
     for froi in frois:
         splithalf_pearsonrs[froi] = {}
@@ -407,7 +411,8 @@ def run_analysis_layersweep():
             model_layersweep_csv = analysis_layersweep.model_layer_sweep(
                 MODELS_DIR, NSD_DIR, get_localizer_dir(model_localizer), \
                 subjects_data, subjects_splithalf_pearsonrs, \
-                model, subset_relevant_layers, subset, model_fmri_frois, tthreshold, model_localizer
+                model, subset_relevant_layers, subset, model_fmri_frois, tthreshold, model_localizer,
+                batch_size=BATCH_SIZE
             )
         end_time = time.time()
         elapsed_time = (end_time - start_time) / 60  # Convert to minutes
@@ -418,7 +423,7 @@ def run_analysis_layersweep():
 
         # Empty cache
         del model
-        torch.cuda.empty_cache()
+        misc_utils.clear_memory(DEVICE)
 
         # Find best layer
         best_layer_info = analysis_layersweep.get_model_best_layer(
