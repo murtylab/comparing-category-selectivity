@@ -368,10 +368,13 @@ def run_analysis_layersweep():
         ('EBA', 'FBA'),
         ('PPA', 'PPA'),
         ('PPA', 'OPA'),
-        ('PPA', 'RSC')
+        ('PPA', 'RSC'),
+        ('VWFA', 'VWFA'),
+        ('VWFA', 'OVWFA')
     ]
+    model_fmri_frois_all = model_fmri_frois_core + model_fmri_frois_extended
     # Choose model_fmri_frois, core or extended
-    model_fmri_frois = model_fmri_frois_extended
+    model_fmri_frois = model_fmri_frois_all
     tthreshold = 7
     model_localizer = 'grillspector'
 
@@ -467,7 +470,7 @@ def run_analysis_layersweep():
 
     # Empty cache
     del subjects_data
-    torch.cuda.empty_cache()
+    misc_utils.clear_memory(DEVICE)
 
 # Analysis: Held-out z-scoring for category selective units
 def run_analysis_localizationvalidation():
@@ -560,10 +563,10 @@ def run_analysis_subjectsubjectcorrelations():
     """
     # Define frois
     frois_core = ['FFA', 'PPA', 'EBA']
-    frois_extended = ['FFA', 'OFA', 'PPA', 'OPA', 'RSC', 'EBA', 'FBA']
+    frois_all = frois_core + ['OFA', 'OPA', 'RSC', 'FBA', 'VWFA', 'OVWFA']
 
     # Variables
-    frois = frois_extended
+    frois = frois_all
     tthresholds = [3, 5, 7, 9, 11]
     subjects = [1, 2, 3, 4, 5, 6, 7, 8]
     subset = 515
@@ -664,11 +667,14 @@ def run_analysis_modelsubjectcorrelations():
         ('EBA', 'FBA'),
         ('PPA', 'PPA'),
         ('PPA', 'OPA'),
-        ('PPA', 'RSC')
+        ('PPA', 'RSC'),
+        ('VWFA', 'VWFA'),
+        ('VWFA', 'OVWFA')
     ]
+    model_fmri_frois_all = model_fmri_frois_core + model_fmri_frois_extended
 
     # Variables
-    model_fmri_frois = model_fmri_frois_extended
+    model_fmri_frois = model_fmri_frois_all
     fmri_frois = list({i[1] for i in model_fmri_frois})
     tthreshold = 7
     # Subjects
