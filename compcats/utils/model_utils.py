@@ -1,10 +1,13 @@
-import torch
+import warnings
 
 from compcats.datasets.fmri import nsd, murty185
 from compcats.datasets.image import afhqv2, celebahq, ava
 from compcats.localizer import localizer
 from compcats.localizer import utils as localizer_utils
+from compcats.utils import misc_utils
 
+# Device
+DEVICE = misc_utils.get_device()
 
 def get_dataset_activations(
     models_dir, dataset_dir, \
@@ -29,9 +32,10 @@ def get_dataset_activations(
     # kwargs
     batch_size = kwargs.get('batch_size', 768)
     device = kwargs.get('device', 'cuda')
-    if not torch.cuda.is_available():
-        device = 'cpu'
-
+    if device == 'cpu' and DEVICE.type != 'cpu':
+        warnings.warn("Device is set to CPU but GPU is available. Consider using GPU for faster computation.")
+    else:
+        device = DEVICE
 
     # Error handling
     dataset = dataset.lower()
@@ -58,14 +62,21 @@ def get_dataset_activations(
             # Move activations to device
             for k, v in dataset_activations.items():
                 try:
-                    v = v.to(device)
+                    dataset_activations[k] = v.to(device)
                 except Exception as e:
-                    if 'CUDA out of memory' in str(e):
-                        print(f"CUDA error when loading activations for layer {k}. Keeping activations on CPU and returning.")
+                    msg = str(e).lower()
+                    # catch CUDA OOM, generic OOM, and MPS/resource_tracker semaphore issues
+                    if ('cuda out of memory' in msg) or ('out of memory' in msg) or \
+                       ('resource_tracker' in msg) or ('leaked semaphore' in msg) or ('mps' in msg):
+                        print(f"Memory error when loading activations for layer {k}. Keeping activations on CPU and returning.")
                         device = 'cpu'
                         # Ensure all activations are on CPU
-                        for k, v in dataset_activations.items():
-                            v = v.cpu()
+                        for kk, vv in dataset_activations.items():
+                            try:
+                                dataset_activations[kk] = vv.cpu()
+                            except Exception:
+                                # if .cpu() fails, leave as-is
+                                dataset_activations[kk] = vv
                         return dataset_activations
                     else:
                         raise e
