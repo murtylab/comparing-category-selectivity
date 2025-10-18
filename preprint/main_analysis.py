@@ -403,8 +403,19 @@ def run_analysis_layersweep():
 
     # Run layer sweep
     for model_name in get_model_names():
+        # Check if some layersweep is already done
+        model_layersweep_csv = None
+        layers_swept = []
+        model_layersweep_csv_path = f'{MODELS_DIR}/{model_name}/nsd485_pearsonr_layersweep.csv'
+        if os.path.exists(model_layersweep_csv_path):
+            model_layersweep_csv = pd.read_csv(model_layersweep_csv_path)
+            layers_swept = analysis_layersweep.get_layers_already_swept(
+                model_layersweep_csv, model_name, model_fmri_frois
+            )
         model = get_model(model_name)
         relevant_layers = model.get_relevant_layers()
+        # Remove layers already swept
+        relevant_layers = [layer for layer in relevant_layers if layer not in layers_swept]
         start_time = time.time()
         print(f'\nStarting layer sweep for model: {model_name}')
         # Run layer sweep for each chunk
@@ -427,13 +438,16 @@ def run_analysis_layersweep():
         # assert layersweep is complete
         assert model_layersweep_csv is not None, 'Layer sweep csv not found'
 
+        # Load the final layersweep csv
+        model_layersweep_csv = pd.read_csv(model_layersweep_csv_path)
+
         # Empty cache
         del model
         misc_utils.clear_memory(DEVICE)
 
         # Find best layer
         best_layer_info = analysis_layersweep.get_model_best_layer(
-            model_layersweep_csv, model_name, model_fmri_frois
+            model_layersweep_csv, model_name
         )
         # Get best layers
         best_layers = {info['model_layer'] for _, info in best_layer_info.items()}
@@ -454,10 +468,28 @@ def run_analysis_layersweep():
             if froi_best_layer_present:
                 previous_best_layer = froi_best_layer_present['model_layer']
                 current_best_layer = froi_best_layer_info['model_layer']
-                assert previous_best_layer == current_best_layer, 'Best layer mismatch'
-            else:
-                best_layers_csv_list.append(froi_best_layer_info)
+                try:
+                    assert previous_best_layer == current_best_layer, 'Best layer mismatch'
+                except AssertionError :
+                    print(f'Warning: overwriting best layer info for model: {model_name}, froi: {model_froi}, fmri_froi: {fmri_froi}')
+                    print(f'Previous best layer: {previous_best_layer}, Current best layer: {current_best_layer}')
+                    print('Breakpoint here if you want to debug')
+                    breakpoint()
+                    # Remove previous entry
+                    best_layers_csv_list = [
+                        entry for entry in best_layers_csv_list if not (
+                            (entry['model_name'] == model_name) and
+                            (entry['model_froi'] == model_froi) and
+                            (entry['fmri_froi'] == fmri_froi)
+                        )
+                    ]
+                    best_layers_csv_list.append(froi_best_layer_info)
+                else:
+                    best_layers_csv_list.append(froi_best_layer_info)
+                # Write csv
                 best_layers_csv = pd.DataFrame(best_layers_csv_list)
+                # First check if there are duplicates and remove them
+                best_layers_csv = best_layers_csv.drop_duplicates(keep='first')
                 best_layers_csv.to_csv(best_layers_csv_path, index=False)
 
         # Delete activations of all layers except best layers to save space
