@@ -6,15 +6,18 @@ import pandas as pd
 import numpy as np
 import scipy
 from tqdm import tqdm
-import torch
 
 from compcats.localizer import localizer
 from compcats.utils import model_utils, misc_utils, responsecomparison_utils as rcutils
 
+# Device
+DEVICE = misc_utils.get_device()
+
 def model_layer_sweep(
-        models_dir, nsd_dir, localizer_dir, \
-        subjects_data, subjects_splithalf_pearsonrs, \
-        model, layers, subset, model_fmri_frois, tthreshold, model_localizer
+    models_dir, nsd_dir, localizer_dir, \
+    subjects_data, subjects_splithalf_pearsonrs, \
+    model, layers, subset, model_fmri_frois, tthreshold, model_localizer,
+    batch_size=None
 ):
     """
     Generate model-human univariate comparison results to select best layer
@@ -48,12 +51,13 @@ def model_layer_sweep(
     # Generate NSD data for models
     def _get_model_data():
         return model_utils.get_dataset_activations(
-            models_dir, nsd_dir, model, layers, dataset='nsd', subset=485
+            models_dir, nsd_dir, model, layers, dataset='nsd', subset=485,
+            batch_size=batch_size, device=DEVICE
         )
     def _get_model_froi_masks(froi):
         return localizer.get_froi_mask(
             localizer_dir, model_localizer, models_dir, \
-            model, layers, froi, tthreshold
+            model, layers, froi, tthreshold, batch_size=batch_size
         )
 
     previous_model_froi = ''
@@ -63,7 +67,7 @@ def model_layer_sweep(
         if model_froi != previous_model_froi:
             # Empty CUDA cache
             del model_froi_masks
-            torch.cuda.empty_cache()
+            misc_utils.clear_memory(DEVICE)
             # Reset model froi masks
             model_froi_masks = None
         # Update previous model froi
@@ -122,7 +126,7 @@ def model_layer_sweep(
 
     # Empty CUDA cache
     del model_data
-    torch.cuda.empty_cache()
+    misc_utils.clear_memory(DEVICE)
 
     return pd.DataFrame(results_list)
 
