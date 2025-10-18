@@ -101,9 +101,9 @@ def util_cdist(X,Y):
 
 def softmatchingdistance(X, Y, itermax=400):
     # https://github.com/anshksoni/NeuroAIMetrics/blob/main/utils/metrics.py#L111
-    if not torch.is_tensor(X):
+    if torch.is_tensor(X):
         X = X.cpu().numpy()
-    if not torch.is_tensor(Y):
+    if torch.is_tensor(Y):
         Y = Y.cpu().numpy()
     rem=[]
     for i in range(X.shape[1]):
@@ -115,11 +115,11 @@ def softmatchingdistance(X, Y, itermax=400):
         if np.all(Y[:,i]==0):
             rem.append(i)
     Y=np.delete(Y, rem, axis=1)
-            
+
     score=[]   
     kf = KFold(n_splits=5,  shuffle=True, random_state = 42)
     for i, (train_idx, test_idx) in enumerate(kf.split(X)):
-        
+
         nx = X[train_idx].shape[1]
         ny = Y[train_idx].shape[1]
         dist_matrix = util_cdist(X[train_idx].T, Y[train_idx].T) 
@@ -129,7 +129,6 @@ def softmatchingdistance(X, Y, itermax=400):
             dist_matrix,
             numItermax=100000*itermax,
             log=True
-            
         )
         if log['warning'] != None:
             print('Did not converge, increase itermax')
