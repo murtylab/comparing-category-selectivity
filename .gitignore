@@ -8,6 +8,7 @@
 **/preprint/dev/*
 **/generate_data/*
 **/misc/*
+**/.vscode/*
 
 # Ignore torch and numpy files
 *.pt
