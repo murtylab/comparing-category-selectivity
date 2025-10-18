@@ -6,6 +6,7 @@ import torch
 
 from compcats.models.utils import hook_utils, layer_utils
 from compcats import constants
+from compcats.utils import misc_utils
 
 class BaseModel(torch.nn.Module):
     """
@@ -25,7 +26,7 @@ class BaseModel(torch.nn.Module):
         self.seed = kwargs.get('seed', None)
         # RNG states for seeding
         self.cpu_rng_state = None
-        self.cuda_rng_state = None
+        self.gpu_rng_state = None
 
         # Transforms
         self.transforms = None
@@ -84,6 +85,9 @@ class BaseModel(torch.nn.Module):
         torch.manual_seed(self.seed)
         if torch.cuda.is_available():
             torch.cuda.manual_seed(self.seed)
+        elif torch.backends.mps.is_available():
+            torch.mps.manual_seed(self.seed)
+        # Model name with seed
         model_name = f"{backbone_name}random{self.seed}"
         print(f'Initialized {model_name} with seed = {self.seed}')
         return model_name
@@ -94,7 +98,9 @@ class BaseModel(torch.nn.Module):
         """
         self.cpu_rng_state = torch.get_rng_state()
         if torch.cuda.is_available():
-            self.cuda_rng_state = torch.cuda.get_rng_state_all()
+            self.gpu_rng_state = torch.cuda.get_rng_state_all()
+        elif torch.backends.mps.is_available():
+            self.gpu_rng_state = torch.mps.get_rng_state()
 
     def _recover_rng_states(self):
         """
@@ -102,7 +108,9 @@ class BaseModel(torch.nn.Module):
         """
         torch.set_rng_state(self.cpu_rng_state)
         if torch.cuda.is_available():
-            torch.cuda.set_rng_state_all(self.cuda_rng_state)
+            torch.cuda.set_rng_state_all(self.gpu_rng_state)
+        elif torch.backends.mps.is_available():
+            torch.mps.set_rng_state(self.gpu_rng_state)
 
     def _load_model(self):
         """
@@ -260,16 +268,18 @@ class BaseModel(torch.nn.Module):
         # Error handling
         if batch_size is None:
             batch_size = 768
-        if device is None:
+        if device is None or device != misc_utils.get_device().type:
             if torch.cuda.is_available():
                 device = 'cuda'
+            elif torch.backends.mps.is_available():
+                device = 'mps'
             else:
                 device = 'cpu'
         if isinstance(layers, str):
             layers_list = [layers]
         else:
             layers_list = layers
-        if not torch.cuda.is_available():
+        if not torch.cuda.is_available() and not torch.backends.mps.is_available() and device != 'cpu':
             warnings.warn('CUDA not available but was specified. Moving to CPU.')
             device = 'cpu'
         # Check if save_dir is provided
@@ -347,7 +357,7 @@ class BaseModel(torch.nn.Module):
                         activations[layer] = layer_output
                 # Empty cache
                 del outputs_batch_layers, batch
-                torch.cuda.empty_cache()
+                misc_utils.clear_memory(device)
 
         # Store activations
         if save_dir:
@@ -362,8 +372,9 @@ class BaseModel(torch.nn.Module):
             try:
                 activations[layer] = activations[layer].to(device)
             except Exception as e:
-                if 'CUDA out of memory' in str(e):
-                    print(f"CUDA error when loading activations for layer {layer}. Keeping activations on CPU and returning.")
+                err_msg = str(e)
+                if 'CUDA out of memory' in err_msg or 'MPS out of memory' in err_msg or 'resource temporarily unavailable' in err_msg:
+                    print(f"{device.upper()} error when loading activations for layer {layer}. Keeping activations on CPU and returning.")
                     device = 'cpu'
                     # Ensure all activations are on CPU
                     for l in activations.keys():
