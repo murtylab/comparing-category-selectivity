@@ -8,11 +8,29 @@ import nibabel as nib
 
 import torch
 
+SUBJECTS_NSESSIONS = {
+    1: 40,
+    2: 40,
+    3: 32,
+    4: 30,
+    5: 40,
+    6: 32,
+    7: 40,
+    8: 30
+}
+
 # Stimuli
 def get_subject_cocoids(root_dir, subject):
     # Estimate number of trials for a subject
-    betas_dir = f'{root_dir}/nsddata_betas/ppdata/subj0{subject}/func1pt8mm/betas_fithrf_GLMdenoise_RR/'
-    subject_nsessions = len(glob.glob(f'{betas_dir}/betas_session*.hdf5'))
+    try:
+        subject_nsessions = SUBJECTS_NSESSIONS[subject]
+    except KeyError:
+        print(f'Number of sessions for subject {subject} not found in hardcoded dictionary, estimating from betas files')
+        try:
+            betas_dir = f'{root_dir}/nsddata_betas/ppdata/subj0{subject}/func1pt8mm/betas_fithrf_GLMdenoise_RR/'
+            subject_nsessions = len(glob.glob(f'{betas_dir}/betas_session*.hdf5'))
+        except Exception as exc:
+            raise ValueError(f'Could not estimate number of sessions for subject {subject}, please add it to the hardcoded dictionary') from exc
     subject_ntrials = subject_nsessions*750
     # Get related stimuli coco ids
     stim_info_csv_path = f'{root_dir}/nsddata/experiments/nsd/nsd_stim_info_merged.csv'
