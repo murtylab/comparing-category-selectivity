@@ -18,18 +18,18 @@ import analysis_localizationvalidation
 
 # Variables
 # Directories
-RESULTS_DIR = 'results'
+import paths
+# Get the directory of the current file
+CURRENT_FILE_DIR = os.path.dirname(os.path.abspath(__file__))
+RESULTS_DIR = os.path.join(CURRENT_FILE_DIR, 'results')
 os.makedirs(RESULTS_DIR, exist_ok=True)
-MODELS_DIR = 'models'
+MODELS_DIR = os.path.join(CURRENT_FILE_DIR, 'models')
 os.makedirs(MODELS_DIR, exist_ok=True)
-NSD_DIR = '/weka/scratch/weka/sinha/alishd/datasets/nsd'
+NSD_DIR = paths.NSD_DIR
 # Directories
-GRILLSPECTOR_LOCALIZER_DIR = '/net/vast-storage/scratch/vast/sinha/alishd/datasets/\
-localizer_grillspector/fLoc_stimuli'
-KANWISHER_LOCALIZER_DIR = '/net/vast-storage/scratch/vast/sinha/alishd/datasets/\
-localizer_kanwisher/images'
-KONKLE_LOCALIZER_DIR = '/net/vast-storage/scratch/vast/sinha/alishd/datasets/\
-localizer_konkle/CompSearch'
+GRILLSPECTOR_LOCALIZER_DIR = paths.GRILLSPECTOR_LOCALIZER_DIR
+KANWISHER_LOCALIZER_DIR = paths.KANWISHER_LOCALIZER_DIR
+KONKLE_LOCALIZER_DIR = paths.KONKLE_LOCALIZER_DIR
 
 # Seed
 SEED = 42
