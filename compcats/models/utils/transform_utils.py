@@ -6,9 +6,13 @@ from torchvision.transforms import v2
 # https://pytorch.org/vision/main/transforms.html#v1-or-v2-which-one-should-i-use
 
 # ffcv
-import ffcv.transforms as ffcv_transforms
-from ffcv.fields.rgb_image import CenterCropRGBImageDecoder, RandomResizedCropRGBImageDecoder
-from ffcv.fields.basics import IntDecoder
+try:
+    import ffcv.transforms as ffcv_transforms
+    from ffcv.fields.rgb_image import CenterCropRGBImageDecoder, RandomResizedCropRGBImageDecoder
+    from ffcv.fields.basics import IntDecoder
+except ImportError:
+    # These libraries are optional, silently handle import error
+    pass
 
 from compcats import constants
 
