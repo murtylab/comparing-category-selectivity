@@ -412,7 +412,7 @@ def get_allstimuli_data(root_dir, subject, repetition_mean=True):
                 f'subject{subject}_rep1', \
                 f'subject{subject}_rep2', \
                 'cocoSplit', \
-                'cropBox', 'loss', 'flagged', 'BOLD5000']]
+                'cropBox', 'loss', 'flagged', 'BOLD5000', 'shared1000']]
     # Load required data
     trials = list(info[f'subject{subject}_rep0']) + list(info[f'subject{subject}_rep1']) + list(info[f'subject{subject}_rep2'])
     # Remove all zeros
