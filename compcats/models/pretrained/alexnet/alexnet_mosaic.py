@@ -35,7 +35,7 @@ class AlexNetMosaic(BaseModel):
         self.transforms = transform_utils.get_transforms()
         # Relevant layer names
         # Layer names to ignore
-        irrelevant_layer_regexes = ['core$', 'core.features$', 'subject_readouts.*']
+        irrelevant_layer_regexes = ['features$']
         # Layer types to ignore
         irrelevant_layer_types = [nn.Dropout, nn.Identity]
         self.irrelevant_layer_names = layer_utils.get_layers_matching_regexes(
