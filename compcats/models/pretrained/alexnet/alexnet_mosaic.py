@@ -4,7 +4,6 @@ https://github.com/murtylab/mosaic-dataset
 https://github.com/murtylab/mosaic-dataset/blob/master/mosaic/models/pretrained.py
 """
 from torch import nn
-import torchvision
 
 try:
     import mosaic
