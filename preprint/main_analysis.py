@@ -98,7 +98,12 @@ MODELS = {
 'vitb14dinov2reg': vitb14_dinov2register, # Done
 # # # ViT-L/14
 'vitl14openaiclip': vitl14_openaiclip, # Done
-'vitl14kosmos2': vitl14_kosmos2, #Done
+'vitl14kosmos2': vitl14_kosmos2, # Done
+# # # # Brain optimized models
+'alexnetmosaicmultiheadallvisual': alexnet_mosaic,
+'resnet18mosaicmultiheadallvisual': resnet18_mosaic,
+'squeezenetmosaicmultiheadallvisual': squeezenet_mosaic,
+'swintmosaicmultiheadallvisual': swint_mosaic,
 }
 
 def get_num_models():
