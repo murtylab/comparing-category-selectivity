@@ -11,6 +11,7 @@ from .alexnet import alexnet_imagenet1kv1
 from .alexnet import alexnet_barlowtwins
 from .alexnet import alexnet_ipcl
 from .alexnet import alexnet_random
+from .alexnet import alexnet_mosaic
 
 # ResNet-18s
 from .resnet import resnet18_imagenet1kv1
