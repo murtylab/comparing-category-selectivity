@@ -1,9 +1,7 @@
 # Libraries
 
 import os
-import numpy as np
 import pandas as pd
-import torch
 
 # --- Custom packages ---
 from compcats.localizer import localizer
@@ -12,7 +10,7 @@ import main_analysis as ma
 import paths
 
 # Paths
-RESULTS_DIR = 'results/exploration/explore_interpret'
+RESULTS_DIR = 'results/'
 MODELS_DIR = 'models'
 PLOTS_DIR = f'{RESULTS_DIR}/plots/'
 os.makedirs(PLOTS_DIR, exist_ok=True)
@@ -64,8 +62,16 @@ TOP_MODEL_NAMES = [
     # 'cornetz', # TODO: Error: (Ellipsis, tensor([[[False, False, False,  ..., False, False, False],
     # 'alexnetipclref01'
 ]
+BRAIN_OPTIMIZED_MODEL_NAMES = [
+    'alexnetmosaicmultiheadallvisual',
+    'resnet18mosaicmultiheadallvisual',
+    'squeezenetmosaicmultiheadallvisual',
+    'swintmosaicmultiheadallvisual',
+]
 
-for model_name in TOP_MODEL_NAMES:
+model_names = BRAIN_OPTIMIZED_MODEL_NAMES
+
+for model_name in model_names:
     if model_name in resp_df.columns:
         # Check the length of the column, if it's the same as resp_df length, skip
         if len(resp_df[model_name]) == len(resp_df):
