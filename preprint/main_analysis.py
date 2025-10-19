@@ -484,13 +484,13 @@ def run_analysis_layersweep():
                         )
                     ]
                     best_layers_csv_list.append(froi_best_layer_info)
-                else:
-                    best_layers_csv_list.append(froi_best_layer_info)
-                # Write csv
-                best_layers_csv = pd.DataFrame(best_layers_csv_list)
-                # First check if there are duplicates and remove them
-                best_layers_csv = best_layers_csv.drop_duplicates(keep='first')
-                best_layers_csv.to_csv(best_layers_csv_path, index=False)
+            else:
+                best_layers_csv_list.append(froi_best_layer_info)
+            # Write csv
+            best_layers_csv = pd.DataFrame(best_layers_csv_list)
+            # First check if there are duplicates and remove them
+            best_layers_csv = best_layers_csv.drop_duplicates(keep='first')
+            best_layers_csv.to_csv(best_layers_csv_path, index=False)
 
         # Delete activations of all layers except best layers to save space
         delete_layers = [layer for layer in relevant_layers if layer not in best_layers]
