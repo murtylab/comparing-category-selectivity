@@ -19,6 +19,7 @@ from .resnet import resnet18_faceobfuscation
 from .resnet import resnet18_toponet
 from .resnet import resnet18_tdannsimclr
 from .resnet import resnet18_tdannsupervised
+from .resnet import resnet18_mosaic
 
 # ResNet-50s
 from .resnet import resnet50_random
@@ -49,6 +50,9 @@ from .bagnet import bagnet9
 from .bagnet import bagnet17
 from .bagnet import bagnet33
 
+# SqueezeNets
+from .squeezenet import squeezenet_mosaic
+
 # CORNets
 from .cornet import cornet_s
 from .cornet import cornet_z
@@ -77,3 +81,6 @@ from .vit import vitl14_kosmos2
 
 # Misc
 from .efficientnet import efficientnet_mnasnet
+
+# Swin Transformers
+from .swint import swint_mosaic
