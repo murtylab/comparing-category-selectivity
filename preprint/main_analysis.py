@@ -112,7 +112,7 @@ def get_num_models():
     """
     return len(MODELS)
 
-def get_model_names(model_type='all'):
+def get_model_names(model_type='task_optimized'):
     """
     Get names of models used for the analysis
     """
