@@ -332,7 +332,7 @@ def get_allsubjects_nsd515_data(frois, tthreshold, tensors=True):
     return subjects_data, splithalf_pearsonrs, splithalf_rdmrs
 
 def get_allmodels_nsd515_data(model_fmri_frois, tthreshold, localizer, \
-                                       unitmean, tensors=True):
+                                       unitmean, tensors=True, model_type='task_optimized'):
     """
     Get NSD515 mean of froi units data for all models
     Args:
@@ -346,7 +346,7 @@ def get_allmodels_nsd515_data(model_fmri_frois, tthreshold, localizer, \
     models_data = {}
     for (model_froi, fmri_froi) in model_fmri_frois:
         models_data[(model_froi, fmri_froi)] = {}
-        for model_name in get_model_names():
+        for model_name in get_model_names(model_type):
             model = get_model(model_name)
             layer = get_froi_models_layers(model_froi, fmri_froi)[model_name]
             model_froi_activations = model_utils.get_dataset_activations(
@@ -563,13 +563,14 @@ def run_analysis_localizationvalidation():
     Analysis: Held-out z-scoring for category selective units to validate localization
     """
     # Variables
+    model_type = 'task_optimized'  # 'all', 'random', 'brain_optimized', 'task_optimized', 'optimized'
     model_fmri_frois = [
         ('FFA', 'FFA'),
         ('PPA', 'PPA'),
         ('EBA', 'EBA')
     ]
     model_frois = list({i[0] for i in model_fmri_frois})
-    tthreshold = 7
+    tthreshold = 3 if model_type == 'random' else 7
     froi_localizer = 'grillspector'
     # froi_localizer = 'kanwisher'
     # froi_localizer = 'kanwishergrayscale'
@@ -592,7 +593,7 @@ def run_analysis_localizationvalidation():
     else:
         localization_validation_csv_list = []
 
-    for model_name in get_model_names():
+    for model_name in get_model_names(model_type):
         model = get_model(model_name)
         model_all_layers = list({frois_models_layers[froi][model_name] for froi in model_frois})
         for froi in model_frois:
@@ -740,6 +741,7 @@ def run_analysis_modelsubjectcorrelations():
     """
     TODO
     """
+    model_type = 'task_optimized'  # 'all', 'random', 'brain_optimized', 'task_optimized', 'optimized'
     # Define frois
     model_fmri_frois_core = [
         ('FFA', 'FFA'),
@@ -762,7 +764,7 @@ def run_analysis_modelsubjectcorrelations():
     # Variables
     model_fmri_frois = model_fmri_frois_all
     fmri_frois = list({i[1] for i in model_fmri_frois})
-    tthreshold = 7
+    tthreshold = 3 if model_type == 'random' else 7
     # Subjects
     subjects = [1, 2, 3, 4, 5, 6, 7, 8]
     subset = 515
@@ -780,10 +782,11 @@ def run_analysis_modelsubjectcorrelations():
     subjects_data, subjects_splithalf_pearsonrs, subjects_splithalf_rdmrs = \
         get_allsubjects_nsd515_data(fmri_frois, tthreshold)
     models_data = get_allmodels_nsd515_data(
-        model_fmri_frois, tthreshold, model_localizer, unitmean=False, tensors=True
+        model_fmri_frois, tthreshold, model_localizer, unitmean=False, tensors=True,
+        model_type=model_type
     )
 
-    for model_name in get_model_names():
+    for model_name in get_model_names(model_type):
         for subject in subjects:
             for (model_froi, fmri_froi) in model_fmri_frois:
                 row_params = {
@@ -841,6 +844,7 @@ def run_analysis_localizereffect():
     """
     TODO
     """
+    model_type = 'task_optimized'  # 'all', 'random', 'brain_optimized', 'task_optimized', 'optimized'
     # Define frois
     model_fmri_frois = [
         ('FFA', 'FFA'),
@@ -850,7 +854,7 @@ def run_analysis_localizereffect():
 
     # Variables
     fmri_frois = list({i[1] for i in model_fmri_frois})
-    tthreshold = 7
+    tthreshold = 3 if model_type == 'random' else 7
     # Subjects
     subjects = [1, 2, 3, 4, 5, 6, 7, 8]
     subset = 515
@@ -867,10 +871,11 @@ def run_analysis_localizereffect():
 
     subjects_data, subjects_splithalf_pearsonrs, subjects_splithalf_rdmrs = \
         get_allsubjects_nsd515_data(fmri_frois, tthreshold)
-    
+
     def _get_model_data(model_localizer):
         return get_allmodels_nsd515_data(
-            model_fmri_frois, tthreshold, model_localizer, unitmean=False, tensors=True
+            model_fmri_frois, tthreshold, model_localizer, unitmean=False, tensors=True,
+            model_type=model_type
         )
 
     for model_localizer in model_localizers:
@@ -936,6 +941,7 @@ def run_analysis_tthresholdeffect():
     """
     TODO
     """
+    model_type = 'task_optimized'  # 'all', 'random', 'brain_optimized', 'task_optimized', 'optimized'
     # Define frois
     model_fmri_frois_core = [
         ('FFA', 'FFA'),
@@ -975,12 +981,13 @@ def run_analysis_tthresholdeffect():
 
     for model_tthreshold in tthresholds:
         models_data = get_allmodels_nsd515_data(
-            model_fmri_frois, model_tthreshold, model_localizer, unitmean=False, tensors=True
+            model_fmri_frois, model_tthreshold, model_localizer, unitmean=False, tensors=True,
+            model_type=model_type
         )
         for fmri_tthreshold in tthresholds:
             subjects_data, subjects_splithalf_pearsonrs, subjects_splithalf_rdmrs = \
                 get_allsubjects_nsd515_data(fmri_frois, fmri_tthreshold)
-            for model_name in get_model_names():
+            for model_name in get_model_names(model_type):
                 for subject in subjects:
                     for (model_froi, fmri_froi) in model_fmri_frois:
                         row_params = {
