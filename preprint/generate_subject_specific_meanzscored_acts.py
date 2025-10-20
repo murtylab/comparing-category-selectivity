@@ -42,10 +42,10 @@ TOP_MODEL_NAMES = [
     # 'resnet50faceobfuscation',
     # 'vitb16eva028bs8bb131k',
     # 'resnet50ecoset',
-    'vitl14kosmos2',
+    # 'vitl14kosmos2',
     # 'vitb16synclr',
     # 'resnet18tdannsimclrlw1',
-    # 'vgg16imagenet1kv1', # TODO: KeyError: (Ellipsis, tensor([[[False, False, False,  ..., False, False, False],
+    # 'vgg16imagenet1kv1', # TODO
     # 'vitb32openaiclip',
     # 'vitb16openaiclip',
     # 'vitl14openaiclip',
@@ -59,7 +59,7 @@ TOP_MODEL_NAMES = [
     # 'alexnetbarlowtwins',
     # 'vitb16imagenet21k',
     # 'resnet18tdannsupervisedlw10',
-    # 'cornetz', # TODO: Error: (Ellipsis, tensor([[[False, False, False,  ..., False, False, False],
+    # 'cornetz', # TODO
     # 'alexnetipclref01'
 ]
 BRAIN_OPTIMIZED_MODEL_NAMES = [
@@ -86,7 +86,7 @@ for model_name in model_names:
     model_data = model_utils.get_dataset_activations(
             MODELS_DIR, NSD_DIR, model, layers, 'nsd', subset=None, device='cpu'
         )
-    if len(layers) == 1:
+    if len(layers) == 1 and not isinstance(model_data, dict):
         print("Only one layer, wrapping in dict")
         model_data = {layers[0]: model_data}
     for froi in FROIS:
