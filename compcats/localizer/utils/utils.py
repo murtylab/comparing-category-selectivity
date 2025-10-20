@@ -1,5 +1,6 @@
 from compcats.datasets.localization import grillspector_localizer, \
-    kanwisher_localizer, konkle_localizer, vinken23_localizer, kanwishergrayscale_localizer
+    kanwisher_localizer, konkle_localizer, vinken2023_localizer, kanwishergrayscale_localizer, \
+    prince2024_localizer
 
 def get_localizerdataset_module(dataset_name):
     """
@@ -13,8 +14,10 @@ def get_localizerdataset_module(dataset_name):
         dataset_module = grillspector_localizer
     elif dataset_name == 'konkle':
         dataset_module = konkle_localizer
-    elif dataset_name == 'vinken23':
-        dataset_module = vinken23_localizer
+    elif dataset_name == 'vinken2023':
+        dataset_module = vinken2023_localizer
+    elif dataset_name == 'prince2024':
+        dataset_module = prince2024_localizer
     else:
         raise ValueError(f'{dataset_name} unknown localizer type')
     return dataset_module
