@@ -279,6 +279,8 @@ class BaseModel(torch.nn.Module):
             layers_list = [layers]
         else:
             layers_list = layers
+        if len(dataset) == 0:
+            raise ValueError('Dataset is empty')
         if not torch.cuda.is_available() and not torch.backends.mps.is_available() and device != 'cpu':
             warnings.warn('CUDA not available but was specified. Moving to CPU.')
             device = 'cpu'
