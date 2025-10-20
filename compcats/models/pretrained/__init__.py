@@ -20,6 +20,7 @@ from .resnet import resnet18_toponet
 from .resnet import resnet18_tdannsimclr
 from .resnet import resnet18_tdannsupervised
 from .resnet import resnet18_mosaic
+from .resnet import resnet18_random
 
 # ResNet-50s
 from .resnet import resnet50_random
