@@ -5,20 +5,19 @@ import argparse
 import scipy
 import numpy as np
 import pandas as pd
-import torch
+
+# Analysis files
+import analysis_layersweep
+import analysis_localizationvalidation
+import paths
 
 from compcats.models import *
 from compcats.datasets.fmri import nsd
 from compcats.utils import seed_utils, misc_utils, model_utils, reliability_utils
 import compcats.utils.responsecomparison_utils as rcutils
 
-# Analysis files
-import analysis_layersweep
-import analysis_localizationvalidation
-
 # Variables
 # Directories
-import paths
 # Get the directory of the current file
 CURRENT_FILE_DIR = os.path.dirname(os.path.abspath(__file__))
 RESULTS_DIR = os.path.join(CURRENT_FILE_DIR, 'results')
