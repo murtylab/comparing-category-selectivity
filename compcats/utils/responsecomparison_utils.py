@@ -163,7 +163,7 @@ def remove_constant_units(X: np.ndarray, tol: float = 1e-8) -> np.ndarray:
     mask = var > tol
     X_filtered = X[:, mask]
 
-    return X_filtered
+    return X_filtered, mask
 
 def sfd_compute_normalization_params(X: np.ndarray) -> Dict[str, np.ndarray]:
     """
@@ -179,12 +179,19 @@ def sfd_compute_normalization_params(X: np.ndarray) -> Dict[str, np.ndarray]:
     params : dict
         Dictionary containing column means, column norms, and Frobenius norm.
     """
+    # Remove constant units
+    X, zerovar_filter_mask = remove_constant_units(X)
     mean = X.mean(axis=0, keepdims=True)
     X_centered = X - mean
     col_norms = np.linalg.norm(X_centered, axis=0, keepdims=True)
     col_norms[col_norms == 0] = 1.0  # avoid divide-by-zero
     fro_norm = np.linalg.norm(X_centered / col_norms)
-    return {"mean": mean, "col_norms": col_norms, "fro_norm": fro_norm}
+    return {
+        "mean": mean,
+        "col_norms": col_norms,
+        "fro_norm": fro_norm,
+        "zerovar_filter_mask": zerovar_filter_mask
+    }
 
 def sfd_apply_normalization(X: np.ndarray, params: Dict[str, np.ndarray]) -> np.ndarray:
     """
@@ -202,6 +209,8 @@ def sfd_apply_normalization(X: np.ndarray, params: Dict[str, np.ndarray]) -> np.
     X_normed : array-like, shape (n_samples, n_units)
         Normalized data.
     """
+    # Apply zerovar filter mask
+    X = X[:, params["zerovar_filter_mask"]]
     X_centered = X - params["mean"]
     X_scaled = X_centered / params["col_norms"]
     X_normed = X_scaled / params["fro_norm"]
@@ -217,9 +226,6 @@ def sfd_train(X, Y, itermax=1000) -> Tuple[float, Dict[str, Union[np.ndarray, Di
         Y = Y.cpu().numpy()
     assert X.shape[0] == Y.shape[0], "X and Y must have the same number of samples"
     assert X.ndim == 2 and Y.ndim == 2, "X and Y must be 2D arrays"
-    # Remove constant units
-    X = remove_constant_units(X)
-    Y = remove_constant_units(Y)
     # Compute normalization parameters
     X_params = sfd_compute_normalization_params(X)
     Y_params = sfd_compute_normalization_params(Y)
@@ -258,9 +264,6 @@ def sfd_test(X, Y, sfd_train_params):
         Y = Y.cpu().numpy()
     assert X.shape[0] == Y.shape[0], "X and Y must have the same number of samples"
     assert X.ndim == 2 and Y.ndim == 2, "X and Y must be 2D arrays"
-    # Remove constant units
-    X = remove_constant_units(X)
-    Y = remove_constant_units(Y)
     # Apply normalization
     X_normed = sfd_apply_normalization(X, sfd_train_params["X_norm_params"])
     Y_normed = sfd_apply_normalization(Y, sfd_train_params["Y_norm_params"])
