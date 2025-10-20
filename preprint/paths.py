@@ -13,6 +13,7 @@ KANWISHER_LOCALIZER_DIR = '/Users/adipani3/datasets/localizer_kanwisher/images'
 KONKLE_LOCALIZER_DIR = '/Users/adipani3/datasets/localizer_konkle/CompSearch'
 # '/net/vast-storage/scratch/vast/sinha/alishd/datasets/\
 # localizer_konkle/CompSearch'
+PRINCE2024_LOCALIZER_DIR = '/Users/adipani3/datasets/localizer_prince2024/Prince2024Localizer'
 
 # THINGS
 THINGS_DIR = None # '/om2/user/alishd/datasets/things/THINGS'
