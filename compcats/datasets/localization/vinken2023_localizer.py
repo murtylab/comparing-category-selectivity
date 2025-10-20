@@ -38,8 +38,8 @@ class Vinkenetal2023Dataset(BaseLocalizerDataset):
         self.transform = transform
         # Image class
         image_class = image_class.strip().lower()
-        self.name = image_class
-        self.images = self._get_images(self.name, self.image_labels, self.all_images)
+        self.name = f'vinken2023_{image_class}'
+        self.images = self._get_images(image_class, self.image_labels, self.all_images)
         # Contrasts
         self.froi_contrasts = {
             'FFA': {
