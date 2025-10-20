@@ -911,13 +911,26 @@ def run_analysis_tthresholdeffect():
     TODO
     """
     # Define frois
-    model_fmri_frois = [
+    model_fmri_frois_core = [
         ('FFA', 'FFA'),
         ('PPA', 'PPA'),
         ('EBA', 'EBA')
     ]
+    model_fmri_frois_extended = [
+        ('FFA', 'FFA'),
+        ('FFA', 'OFA'),
+        ('EBA', 'EBA'),
+        ('EBA', 'FBA'),
+        ('PPA', 'PPA'),
+        ('PPA', 'OPA'),
+        ('PPA', 'RSC'),
+        ('VWFA', 'VWFA'),
+        ('VWFA', 'OVWFA')
+    ]
+    model_fmri_frois_all = model_fmri_frois_core + model_fmri_frois_extended
 
     # Variables
+    model_fmri_frois = model_fmri_frois_core
     fmri_frois = list({i[1] for i in model_fmri_frois})
     tthresholds = [3, 5, 7, 9, 11]
     # Subjects
