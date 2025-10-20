@@ -148,6 +148,8 @@ def get_model_names(model_type='task_optimized'):
         names = [name for name in all_names if 'mosaic' in name]
     elif model_type == 'task_optimized':
         names = [name for name in all_names if 'random' not in name and 'mosaic' not in name]
+    elif model_type == 'optimized':
+        names = [name for name in all_names if 'random' not in name]
     else:
         raise ValueError(f'Invalid model model_type {model_type}, options: all, random, brain_optimized, task_optimized')
     return names
@@ -195,7 +197,7 @@ def get_froi_models_layers(model_froi, fmri_froi):
     """
     models_layers = {}
     # Get all model names
-    model_names = get_model_names()
+    model_names = get_model_names('all')
     # Load best layers csv
     best_layers_csv = pd.read_csv(BEST_LAYERS_CSV_PATH)
     for model_name in model_names:
