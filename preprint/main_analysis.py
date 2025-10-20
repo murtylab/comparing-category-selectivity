@@ -30,6 +30,7 @@ NSD_DIR = paths.NSD_DIR
 GRILLSPECTOR_LOCALIZER_DIR = paths.GRILLSPECTOR_LOCALIZER_DIR
 KANWISHER_LOCALIZER_DIR = paths.KANWISHER_LOCALIZER_DIR
 KONKLE_LOCALIZER_DIR = paths.KONKLE_LOCALIZER_DIR
+PRINCE2024_LOCALIZER_DIR = paths.PRINCE2024_LOCALIZER_DIR
 
 # Seed
 SEED = 42
@@ -272,6 +273,8 @@ def get_localizer_dir(localizer_name):
         return KANWISHER_LOCALIZER_DIR
     elif localizer_name == 'konkle':
         return KONKLE_LOCALIZER_DIR
+    elif localizer_name == 'prince2024':
+        return PRINCE2024_LOCALIZER_DIR
     else:
         raise ValueError('Localizer not implemented')
 
@@ -570,8 +573,9 @@ def run_analysis_localizationvalidation():
     # froi_localizer = 'kanwisher'
     # froi_localizer = 'kanwishergrayscale'
     print('Validating localization for localizer: ', froi_localizer)
-    validation_localizer = 'konkle'
+    # validation_localizer = 'konkle'
     # validation_localizer = 'kanwisher'
+    validation_localizer = 'prince2024'
     frois_models_layers = {
         model_froi: get_froi_models_layers(model_froi, fmri_froi) \
             for (model_froi, fmri_froi) in model_fmri_frois
