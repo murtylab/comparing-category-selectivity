@@ -104,6 +104,27 @@ MODELS = {
 'resnet18mosaicmultiheadallvisual': resnet18_mosaic,
 'squeezenetmosaicmultiheadallvisual': squeezenet_mosaic,
 'swintmosaicmultiheadallvisual': swint_mosaic,
+# # Randomly initialized models
+'alexnetrandom1': alexnet_random,
+'alexnetrandom2': alexnet_random,
+'alexnetrandom3': alexnet_random,
+'alexnetrandom4': alexnet_random,
+'alexnetrandom5': alexnet_random,
+'resnet18random1': resnet18_random,
+'resnet18random2': resnet18_random,
+'resnet18random3': resnet18_random,
+'resnet18random4': resnet18_random,
+'resnet18random5': resnet18_random,
+'resnet50random1': resnet50_random,
+'resnet50random2': resnet50_random,
+'resnet50random3': resnet50_random,
+'resnet50random4': resnet50_random,
+'resnet50random5': resnet50_random,
+'vitb32random1': vitb32_random,
+'vitb32random2': vitb32_random,
+'vitb32random3': vitb32_random,
+'vitb32random4': vitb32_random,
+'vitb32random5': vitb32_random,
 }
 
 def get_num_models():
