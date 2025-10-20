@@ -112,13 +112,24 @@ def get_num_models():
     """
     return len(MODELS)
 
-def get_model_names():
+def get_model_names(model_type='all'):
     """
     Get names of models used for the analysis
     """
-    return list(MODELS.keys())
+    all_names = list(MODELS.keys())
+    names = []
+    if model_type == 'all':
+        names = all_names
+    elif model_type in ['random', 'untrained']:
+        names = [name for name in all_names if 'random' in name]
+    elif model_type == 'brain_optimized':
+        names = [name for name in all_names if 'mosaic' in name]
+    elif model_type == 'task_optimized':
+        names = [name for name in all_names if 'random' not in name and 'mosaic' not in name]
+    else:
+        raise ValueError(f'Invalid model model_type {model_type}, options: all, random, brain_optimized, task_optimized')
+    return names
 
-def get_model(model_name):
     """
     Import model module
     Args:
