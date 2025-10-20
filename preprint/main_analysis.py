@@ -130,6 +130,7 @@ def get_model_names(model_type='all'):
         raise ValueError(f'Invalid model model_type {model_type}, options: all, random, brain_optimized, task_optimized')
     return names
 
+def get_model(model_name, **kwargs):
     """
     Import model module
     Args:
@@ -138,7 +139,15 @@ def get_model_names(model_type='all'):
         model_module (module): Model module
     """
     model_module = MODELS[model_name]
-    model = model_module.get_model()
+    # If random is present in the model name, detect seed from the name and add to kwargs
+    if 'random' in model_name:
+        seed_str = model_name.split('random')[-1]
+        try:
+            seed = int(seed_str)
+        except ValueError as exc:
+            raise ValueError(f'Invalid seed in model name: {model_name}') from exc
+        kwargs['seed'] = seed
+    model = model_module.get_model(**kwargs)
     assert model.name == model_name, 'Model name mismatch'
     return model
 
