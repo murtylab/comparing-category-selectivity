@@ -11,7 +11,7 @@ RETRY_COUNT=0
 mkdir -p "$LOG_DIR"
 
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-    python main_analysis.py --tthresholdeffect "$@" 2>&1 | tee "$OUTPUT_LOGFILE"
+    python main_analysis.py --nsd515tthresholdeffect "$@" 2>&1 | tee "$OUTPUT_LOGFILE"
     if grep -q "CUDA out of memory" "$OUTPUT_LOGFILE"; then
         echo "CUDA OOM detected. Restarting script... (Attempt $((RETRY_COUNT+1))/$MAX_RETRIES)"
         echo "$(date '+%Y-%m-%d %H:%M:%S') - Restarting due to CUDA OOM (Attempt $((RETRY_COUNT+1))/$MAX_RETRIES)" >> "$LOGFILE"

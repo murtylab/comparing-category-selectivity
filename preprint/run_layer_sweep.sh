@@ -12,7 +12,7 @@ mkdir -p "$LOG_DIR"
 
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
     # Run Python and capture both stdout and stderr
-    python main_analysis.py --layersweep "$@" 2>&1 | tee "$OUTPUT_LOGFILE"
+    python main_analysis.py --nsd485layersweep "$@" 2>&1 | tee "$OUTPUT_LOGFILE"
 
     # Check for CUDA or MPS or Metal-related OOM messages
     if grep -E -q "CUDA out of memory|MPS error: out of memory|Metal device failed allocation|resource_tracker: There appear to be" "$OUTPUT_LOGFILE"; then
