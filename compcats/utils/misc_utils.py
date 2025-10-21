@@ -1,25 +1,113 @@
 """
 Miscellaneous utility functions.
 """
+from typing import List, Dict, Any, Union
 import os
+import json
+import pandas as pd
 import torch
 
+# csv utils
 def check_row_present(row_params, results_list):
     """
-    Check if row is present in the results list.
+    Check if a row (dict) is already present in a list of results.
+    Handles nested dicts/lists by comparing their JSON representations.
+
     Args:
         row_params (dict): Row parameters.
-        results_list (list): List of results.
+        results_list (list[dict]): List of existing results.
+
     Returns:
-        row_present (bool): True if row is present, False otherwise.
+        dict | None: The matching row dict if found, otherwise None.
     """
-    row_present = None
-    # Skip if row is already present
+    def normalize(v):
+        """Convert values to a canonical comparable form."""
+        # Convert dicts/lists recursively to sorted JSON strings
+        if isinstance(v, (dict, list)):
+            try:
+                return json.dumps(v, sort_keys=True)
+            except TypeError:
+                return str(v)
+        return v
+
     for row in results_list:
-        if all(row_params[key] == row.get(key, None) for key in row_params):
-            row_present = row
-            break
-    return row_present
+        if all(normalize(row_params[key]) == normalize(row.get(key, None))
+               for key in row_params):
+            return row  # Return the full matching row
+    return None
+
+def to_csv(data: List[Dict[Union[str, int, float], Any]], path: str) -> None:
+    """
+    Save a list of dictionaries to CSV. If any columns contain dicts,
+    they are JSON-encoded automatically.
+
+    Parameters
+    ----------
+    data : list of dict
+        Each dict represents a row (key = column name, value = value).
+    path : str
+        Output CSV file path.
+    """
+    if not data:
+        raise ValueError("Input data list is empty")
+
+    # Build DataFrame
+    df = pd.DataFrame(data)
+
+    # Detect columns that contain dicts in any row
+    dict_cols = [
+        col for col in df.columns
+        if df[col].apply(lambda x: isinstance(x, dict)).any()
+    ]
+
+    # Convert dicts to JSON strings for saving
+    for col in dict_cols:
+        df[col] = df[col].apply(
+            lambda x: json.dumps(x) if isinstance(x, dict) else pd.NA
+        )
+
+    # Save
+    df.to_csv(path, index=False)
+
+def read_csv(path: str) -> pd.DataFrame:
+    """
+    Read a CSV created by `to_csv`, decoding any JSON-like columns
+    back into Python dicts while preserving numeric dtypes.
+
+    Parameters
+    ----------
+    path : str
+        Path to CSV file.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with dict columns restored and numeric types preserved.
+    """
+    df = pd.read_csv(path, low_memory=False)
+
+    def try_json_load(x):
+        if pd.isna(x):
+            return pd.NA
+        if isinstance(x, (int, float)):  # already numeric
+            return x
+        if isinstance(x, str) and x.strip().startswith("{") and x.strip().endswith("}"):
+            try:
+                return json.loads(x)
+            except json.JSONDecodeError:
+                return x
+        return x
+
+    # Detect and decode JSON-like columns
+    for col in df.columns:
+        sample = df[col].dropna().astype(str)
+        if not sample.empty and sample.str.strip().str.startswith("{").any():
+            df[col] = df[col].apply(try_json_load)
+
+    # Re-infer best dtypes (Int64, Float64, string, etc.)
+    df = df.convert_dtypes()
+
+    return df
 
 def delete_activations(activations_dir, layer_names):
     """
