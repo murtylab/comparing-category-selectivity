@@ -463,7 +463,7 @@ def get_allmodels_murty185_data(
     return models_data
 
 # Layer sweeps
-def run_analysis_layersweep():
+def run_analysis_nsd485layersweep():
     """
     Generate model-human univariate comparison results to select best layer
     NSD 485 images, 4 subjects, FFA, PPA, EBA, t>7
@@ -708,7 +708,7 @@ def run_analysis_localizationvalidation():
         )
 
 # Analysis: subject-subject correlations
-def run_analysis_subjectsubjectcorrelations():
+def run_analysis_nsd515subjectsubjectcorrelations():
     """
     Analysis: Subject-subject correlations, univariate pearsonr and multivariate RDMr
     Also normalized by split-half correlations
@@ -802,7 +802,7 @@ def run_analysis_subjectsubjectcorrelations():
                     )
 
 # Analysis: model-subject correlations
-def run_analysis_modelsubjectcorrelations():
+def run_analysis_nsd515modelsubjectcorrelations():
     """
     TODO
     """
@@ -905,7 +905,7 @@ def run_analysis_modelsubjectcorrelations():
                 )
 
 # Analysis: model-localizer effect
-def run_analysis_localizereffect():
+def run_analysis_nsd515localizereffect():
     """
     TODO
     """
@@ -1002,7 +1002,7 @@ def run_analysis_localizereffect():
                         localizereffect_correlations_csv_path, index=False
                     )
 
-def run_analysis_tthresholdeffect():
+def run_analysis_nsd515tthresholdeffect():
     """
     TODO
     """
@@ -1263,24 +1263,24 @@ def main():
     parser = argparse.ArgumentParser(description='Run analysis')
 
     parser.add_argument(
-        '--layersweep', action='store_true', help='Run NSD515 layer sweep'
+        '--nsd485layersweep', action='store_true', help='Run NSD515 layer sweep'
     )
     parser.add_argument(
         '--localizationvalidation', action='store_true', help='Run NSD515 localization validation'
     )
     parser.add_argument(
-        '--subjectsubjectcorrelations', action='store_true', \
+        '--nsd515subjectsubjectcorrelations', action='store_true', \
             help='Run NSD515 subject-subject correlations'
     )
     parser.add_argument(
-        '--modelsubjectcorrelations', action='store_true', \
+        '--nsd515modelsubjectcorrelations', action='store_true', \
             help='Run NSD515 model-subject univariate correlations'
     )
     parser.add_argument(
-        '--localizereffect', action='store_true', help='Run NSD515 localizer effect'
+        '--nsd515localizereffect', action='store_true', help='Run NSD515 localizer effect'
     )
     parser.add_argument(
-        '--tthresholdeffect', action='store_true', help='Run NSD515 t-threshold effect'
+        '--nsd515tthresholdeffect', action='store_true', help='Run NSD515 t-threshold effect'
     )
     parser.add_argument(
         '--murty185evaluation', action='store_true', help='Run Murty185 evaluation'
@@ -1294,24 +1294,24 @@ def main():
 
     args = parser.parse_args()
 
-    if args.layersweep:
-        run_analysis_layersweep()
+    if args.nsd485layersweep:
+        run_analysis_nsd485layersweep()
     if args.localizationvalidation:
         run_analysis_localizationvalidation()
-    if args.subjectsubjectcorrelations:
-        run_analysis_subjectsubjectcorrelations()
-    if args.modelsubjectcorrelations:
-        run_analysis_modelsubjectcorrelations()
+    if args.nsd515subjectsubjectcorrelations:
+        run_analysis_nsd515subjectsubjectcorrelations()
+    if args.nsd515modelsubjectcorrelations:
+        run_analysis_nsd515modelsubjectcorrelations()
+    if args.nsd515localizereffect:
+        run_analysis_nsd515localizereffect()
+    if args.nsd515tthresholdeffect:
+        run_analysis_nsd515tthresholdeffect()
     if args.murty185evaluation:
         run_analysis_murty185evaluation()
     if args.nsdsyntheticevaluation:
         run_analysis_nsdsyntheticevaluation()
     if args.vinken2025evaluation:
         run_analysis_vinken2025evaluation()
-    if args.localizereffect:
-        run_analysis_localizereffect()
-    if args.tthresholdeffect:
-        run_analysis_tthresholdeffect()
     if not any(vars(args).values()):
         print('No analysis specified. Use --help for more information.')
 
