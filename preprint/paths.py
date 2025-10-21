@@ -1,9 +1,16 @@
 """
 Save commonly used paths
 """
+# fMRI DATASETS
 NSD_DIR = '/Users/adipani3/datasets/nsd'
 NSDSYNTHETIC_DIR = None  # '/om2/user/alishd/datasets/nsdsynthetic'
 MURTY185_DIR = '/Users/adipani3/datasets/murty185'
+
+# Macaque Data
+VINKEN2025_DIR = '/Users/adipani3/datasets/vinkenetal2025/Vinken2025'
+TRIPLEN_DIR = None # '/Users/adipani3/datasets/macaque_tripleN/TripleN'
+
+# Localizers
 GRILLSPECTOR_LOCALIZER_DIR = '/Users/adipani3/datasets/localizer_grillspector/fLoc_stimuli'
 # '/net/vast-storage/scratch/vast/sinha/alishd/datasets/\
 # localizer_grillspector/fLoc_stimuli'
