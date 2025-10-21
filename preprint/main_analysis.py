@@ -5,6 +5,7 @@ import argparse
 import scipy
 import numpy as np
 import pandas as pd
+import torch
 
 # Analysis files
 import analysis_layersweep
@@ -12,7 +13,7 @@ import analysis_localizationvalidation
 import paths
 
 from compcats.models import *
-from compcats.datasets.fmri import nsd
+from compcats.datasets.fmri import nsd, murty185
 from compcats.utils import seed_utils, misc_utils, model_utils, reliability_utils
 import compcats.utils.responsecomparison_utils as rcutils
 
@@ -25,6 +26,7 @@ os.makedirs(RESULTS_DIR, exist_ok=True)
 MODELS_DIR = os.path.join(CURRENT_FILE_DIR, 'models')
 os.makedirs(MODELS_DIR, exist_ok=True)
 NSD_DIR = paths.NSD_DIR
+MURTY185_DIR = paths.MURTY185_DIR
 # Directories
 GRILLSPECTOR_LOCALIZER_DIR = paths.GRILLSPECTOR_LOCALIZER_DIR
 KANWISHER_LOCALIZER_DIR = paths.KANWISHER_LOCALIZER_DIR
@@ -46,6 +48,8 @@ BEST_LAYERS_CSV_PATH = f'{RESULTS_DIR}/best_layers_nsd485_median_pearsonr.csv'
 LOCALIZATION_VALIDATION_CSV_PATH = f'{RESULTS_DIR}/localization_validation.csv'
 SUBJECTSUBJECT_CORRELATIONS_CSV_PATH = f'{RESULTS_DIR}/subjectsubject_correlations_nsd515.csv'
 MODELSUBJECT_CORRELATIONS_CSV_PATH = f'{RESULTS_DIR}/modelsubject_correlations_nsd515.csv'
+MODESUBJECT_CORRELATIONS_MURTY185_CSV_PATH = f'{RESULTS_DIR}/modelsubject_correlations_murty185.csv'
+SUBJECTSUBJECT_CORRELATIONS_MURTY185_CSV_PATH = f'{RESULTS_DIR}/subjectsubject_correlations_murty185.csv'
 LOCALIZEREFFECT_CSV_PATH = f'{RESULTS_DIR}/localizer_effect_correlations_nsd515.csv'
 TTHRESHOLDEFFECT_CSV_PATH = f'{RESULTS_DIR}/tthreshold_effect_correlations_nsd515.csv'
 
@@ -331,8 +335,10 @@ def get_allsubjects_nsd515_data(frois, tthreshold, tensors=True):
                 subjects_data[froi][subject] = subjects_data[froi][subject].cpu().numpy()
     return subjects_data, splithalf_pearsonrs, splithalf_rdmrs
 
-def get_allmodels_nsd515_data(model_fmri_frois, tthreshold, localizer, \
-                                       unitmean, tensors=True, model_type='task_optimized'):
+def get_allmodels_nsd515_data(
+    model_fmri_frois, tthreshold, localizer, \
+    unitmean, tensors=True, model_type='task_optimized'
+):
     """
     Get NSD515 mean of froi units data for all models
     Args:
@@ -396,6 +402,65 @@ def get_humandata_layersweep(subjects, frois, tthreshold, subset):
             )
             splithalf_pearsonrs[froi][subject] = splithalf_pearsonr_
     return subjects_data, splithalf_pearsonrs
+
+def get_allsubjects_murty185_data(frois):
+    """
+    Get Murty185 individual mean of repetitions data for all subjects
+    Args:
+        frois (list): List of frois
+    Returns:
+        subjects_data (dict): Dictionary of subject data
+    """
+    """
+    Get NSD individual mean of repetitions data for all subjects
+    Args:
+        frois (list): List of frois
+        tthreshold (float): Threshold for t-values
+    Returns:
+        subjects_data (dict): Dictionary of subject data
+    """
+    # Variables
+    subjects = [1, 2, 3, 4]
+    # Storing results
+    subjects_data = {}
+    # Get subject froi mean-repetition mean-voxels data
+    for froi in frois:
+        subjects_data[froi] = {}
+        for subject in subjects:
+            subject_froi_data, _ = murty185.get_betas(
+                MURTY185_DIR, subject, froi, voxels=True
+            )
+            subjects_data[froi][subject] = subject_froi_data
+    return subjects_data
+
+def get_allmodels_murty185_data(
+    model_fmri_frois, tthreshold, localizer, unitmean, tensors=True, model_type='task_optimized'
+):
+    """
+    Get Murty185 mean of froi units data for all models
+    Args:
+        frois (list): List of frois
+        unitmean (bool): Whether to take mean of units
+        tensors (bool): Whether to return tensors
+    """
+    models_data = {}
+    for (model_froi, fmri_froi) in model_fmri_frois:
+        models_data[(model_froi, fmri_froi)] = {}
+        for model_name in get_model_names(model_type):
+            model = get_model(model_name)
+            layer = get_froi_models_layers(model_froi, fmri_froi)[model_name]
+            model_froi_activations = model_utils.get_dataset_activations(
+                MODELS_DIR, NSD_DIR, model, layer, dataset='murty185', \
+                froi=model_froi, tthreshold=tthreshold, froi_localizer=localizer, \
+                froi_localizer_dir=get_localizer_dir(localizer), batch_size=BATCH_SIZE,
+                device=DEVICE
+            )
+            if unitmean:
+                model_froi_activations = model_froi_activations.mean(axis=-1)
+            if not tensors:
+                model_froi_activations = model_froi_activations.cpu().numpy()
+            models_data[(model_froi, fmri_froi)][model_name] = model_froi_activations
+    return models_data
 
 # Layer sweeps
 def run_analysis_layersweep():
@@ -1057,6 +1122,145 @@ def run_analysis_nsdcomparison():
 
 # Other dataset: Murty185
 def run_analysis_murty185validation():
+    """
+    Analysis: Murty185 dataset validation for subject-subject and model-subject correlations
+    """
+    model_type = 'random'  # 'all', 'random', 'brain_optimized', 'task_optimized', 'optimized'
+    # Define frois
+    model_fmri_frois_core = [
+        ('FFA', 'FFA'),
+        ('PPA', 'PPA'),
+        ('EBA', 'EBA')
+    ]
+    model_fmri_frois_all = model_fmri_frois_core
+
+    # Variables
+    model_fmri_frois = model_fmri_frois_all
+    fmri_frois = list({i[1] for i in model_fmri_frois})
+    tthreshold = 3 if model_type == 'random' else 7
+    # Subjects
+    subjects = [1, 2, 3, 4]
+    # Models
+    model_localizer = 'grillspector'
+
+    # SUBJECT-SUBJECT correlations
+    # Storing results
+    subjectsubject_correlations_csv_path = SUBJECTSUBJECT_CORRELATIONS_MURTY185_CSV_PATH
+    if os.path.exists(subjectsubject_correlations_csv_path):
+        subjectsubject_correlations_csv = pd.read_csv(subjectsubject_correlations_csv_path)
+        subjectsubject_correlations_csv_list = subjectsubject_correlations_csv.to_dict('records')
+    else:
+        subjectsubject_correlations_csv_list = []
+
+    subjects_data = get_allsubjects_murty185_data(fmri_frois)
+    for subject1_idx, subject1 in enumerate(subjects):
+        for subject2_idx, subject2 in enumerate(subjects[subject1_idx+1:]):
+            for froi in fmri_frois:
+                row_params = {
+                    'fmri_froi': froi,
+                    'fmri_dataset': 'murty185',
+                    'subject1': subject1,
+                    'subject2': subject2
+                }
+                # Check if row is present
+                if misc_utils.check_row_present(row_params, subjectsubject_correlations_csv_list):
+                    continue
+                # Run subject-subject correlation
+                subject1_voxel_data = subjects_data[froi][subject1]
+                subject2_voxel_data = subjects_data[froi][subject2]
+                if subject1_voxel_data is None or \
+                    subject2_voxel_data is None:
+                    # Set to nan
+                    pearsonr = np.nan
+                    rdmr = np.nan
+                    pvalue_pearsonr = np.nan
+                    pvalue_rdmr = np.nan
+                else:
+                    # Pearsonr
+                    pearsonr, pvalue_pearsonr = scipy.stats.pearsonr(
+                        subject1_voxel_data.mean(axis=-1), subject2_voxel_data.mean(axis=-1)
+                    )
+                    # RDMr
+                    # Convert to tensors for rdmr calculation
+                    subject1_voxel_data = torch.tensor(subject1_voxel_data)
+                    subject2_voxel_data = torch.tensor(subject2_voxel_data)
+                    rdmr, pvalue_rdmr = rcutils.rdmr(
+                        subject1_voxel_data, subject2_voxel_data, return_pvalue=True
+                    )
+                # Save results
+                subjectsubject_correlations_csv_list.append({
+                    **row_params,
+                    'pearsonr': pearsonr,
+                    'rdmr': rdmr,
+                    'pvalue_rdmr': pvalue_rdmr,
+                    'pvalue_pearsonr': pvalue_pearsonr,
+                })
+                subjectsubject_correlations_csv = pd.DataFrame(subjectsubject_correlations_csv_list)
+                subjectsubject_correlations_csv.to_csv(
+                    subjectsubject_correlations_csv_path, index=False
+                )
+
+
+    # MODEL-SUBJECT correlations
+    # Storing results
+    modelsubject_correlations_csv_path = MODESUBJECT_CORRELATIONS_MURTY185_CSV_PATH
+    if os.path.exists(modelsubject_correlations_csv_path):
+        modelsubject_correlations_csv = pd.read_csv(modelsubject_correlations_csv_path)
+        modelsubject_correlations_csv_list = modelsubject_correlations_csv.to_dict('records')
+    else:
+        modelsubject_correlations_csv_list = []
+
+    models_data = get_allmodels_murty185_data(
+        model_fmri_frois, tthreshold, model_localizer, unitmean=False, tensors=True,
+        model_type=model_type
+    )
+
+    for model_name in get_model_names(model_type):
+        for subject in subjects:
+            for (model_froi, fmri_froi) in model_fmri_frois:
+                row_params = {
+                    'model_name': model_name,
+                    'model_layer': get_froi_models_layers(model_froi, fmri_froi)[model_name],
+                    'model_froi': model_froi,
+                    'model_tthreshold': tthreshold,
+                    'model_localizer': model_localizer,
+                    'fmri_dataset': 'murty185',
+                    'fmri_froi': fmri_froi,
+                    'fmri_tthreshold': tthreshold,
+                    'subject': subject
+                }
+                # Check if row is present
+                if misc_utils.check_row_present(row_params, modelsubject_correlations_csv_list):
+                    continue
+                # Run model-subject correlation
+                # Get data
+                model_data = models_data[(model_froi, fmri_froi)][model_name]
+                subject_data = subjects_data[fmri_froi][subject]
+                # RDMr
+                # Convert to tensors for rdmr calculation
+                model_data = torch.tensor(model_data) if not isinstance(model_data, torch.Tensor) else model_data
+                subject_data = torch.tensor(subject_data) if not isinstance(subject_data, torch.Tensor) else subject_data
+                rdmr, pvalue_rdmr = rcutils.rdmr(
+                    model_data, subject_data, return_pvalue=True
+                )
+                # Pearsonr
+                pearsonr, pvalue_pearsonr = scipy.stats.pearsonr(
+                    model_data.mean(axis=-1).cpu().numpy(), 
+                    subject_data.mean(axis=-1).cpu().numpy()
+                )
+                # Save results
+                modelsubject_correlations_csv_list.append({
+                    **row_params,
+                    'pearsonr': pearsonr,
+                    'rdmr': rdmr,
+                    'pvalue_rdmr': pvalue_rdmr,
+                    'pvalue_pearsonr': pvalue_pearsonr,
+                })
+                modelsubject_correlations_csv = pd.DataFrame(modelsubject_correlations_csv_list)
+                modelsubject_correlations_csv.to_csv(
+                    modelsubject_correlations_csv_path, index=False
+                )
+
     """
     TODO
     """
