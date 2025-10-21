@@ -1105,27 +1105,14 @@ def run_analysis_tthresholdeffect():
                             tthresholdeffect_correlations_csv_path, index=False
                         )
 
-
-# MDS
-def run_analysis_mds():
-    """
-    Run MDS analysis
-    """
-    pass
-
-# NSD comparison
-def run_analysis_nsdcomparison():
-    """
-    Run Full NSD comparison
-    """
-    pass
-
 # Other dataset: Murty185
-def run_analysis_murty185validation():
+def run_analysis_murty185evaluation():
     """
-    Analysis: Murty185 dataset validation for subject-subject and model-subject correlations
+    Analysis: Murty185 dataset evaluation for subject-subject and model-subject correlations
     """
-    model_type = 'random'  # 'all', 'random', 'brain_optimized', 'task_optimized', 'optimized'
+    model_type = 'all'  # 'all', 'random', 'brain_optimized', 'task_optimized', 'optimized'
+    if model_type == 'all':
+        raise ValueError('t-threshold has not been decoupled for all models yet. Please specify a model type.')
     # Define frois
     model_fmri_frois_core = [
         ('FFA', 'FFA'),
@@ -1261,6 +1248,8 @@ def run_analysis_murty185validation():
                     modelsubject_correlations_csv_path, index=False
                 )
 
+# Other dataset: NSD-Synthetic
+def run_analysis_nsdsyntheticevaluation():
     """
     TODO
     """
@@ -1274,33 +1263,33 @@ def main():
     parser = argparse.ArgumentParser(description='Run analysis')
 
     parser.add_argument(
-        '--layersweep', action='store_true', help='Run layer sweep'
+        '--layersweep', action='store_true', help='Run NSD515 layer sweep'
     )
     parser.add_argument(
-        '--localizationvalidation', action='store_true', help='Run localization validation'
+        '--localizationvalidation', action='store_true', help='Run NSD515 localization validation'
     )
     parser.add_argument(
         '--subjectsubjectcorrelations', action='store_true', \
-            help='Run subject-subject correlations'
+            help='Run NSD515 subject-subject correlations'
     )
     parser.add_argument(
         '--modelsubjectcorrelations', action='store_true', \
-            help='Run model-subject univariate correlations'
+            help='Run NSD515 model-subject univariate correlations'
     )
     parser.add_argument(
-        '--mds', action='store_true', help='Run MDS'
+        '--localizereffect', action='store_true', help='Run NSD515 localizer effect'
     )
     parser.add_argument(
-        '--nsdcomparison', action='store_true', help='Run NSD comparison'
+        '--tthresholdeffect', action='store_true', help='Run NSD515 t-threshold effect'
     )
     parser.add_argument(
-        '--murty185validation', action='store_true', help='Run Murty185 validation'
+        '--murty185evaluation', action='store_true', help='Run Murty185 evaluation'
     )
     parser.add_argument(
-        '--localizereffect', action='store_true', help='Run localizer effect'
+        '--nsdsyntheticevaluation', action='store_true', help='Run NSD-Synthetic evaluation'
     )
     parser.add_argument(
-        '--tthresholdeffect', action='store_true', help='Run t-threshold effect'
+        '--vinken2025evaluation', action='store_true', help='Run Vinken et al. 2025 evaluation'
     )
 
     args = parser.parse_args()
@@ -1313,12 +1302,12 @@ def main():
         run_analysis_subjectsubjectcorrelations()
     if args.modelsubjectcorrelations:
         run_analysis_modelsubjectcorrelations()
-    if args.mds:
-        run_analysis_mds()
-    if args.nsdcomparison:
-        run_analysis_nsdcomparison()
-    if args.murty185validation:
-        run_analysis_murty185validation()
+    if args.murty185evaluation:
+        run_analysis_murty185evaluation()
+    if args.nsdsyntheticevaluation:
+        run_analysis_nsdsyntheticevaluation()
+    if args.vinken2025evaluation:
+        run_analysis_vinken2025evaluation()
     if args.localizereffect:
         run_analysis_localizereffect()
     if args.tthresholdeffect:
