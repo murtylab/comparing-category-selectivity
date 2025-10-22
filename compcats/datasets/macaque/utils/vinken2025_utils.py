@@ -85,7 +85,6 @@ def check_data_preprocessed(vinken2025_dir):
     if os.path.exists(processed_dir) and \
         os.path.isfile(os.path.join(processed_dir, 'reliabilities.npy')) and \
         os.path.isfile(os.path.join(processed_dir, 'responses.npy')) and \
-        os.path.isfile(os.path.join(processed_dir, 'splithalfs.npy')) and \
         os.path.isfile(os.path.join(processed_dir, 'stim_info.csv')):
         return processed_dir
     return None
@@ -147,16 +146,15 @@ def preprocess_vinken2025_data(vinken2025_dir, nsd_dir):
                 dummy_response,
                 axis=0
             )
-        breakpoint()
+        assert resps.shape[0] == len(shared1000_nsdids), (
+            f'Number of stimuli mismatch for {key}: {resps.shape[0]} vs {len(shared1000_nsdids)}'
+        )
         responses[key] = resps
         stim_nreps = {}
-        nsdids = processed_mat['nsdids']
-        for idx, nsdid in enumerate(nsdids):
-            if nsdid == NSDID_MISSING:
-                stim_nreps[nsdid] = 0
-            else:
-                stim_data = resps[idx, :, :]
-                stim_nreps[nsdid] = calculate_num_repetitions(stim_data)
+        # nsdids = processed_mat['nsdids']
+        for idx, nsdid in enumerate(shared1000_nsdids):
+            stim_data = resps[idx, :, :]
+            stim_nreps[nsdid] = calculate_num_repetitions(stim_data)
         # Add a column for number of repetitions in stim_info by matching nsdids
         for stim in stim_info:
             nsdid = stim['nsdid']
@@ -164,11 +162,9 @@ def preprocess_vinken2025_data(vinken2025_dir, nsd_dir):
     # Save processed data as npz and csv, the npy should be dictionary with keys from the processed_mats
     reliabilities_path = os.path.join(processed_dir, 'reliabilities.npy')
     responses_path = os.path.join(processed_dir, 'responses.npy')
-    splithalfs_path = os.path.join(processed_dir, 'splithalfs.npy')
     stiminfo_path = os.path.join(processed_dir, 'stim_info.csv')
     np.save(reliabilities_path, reliabilities, allow_pickle=True)
     np.save(responses_path, responses, allow_pickle=True)
     stim_info_df = pd.DataFrame(stim_info)
     stim_info_df.to_csv(stiminfo_path, index=False)
     return processed_dir
-
