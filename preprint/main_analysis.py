@@ -461,7 +461,15 @@ def get_allmonkeys_vinken2025_nsd515data(frois, tensors=True):
         monkeys_data[froi][monkey], _ = vinken2025.get_responses(
             VINKEN2025_DIR, monkey, froi, repetition_mean=True
         )
-        monkeys_splithalfs[froi][monkey] = 1
+        # Mean split-half correlations
+        monkeys_splithalfs[froi][monkey] = {
+            'pearsonr': vinken2025.get_splithalf_reliability(
+                paths.VINKEN2025_DIR, 'pearsonr', monkey, froi
+            )[0],
+            'rdmr': vinken2025.get_splithalf_reliability(
+                paths.VINKEN2025_DIR, 'rdmr', monkey, froi
+            )[0]
+        }
         # Convert to tensors if required
         if tensors:
             monkeys_data[froi][monkey] = torch.Tensor(monkeys_data[froi][monkey]).to(DEVICE)
@@ -1310,7 +1318,7 @@ def run_analysis_vinken2025evaluation():
     nsd_subjects = list(range(1, 9))
     vinken25_monkeys = [2, 3]
     # Models
-    model_type = 'brain_optimized'  # 'all', 'random', 'brain_optimized', 'task_optimized', 'optimized'
+    model_type = 'task_optimized'  # 'all', 'random', 'brain_optimized', 'task_optimized', 'optimized'
     if model_type == 'all':
         raise ValueError('t-threshold has not been decoupled for all models yet. Please specify a model type.')
     model_localizer = 'grillspector'
@@ -1328,8 +1336,11 @@ def run_analysis_vinken2025evaluation():
 
     # Template for rows
     # All None should be filled in later, pd.NA are for irrelevant values
+    # TODO: before adding to csv, check if the row has all columns as the template 
+    # and none of them is None
     row_template = {
-        'evaluation_subset': None, 'system1': None, 'system2': None, 'system1_type': None, 'system2_type': None,
+        'evaluation_subset': None, 
+        'system1': None, 'system2': None, 'system1_type': None, 'system2_type': None,
         'system1_source': None, 'system2_source': None,
         'system1_froi': None, 'system2_froi': None, 'metric_type': None, 'metric_normed': None,
         'metric_raw': None, 'metric_pvalue': None,
@@ -1361,11 +1372,11 @@ def run_analysis_vinken2025evaluation():
                 monkey1_neuron_data = monkeys_data[froi1][monkey1]
                 monkey2_neuron_data = monkeys_data[froi2][monkey2]
                 # split-half pearsonrs, TODO, keep 1 for now
-                monkey1_splithalf_pearsonr = 1
-                monkey2_splithalf_pearsonr = 1
+                monkey1_splithalf_pearsonr = monkeys_splithalfs[froi1][monkey1]['pearsonr']
+                monkey2_splithalf_pearsonr = monkeys_splithalfs[froi2][monkey2]['pearsonr']
                 # split-half rdmrs
-                monkey1_splithalf_rdmr = 1
-                monkey2_splithalf_rdmr = 1
+                monkey1_splithalf_rdmr = monkeys_splithalfs[froi1][monkey1]['rdmr']
+                monkey2_splithalf_rdmr = monkeys_splithalfs[froi2][monkey2]['rdmr']
                 if monkey1_neuron_data is None or \
                     monkey2_neuron_data is None or \
                     np.isnan(monkey1_splithalf_pearsonr) or \
@@ -1443,16 +1454,12 @@ def run_analysis_vinken2025evaluation():
                 # Run subject-subject correlation
                 subject1_voxel_data = subjects_voxel_data[froi1][subject1]
                 subject2_voxel_data = subjects_voxel_data[froi2][subject2]
-                # split-half pearsonrs, TODO, keep 1 for now
-                # subject1_splithalf_pearsonr = subjects_splithalf_pearsonrs[froi][subject1]
-                # subject2_splithalf_pearsonr = subjects_splithalf_pearsonrs[froi][subject2]
-                subject1_splithalf_pearsonr = 1
-                subject2_splithalf_pearsonr = 1
-                # split-half rdmrs, TODO, keep 1 for now
-                # subject1_splithalf_rdmr = subjects_splithalf_rdmrs[froi][subject1]
-                # subject2_splithalf_rdmr = subjects_splithalf_rdmrs[froi][subject2]
-                subject1_splithalf_rdmr = 1
-                subject2_splithalf_rdmr = 1
+                # split-half pearsonrs
+                subject1_splithalf_pearsonr = subjects_splithalf_pearsonrs[froi1][subject1]
+                subject2_splithalf_pearsonr = subjects_splithalf_pearsonrs[froi2][subject2]
+                # split-half rdmrs
+                subject1_splithalf_rdmr = subjects_splithalf_rdmrs[froi1][subject1]
+                subject2_splithalf_rdmr = subjects_splithalf_rdmrs[froi2][subject2]
                 if subject1_voxel_data is None or \
                     subject2_voxel_data is None or \
                     np.isnan(subject1_splithalf_pearsonr) or \
@@ -1528,16 +1535,12 @@ def run_analysis_vinken2025evaluation():
                 # Get monkey-human correlation
                 monkey_neuron_data = monkeys_data[froi1][monkey]
                 subject_voxel_data = subjects_voxel_data[froi2][subject]
-                # split-half pearsonrs, TODO, keep 1 for now
-                # monkey_splithalf_pearsonr = monkeys_splithalfs[froi][monkey]['pearsonr']
-                # subject_splithalf_pearsonr = subjects_splithalf_pearsonrs[froi][subject]
-                monkey_splithalf_pearsonr = 1
-                subject_splithalf_pearsonr = 1
-                # split-half rdmrs, TODO, keep 1 for now
-                # monkey_splithalf_rdmr = monkeys_splithalfs[froi][monkey]['rdmr']
-                # subject_splithalf_rdmr = subjects_splithalf_rdmrs[froi][subject]
-                monkey_splithalf_rdmr = 1
-                subject_splithalf_rdmr = 1
+                # split-half pearsonrs
+                monkey_splithalf_pearsonr = monkeys_splithalfs[froi1][monkey]['pearsonr']
+                subject_splithalf_pearsonr = subjects_splithalf_pearsonrs[froi2][subject]
+                # split-half rdmrs
+                monkey_splithalf_rdmr = monkeys_splithalfs[froi1][monkey]['rdmr']
+                subject_splithalf_rdmr = subjects_splithalf_rdmrs[froi2][subject]
                 if monkey_neuron_data is None or \
                     subject_voxel_data is None or \
                     np.isnan(monkey_splithalf_pearsonr) or \
@@ -1624,12 +1627,10 @@ def run_analysis_vinken2025evaluation():
                 # Get monkey-model correlation
                 monkey_neuron_data = monkeys_data[froi2][monkey]
                 model_data = models_data[(model_froi, froi2)][model_name]
-                # split-half pearsonrs, TODO, keep 1 for now
-                # monkey_splithalf_pearsonr = monkeys_splithalfs[model_froi][monkey]['pearsonr']
-                monkey_splithalf_pearsonr = 1
-                # split-half rdmrs, TODO, keep 1 for now
-                # monkey_splithalf_rdmr = monkeys_splithalfs[model_froi][monkey]['rdmr']
-                monkey_splithalf_rdmr = 1
+                # split-half pearsonrs
+                monkey_splithalf_pearsonr = monkeys_splithalfs[froi2][monkey]['pearsonr']
+                # split-half rdmrs
+                monkey_splithalf_rdmr = monkeys_splithalfs[froi2][monkey]['rdmr']
                 if monkey_neuron_data is None or \
                     model_data is None or \
                     np.isnan(monkey_splithalf_pearsonr) or \
@@ -1707,12 +1708,10 @@ def run_analysis_vinken2025evaluation():
                 # Get subject-model correlation
                 subject_voxel_data = subjects_voxel_data[froi2][subject]
                 model_data = models_data[(model_froi, froi2)][model_name]
-                # split-half pearsonrs, TODO, keep 1 for now
-                # subject_splithalf_pearsonr = subjects_splithalf_pearsonrs[model_froi][subject]
-                subject_splithalf_pearsonr = 1
-                # split-half rdmrs, TODO, keep 1 for now
-                # subject_splithalf_rdmr = subjects_splithalf_rdmrs[model_froi][subject]
-                subject_splithalf_rdmr = 1
+                # split-half pearsonrs
+                subject_splithalf_pearsonr = subjects_splithalf_pearsonrs[froi2][subject]
+                # split-half rdmrs
+                subject_splithalf_rdmr = subjects_splithalf_rdmrs[froi2][subject]
                 if subject_voxel_data is None or \
                     model_data is None or \
                     np.isnan(subject_splithalf_pearsonr) or \
