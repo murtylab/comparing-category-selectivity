@@ -224,3 +224,90 @@ def get_voxelmean_splithalf_correlation(subject_data, image_subset=..., method=3
     if isinstance(corr, np.floating):
         corr = corr.item()
     return corr
+
+
+####################################################################################################
+# NEURON-AVERAGED PEARSON SPLITHALF CORRELATION
+####################################################################################################
+def get_neuron_population_splithalf_correlation(
+    responses: np.ndarray,
+    metric: str = "pearsonr",
+    n_boot: int = 100,
+    spearman_brown: bool = True,
+    random_state: int | None = 42,
+):
+    """
+    Estimate population-level split-half reliability across stimuli for macaque data.
+
+    Parameters
+    ----------
+    responses : np.ndarray
+        Array of shape (n_stimuli, n_repeats, n_electrodes)
+        Each stimulus may have NaNs or zeros for missing repeats.
+    n_boot : int
+        Number of random splits for bootstrapping.
+    metric : {"pearsonr", "rdmr"}
+        "pearsonr": reliability of mean response across electrodes.
+        "rdmr": reliability of population pattern (RDM correlation).
+    spearman_brown : bool
+        Whether to apply Spearman-Brown correction to each split.
+    random_state : int | None
+        Random seed for reproducibility.
+
+    Returns
+    -------
+    reliability : float
+        Mean (Spearman-Brown-corrected) reliability across bootstraps.
+    reliability_splits : np.ndarray
+        Reliability values (uncorrected and corrected) for each bootstrap split.
+    """
+    # Error handle
+    metric = metric.lower()
+    assert metric in ["pearsonr", "rdmr"], "metric must be 'pearsonr' or 'rdmr'"
+    assert responses.ndim == 3, \
+        "responses must be 3D in the shape of n_stimuli, n_repeats, n_electrodes"
+    # Set random state
+    rng = np.random.default_rng(random_state)
+    n_stimuli, n_repeats, n_electrodes = responses.shape
+
+    split_rs = []
+    for _ in range(n_boot):
+        # --- Create random splits per stimulus ---
+        half1, half2 = [], []
+        for stim in range(n_stimuli):
+            valid_reps = np.where(~np.isnan(responses[stim, :].mean(axis=-1)))[0]
+            n_valid = len(valid_reps)
+            if n_valid < 2:
+                continue
+            idx = rng.permutation(valid_reps)
+            split = n_valid // 2
+            reps1, reps2 = idx[:split], idx[split:]
+            if len(reps1) == 0 or len(reps2) == 0:
+                continue
+            half1.append(np.nanmean(responses[stim, reps1, :], axis=0))
+            half2.append(np.nanmean(responses[stim, reps2, :], axis=0))
+
+        half1, half2 = np.array(half1), np.array(half2)
+        if half1.size == 0 or half2.size == 0:
+            continue
+
+        # --- Compute population-level correlation ---
+        if metric == "pearsonr":
+            # Mean across electrodes in each half → 1 vector per half
+            v1 = torch.Tensor(half1.mean(axis=1))
+            v2 = torch.Tensor(half2.mean(axis=1))
+            r = rcutils.pearsonr(v1, v2)
+        elif metric == "rdmr":
+            half1, half2 = torch.Tensor(half1), torch.Tensor(half2)
+            r = rcutils.rdmr(half1, half2)
+        else:
+            raise ValueError("metric must be 'pearsonr' or 'rdmr'")
+
+        # --- Apply Spearman–Brown correction ---
+        if spearman_brown:
+            r = (2 * r) / (1 + r) if np.isfinite(r) else np.nan
+
+        split_rs.append(r)
+
+    reliability = np.nanmean(split_rs)
+    return reliability, np.array(split_rs)
