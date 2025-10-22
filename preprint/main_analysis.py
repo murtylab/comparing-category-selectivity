@@ -14,6 +14,7 @@ import paths
 
 from compcats.models import *
 from compcats.datasets.fmri import nsd, murty185
+from compcats.datasets.macaque import vinken2025
 from compcats.utils import seed_utils, misc_utils, model_utils, reliability_utils
 import compcats.utils.responsecomparison_utils as rcutils
 
@@ -27,6 +28,7 @@ MODELS_DIR = os.path.join(CURRENT_FILE_DIR, 'models')
 os.makedirs(MODELS_DIR, exist_ok=True)
 NSD_DIR = paths.NSD_DIR
 MURTY185_DIR = paths.MURTY185_DIR
+VINKEN2025_DIR = paths.VINKEN2025_DIR
 # Directories
 GRILLSPECTOR_LOCALIZER_DIR = paths.GRILLSPECTOR_LOCALIZER_DIR
 KANWISHER_LOCALIZER_DIR = paths.KANWISHER_LOCALIZER_DIR
@@ -42,16 +44,18 @@ BATCH_SIZE = 64  # Adjust based on GPU memory
 
 # Device
 DEVICE = misc_utils.get_device()
+# DEVICE = torch.device('cpu')  # Forcing CPU for reproducibility in preprint results
 
 # Results dirs
 BEST_LAYERS_CSV_PATH = f'{RESULTS_DIR}/best_layers_nsd485_median_pearsonr.csv'
 LOCALIZATION_VALIDATION_CSV_PATH = f'{RESULTS_DIR}/localization_validation.csv'
 SUBJECTSUBJECT_CORRELATIONS_CSV_PATH = f'{RESULTS_DIR}/subjectsubject_correlations_nsd515.csv'
 MODELSUBJECT_CORRELATIONS_CSV_PATH = f'{RESULTS_DIR}/modelsubject_correlations_nsd515.csv'
-MODESUBJECT_CORRELATIONS_MURTY185_CSV_PATH = f'{RESULTS_DIR}/modelsubject_correlations_murty185.csv'
-SUBJECTSUBJECT_CORRELATIONS_MURTY185_CSV_PATH = f'{RESULTS_DIR}/subjectsubject_correlations_murty185.csv'
 LOCALIZEREFFECT_CSV_PATH = f'{RESULTS_DIR}/localizer_effect_correlations_nsd515.csv'
 TTHRESHOLDEFFECT_CSV_PATH = f'{RESULTS_DIR}/tthreshold_effect_correlations_nsd515.csv'
+MODESUBJECT_CORRELATIONS_MURTY185_CSV_PATH = f'{RESULTS_DIR}/modelsubject_correlations_murty185.csv'
+SUBJECTSUBJECT_CORRELATIONS_MURTY185_CSV_PATH = f'{RESULTS_DIR}/subjectsubject_correlations_murty185.csv'
+CORRELATIONS_VINKEN2025_CSV_PATH = f'{RESULTS_DIR}/monkeysubjectmodel_correlations_vinken2025.csv'
 
 # Models, Info Log
 MODELS = {
@@ -255,6 +259,7 @@ def get_best_median_worst_model_names():
         median_model_name (str): Median model name
         worst_model_name (str): Worst model name
     """
+    raise NotImplementedError('These are not up to date, use best layers csv instead')
     return {
         'best': 'vitb16siglip2res224',
         'median': 'vitb16synclr',
@@ -411,14 +416,6 @@ def get_allsubjects_murty185_data(frois):
     Returns:
         subjects_data (dict): Dictionary of subject data
     """
-    """
-    Get NSD individual mean of repetitions data for all subjects
-    Args:
-        frois (list): List of frois
-        tthreshold (float): Threshold for t-values
-    Returns:
-        subjects_data (dict): Dictionary of subject data
-    """
     # Variables
     subjects = [1, 2, 3, 4]
     # Storing results
@@ -432,6 +429,44 @@ def get_allsubjects_murty185_data(frois):
             )
             subjects_data[froi][subject] = subject_froi_data
     return subjects_data
+
+def get_allmonkeys_vinken2025_nsd515data(frois, tensors=True):
+    """
+    Get Vinken2025 individual mean of repetitions data for all monkeys
+    Splithalf metrics implemented: pearsonr, rdmr
+    Args:
+        frois (list): List of frois
+        subset (int): Subset of Vinken2025 dataset
+    Returns:
+        monkeys_data (dict): Dictionary of monkey data with keys as (froi, monkey)
+        monkeys_splithalfs (dict): Dictionary of monkey split-half correlations with \
+            keys as (froi, monkey) and values as dict of metric keys, correlation values
+    """
+    # Variables
+    keys = []
+    # Storing results
+    monkeys_data = {}
+    monkeys_splithalfs = {}
+    for froi in frois:
+        froi_monkeys = vinken2025.get_froi_monkeys_present(froi)
+        for monkey in froi_monkeys:
+            key = (froi, monkey)
+            assert key not in keys, 'Duplicate froi-monkey key'
+            keys.append(key)
+        monkeys_data[froi] = {}
+        monkeys_splithalfs[froi] = {}
+    keys = list(set(keys))
+    for key in keys:
+        froi, monkey = key
+        monkeys_data[froi][monkey], _ = vinken2025.get_responses(
+            VINKEN2025_DIR, monkey, froi, repetition_mean=True
+        )
+        monkeys_splithalfs[froi][monkey] = 1
+        # Convert to tensors if required
+        if tensors:
+            monkeys_data[froi][monkey] = torch.Tensor(monkeys_data[froi][monkey]).to(DEVICE)
+    return monkeys_data, monkeys_splithalfs
+
 
 def get_allmodels_murty185_data(
     model_fmri_frois, tthreshold, localizer, unitmean, tensors=True, model_type='task_optimized'
@@ -1255,6 +1290,486 @@ def run_analysis_nsdsyntheticevaluation():
     """
     pass
 
+# Other dataset: Vinken et al. 2025
+def run_analysis_vinken2025evaluation():
+    """
+    TODO
+    """
+    # Define frois
+    frois = [('FFA', 'FFA')]
+    frois_unique = []
+    for froi1, froi2 in frois:
+        if froi1 not in frois_unique:
+            frois_unique.append(froi1)
+        if froi2 not in frois_unique:
+            frois_unique.append(froi2)
+    # Variables
+    fmri_tthreshold = 7
+    subset = 515
+    # Subjects
+    nsd_subjects = list(range(1, 9))
+    vinken25_monkeys = [2, 3]
+    # Models
+    model_type = 'brain_optimized'  # 'all', 'random', 'brain_optimized', 'task_optimized', 'optimized'
+    if model_type == 'all':
+        raise ValueError('t-threshold has not been decoupled for all models yet. Please specify a model type.')
+    model_localizer = 'grillspector'
+    model_tthreshold = 3 if model_type == 'random' else 7
+    # Metrics
+    metrics = ['pearsonr', 'rdmr']
+
+    # csv for all correlations
+    all_correlations_csv_path = CORRELATIONS_VINKEN2025_CSV_PATH
+    if os.path.exists(all_correlations_csv_path):
+        all_correlations_csv = pd.read_csv(all_correlations_csv_path)
+        all_correlations_csv_list = all_correlations_csv.to_dict('records')
+    else:
+        all_correlations_csv_list = []
+
+    # Template for rows
+    # All None should be filled in later, pd.NA are for irrelevant values
+    row_template = {
+        'evaluation_subset': None, 'system1': None, 'system2': None, 'system1_type': None, 'system2_type': None,
+        'system1_source': None, 'system2_source': None,
+        'system1_froi': None, 'system2_froi': None, 'metric_type': None, 'metric_normed': None,
+        'metric_raw': None, 'metric_pvalue': None,
+        'system1_splithalf_metric': None, 'system2_splithalf_metric': None,
+        'system1_info': None, 'system2_info': None
+    }
+
+    # Monkey-Monkey correlations
+    monkeys_data, monkeys_splithalfs = \
+        get_allmonkeys_vinken2025_nsd515data(frois_unique, tensors=True)
+    for monkey1_idx, monkey1 in enumerate(vinken25_monkeys):
+        for monkey2_idx, monkey2 in enumerate(vinken25_monkeys[monkey1_idx+1:]):
+            for (froi1, froi2) in frois:
+                row_params = {
+                    'evaluation_subset': subset,
+                    'system1': f'monkey_{monkey1}',
+                    'system2': f'monkey_{monkey2}',
+                    'system1_type': 'monkey',
+                    'system2_type': 'monkey',
+                    'system1_source': 'vinken2025',
+                    'system2_source': 'vinken2025',
+                    'system1_froi': froi1,
+                    'system2_froi': froi2,
+                }
+                # Check if row is present
+                if misc_utils.check_row_present(row_params, all_correlations_csv_list):
+                    continue
+                # Get monkey-monkey correlation
+                monkey1_neuron_data = monkeys_data[froi1][monkey1]
+                monkey2_neuron_data = monkeys_data[froi2][monkey2]
+                # split-half pearsonrs, TODO, keep 1 for now
+                monkey1_splithalf_pearsonr = 1
+                monkey2_splithalf_pearsonr = 1
+                # split-half rdmrs
+                monkey1_splithalf_rdmr = 1
+                monkey2_splithalf_rdmr = 1
+                if monkey1_neuron_data is None or \
+                    monkey2_neuron_data is None or \
+                    np.isnan(monkey1_splithalf_pearsonr) or \
+                    np.isnan(monkey2_splithalf_pearsonr) or \
+                    np.isnan(monkey1_splithalf_rdmr) or \
+                    np.isnan(monkey2_splithalf_rdmr):
+                    # Set to nan
+                    pearsonr = np.nan
+                    rdmr = np.nan
+                    pvalue_pearsonr = np.nan
+                    pvalue_rdmr = np.nan
+                    normed_pearsonr = np.nan
+                    normed_rdmr = np.nan
+                else:
+                    # Pearsonr
+                    pearsonr, pvalue_pearsonr = scipy.stats.pearsonr(
+                        monkey1_neuron_data.mean(axis=-1), monkey2_neuron_data.mean(axis=-1)
+                    )
+                    normed_pearsonr = \
+                        pearsonr / np.sqrt(monkey1_splithalf_pearsonr * monkey2_splithalf_pearsonr)
+                    # RDMr
+                    rdmr, pvalue_rdmr = rcutils.rdmr(
+                        monkey1_neuron_data, monkey2_neuron_data, return_pvalue=True
+                    )
+                    normed_rdmr = \
+                        rdmr / np.sqrt(monkey1_splithalf_rdmr * monkey2_splithalf_rdmr)
+                # Save results
+                all_correlations_csv_list.append({
+                    **row_params,
+                    'metric_type': 'pearsonr',
+                    'metric_normed': normed_pearsonr,
+                    'metric_raw': pearsonr,
+                    'metric_pvalue': pvalue_pearsonr,
+                    'system1_splithalf_metric': monkey1_splithalf_pearsonr,
+                    'system2_splithalf_metric': monkey2_splithalf_pearsonr,
+                    'system1_info': pd.NA,
+                    'system2_info': pd.NA
+                })
+                all_correlations_csv_list.append({
+                    **row_params,
+                    'metric_type': 'rdmr',
+                    'metric_normed': normed_rdmr,
+                    'metric_raw': rdmr,
+                    'metric_pvalue': pvalue_rdmr,
+                    'system1_splithalf_metric': monkey1_splithalf_rdmr,
+                    'system2_splithalf_metric': monkey2_splithalf_rdmr,
+                    'system1_info': pd.NA,
+                    'system2_info': pd.NA
+                })
+                all_correlations_csv = pd.DataFrame(all_correlations_csv_list)
+                all_correlations_csv.to_csv(
+                    all_correlations_csv_path, index=False
+                )
+
+    # Human-Human correlations
+    subjects_voxel_data, subjects_splithalf_pearsonrs, subjects_splithalf_rdmrs = \
+        get_allsubjects_nsd515_data(frois_unique, fmri_tthreshold, tensors=True)
+    for subject1_idx, subject1 in enumerate(nsd_subjects):
+        for subject2_idx, subject2 in enumerate(nsd_subjects[subject1_idx+1:]):
+            for (froi1, froi2) in frois:
+                row_params = {
+                    'evaluation_subset': subset,
+                    'system1': f'subject_{subject1}',
+                    'system2': f'subject_{subject2}',
+                    'system1_type': 'human',
+                    'system2_type': 'human',
+                    'system1_source': f'nsd{subset}',
+                    'system2_source': f'nsd{subset}',
+                    'system1_froi': froi1,
+                    'system2_froi': froi2,
+                }
+                # Check if row is present
+                if misc_utils.check_row_present(row_params, all_correlations_csv_list):
+                    continue
+                # Run subject-subject correlation
+                subject1_voxel_data = subjects_voxel_data[froi1][subject1]
+                subject2_voxel_data = subjects_voxel_data[froi2][subject2]
+                # split-half pearsonrs, TODO, keep 1 for now
+                # subject1_splithalf_pearsonr = subjects_splithalf_pearsonrs[froi][subject1]
+                # subject2_splithalf_pearsonr = subjects_splithalf_pearsonrs[froi][subject2]
+                subject1_splithalf_pearsonr = 1
+                subject2_splithalf_pearsonr = 1
+                # split-half rdmrs, TODO, keep 1 for now
+                # subject1_splithalf_rdmr = subjects_splithalf_rdmrs[froi][subject1]
+                # subject2_splithalf_rdmr = subjects_splithalf_rdmrs[froi][subject2]
+                subject1_splithalf_rdmr = 1
+                subject2_splithalf_rdmr = 1
+                if subject1_voxel_data is None or \
+                    subject2_voxel_data is None or \
+                    np.isnan(subject1_splithalf_pearsonr) or \
+                    np.isnan(subject2_splithalf_pearsonr) or \
+                    np.isnan(subject1_splithalf_rdmr) or \
+                    np.isnan(subject2_splithalf_rdmr):
+                    # Set to nan
+                    pearsonr = np.nan
+                    rdmr = np.nan
+                    pvalue_pearsonr = np.nan
+                    pvalue_rdmr = np.nan
+                    normed_pearsonr = np.nan
+                    normed_rdmr = np.nan
+                else:
+                    # Pearsonr
+                    pearsonr, pvalue_pearsonr = scipy.stats.pearsonr(
+                        subject1_voxel_data.mean(axis=-1), subject2_voxel_data.mean(axis=-1)
+                    )
+                    normed_pearsonr = \
+                        pearsonr / np.sqrt(subject1_splithalf_pearsonr * subject2_splithalf_pearsonr)
+                    # RDMr
+                    rdmr, pvalue_rdmr = rcutils.rdmr(
+                        subject1_voxel_data, subject2_voxel_data, return_pvalue=True
+                    )
+                    normed_rdmr = \
+                        rdmr / np.sqrt(subject1_splithalf_rdmr * subject2_splithalf_rdmr)
+                # Save results
+                all_correlations_csv_list.append({
+                    **row_params,
+                    'metric_type': 'pearsonr',
+                    'metric_normed': normed_pearsonr,
+                    'metric_raw': pearsonr,
+                    'metric_pvalue': pvalue_pearsonr,
+                    'system1_splithalf_metric': subject1_splithalf_pearsonr,
+                    'system2_splithalf_metric': subject2_splithalf_pearsonr,
+                    'system1_info': {'tthreshold': fmri_tthreshold},
+                    'system2_info': {'tthreshold': fmri_tthreshold}
+                })
+                all_correlations_csv_list.append({
+                    **row_params,
+                    'metric_type': 'rdmr',
+                    'metric_normed': normed_rdmr,
+                    'metric_raw': rdmr,
+                    'metric_pvalue': pvalue_rdmr,
+                    'system1_splithalf_metric': subject1_splithalf_rdmr,
+                    'system2_splithalf_metric': subject2_splithalf_rdmr,
+                    'system1_info': {'tthreshold': fmri_tthreshold},
+                    'system2_info': {'tthreshold': fmri_tthreshold}
+                })
+                all_correlations_csv = pd.DataFrame(all_correlations_csv_list)
+                all_correlations_csv.to_csv(
+                    all_correlations_csv_path, index=False
+                )
+
+    # Monkey-Human correlations
+    for monkey in vinken25_monkeys:
+        for subject in nsd_subjects:
+            for (froi1, froi2) in frois:
+                row_params = {
+                    'evaluation_subset': subset,
+                    'system1': f'monkey_{monkey}',
+                    'system2': f'subject_{subject}',
+                    'system1_type': 'monkey',
+                    'system2_type': 'human',
+                    'system1_source': 'vinken2025',
+                    'system2_source': f'nsd{subset}',
+                    'system1_froi': froi1,
+                    'system2_froi': froi2,
+                }
+                # Check if row is present
+                if misc_utils.check_row_present(row_params, all_correlations_csv_list):
+                    continue
+                # Get monkey-human correlation
+                monkey_neuron_data = monkeys_data[froi1][monkey]
+                subject_voxel_data = subjects_voxel_data[froi2][subject]
+                # split-half pearsonrs, TODO, keep 1 for now
+                # monkey_splithalf_pearsonr = monkeys_splithalfs[froi][monkey]['pearsonr']
+                # subject_splithalf_pearsonr = subjects_splithalf_pearsonrs[froi][subject]
+                monkey_splithalf_pearsonr = 1
+                subject_splithalf_pearsonr = 1
+                # split-half rdmrs, TODO, keep 1 for now
+                # monkey_splithalf_rdmr = monkeys_splithalfs[froi][monkey]['rdmr']
+                # subject_splithalf_rdmr = subjects_splithalf_rdmrs[froi][subject]
+                monkey_splithalf_rdmr = 1
+                subject_splithalf_rdmr = 1
+                if monkey_neuron_data is None or \
+                    subject_voxel_data is None or \
+                    np.isnan(monkey_splithalf_pearsonr) or \
+                    np.isnan(subject_splithalf_pearsonr) or \
+                    np.isnan(monkey_splithalf_rdmr) or \
+                    np.isnan(subject_splithalf_rdmr):
+                    # Set to nan
+                    pearsonr = np.nan
+                    rdmr = np.nan
+                    pvalue_pearsonr = np.nan
+                    pvalue_rdmr = np.nan
+                    normed_pearsonr = np.nan
+                    normed_rdmr = np.nan
+                else:
+                    # Pearsonr
+                    pearsonr, pvalue_pearsonr = scipy.stats.pearsonr(
+                        monkey_neuron_data.mean(axis=-1), subject_voxel_data.mean(axis=-1)
+                    )
+                    normed_pearsonr = \
+                        pearsonr / np.sqrt(monkey_splithalf_pearsonr * subject_splithalf_pearsonr)
+                    # RDMr
+                    rdmr, pvalue_rdmr = rcutils.rdmr(
+                        monkey_neuron_data, subject_voxel_data, return_pvalue=True
+                    )
+                    normed_rdmr = \
+                        rdmr / np.sqrt(monkey_splithalf_rdmr * subject_splithalf_rdmr)
+                # Save results
+                all_correlations_csv_list.append({
+                    **row_params,
+                    'metric_type': 'pearsonr',
+                    'metric_normed': normed_pearsonr,
+                    'metric_raw': pearsonr,
+                    'metric_pvalue': pvalue_pearsonr,
+                    'system1_splithalf_metric': monkey_splithalf_pearsonr,
+                    'system2_splithalf_metric': subject_splithalf_pearsonr,
+                    'system1_info': pd.NA,
+                    'system2_info': {'tthreshold': fmri_tthreshold}
+                })
+                all_correlations_csv_list.append({
+                    **row_params,
+                    'metric_type': 'rdmr',
+                    'metric_normed': normed_rdmr,
+                    'metric_raw': rdmr,
+                    'metric_pvalue': pvalue_rdmr,
+                    'system1_splithalf_metric': monkey_splithalf_rdmr,
+                    'system2_splithalf_metric': subject_splithalf_rdmr,
+                    'system1_info': pd.NA,
+                    'system2_info': {'tthreshold': fmri_tthreshold}
+                })
+                all_correlations_csv = pd.DataFrame(all_correlations_csv_list)
+                all_correlations_csv.to_csv(
+                    all_correlations_csv_path, index=False
+                )
+
+    # Monkey-Model and Monkey-Model correlations (avoid recomputation of model data)
+    models_data = get_allmodels_nsd515_data(
+        frois, model_tthreshold, model_localizer, unitmean=False, tensors=True,
+        model_type=model_type
+    )
+    for model_name in get_model_names(model_type):
+        # Monkey-Model correlations
+        for monkey in vinken25_monkeys:
+            for (model_froi, froi2) in frois:
+                row_params = {
+                    'evaluation_subset': subset,
+                    'system1': f'model_{model_name}',
+                    'system2': f'monkey_{monkey}',
+                    'system1_type': 'model',
+                    'system2_type': 'monkey',
+                    'system1_source': 'nsd',
+                    'system2_source': 'vinken2025',
+                    'system1_froi': model_froi,
+                    'system2_froi': froi2,
+                }
+                # Check if row is present
+                if misc_utils.check_row_present(row_params, all_correlations_csv_list):
+                    continue
+                model_info = {
+                    'model_name': model_name,
+                    'tthreshold': model_tthreshold,
+                    'model_layer': get_froi_models_layers(model_froi, froi2)[model_name],
+                    'model_localizer': model_localizer
+                }
+                # Get monkey-model correlation
+                monkey_neuron_data = monkeys_data[froi2][monkey]
+                model_data = models_data[(model_froi, froi2)][model_name]
+                # split-half pearsonrs, TODO, keep 1 for now
+                # monkey_splithalf_pearsonr = monkeys_splithalfs[model_froi][monkey]['pearsonr']
+                monkey_splithalf_pearsonr = 1
+                # split-half rdmrs, TODO, keep 1 for now
+                # monkey_splithalf_rdmr = monkeys_splithalfs[model_froi][monkey]['rdmr']
+                monkey_splithalf_rdmr = 1
+                if monkey_neuron_data is None or \
+                    model_data is None or \
+                    np.isnan(monkey_splithalf_pearsonr) or \
+                    np.isnan(monkey_splithalf_rdmr):
+                    # Set to nan
+                    pearsonr = np.nan
+                    rdmr = np.nan
+                    pvalue_pearsonr = np.nan
+                    pvalue_rdmr = np.nan
+                    normed_pearsonr = np.nan
+                    normed_rdmr = np.nan
+                else:
+                    # Pearsonr
+                    pearsonr, pvalue_pearsonr = scipy.stats.pearsonr(
+                        monkey_neuron_data.mean(axis=-1), model_data.mean(axis=-1).cpu().numpy()
+                    )
+                    normed_pearsonr = \
+                        pearsonr / np.sqrt(monkey_splithalf_pearsonr)
+                    # RDMr
+                    rdmr, pvalue_rdmr = rcutils.rdmr(
+                        monkey_neuron_data, model_data, return_pvalue=True
+                    )
+                    normed_rdmr = \
+                        rdmr / np.sqrt(monkey_splithalf_rdmr)
+                # Save results
+                all_correlations_csv_list.append({
+                    **row_params,
+                    'metric_type': 'pearsonr',
+                    'metric_normed': normed_pearsonr,
+                    'metric_raw': pearsonr,
+                    'metric_pvalue': pvalue_pearsonr,
+                    'system1_splithalf_metric': monkey_splithalf_pearsonr,
+                    'system2_splithalf_metric': pd.NA,
+                    'system1_info': pd.NA,
+                    'system2_info': model_info
+                })
+                all_correlations_csv_list.append({
+                    **row_params,
+                    'metric_type': 'rdmr',
+                    'metric_normed': normed_rdmr,
+                    'metric_raw': rdmr,
+                    'metric_pvalue': pvalue_rdmr,
+                    'system1_splithalf_metric': monkey_splithalf_rdmr,
+                    'system2_splithalf_metric': pd.NA,
+                    'system1_info': pd.NA,
+                    'system2_info': model_info
+                })
+                all_correlations_csv = pd.DataFrame(all_correlations_csv_list)
+                all_correlations_csv.to_csv(
+                    all_correlations_csv_path, index=False
+                )
+        # Human-Model correlations
+        for subject in nsd_subjects:
+            for (model_froi, froi2) in frois:
+                row_params = {
+                    'evaluation_subset': subset,
+                    'system1': f'model_{model_name}',
+                    'system2': f'subject_{subject}',
+                    'system1_type': 'model',
+                    'system2_type': 'human',
+                    'system1_source': 'nsd',
+                    'system2_source': 'nsd',
+                    'system1_froi': model_froi,
+                    'system2_froi': froi2,
+                }
+                # Check if row is present
+                if misc_utils.check_row_present(row_params, all_correlations_csv_list):
+                    continue
+                model_info = {
+                    'model_name': model_name,
+                    'tthreshold': model_tthreshold,
+                    'model_layer': get_froi_models_layers(model_froi, froi2)[model_name],
+                    'model_localizer': model_localizer
+                }
+                # Get subject-model correlation
+                subject_voxel_data = subjects_voxel_data[froi2][subject]
+                model_data = models_data[(model_froi, froi2)][model_name]
+                # split-half pearsonrs, TODO, keep 1 for now
+                # subject_splithalf_pearsonr = subjects_splithalf_pearsonrs[model_froi][subject]
+                subject_splithalf_pearsonr = 1
+                # split-half rdmrs, TODO, keep 1 for now
+                # subject_splithalf_rdmr = subjects_splithalf_rdmrs[model_froi][subject]
+                subject_splithalf_rdmr = 1
+                if subject_voxel_data is None or \
+                    model_data is None or \
+                    np.isnan(subject_splithalf_pearsonr) or \
+                    np.isnan(subject_splithalf_rdmr):
+                    # Set to nan
+                    pearsonr = np.nan
+                    rdmr = np.nan
+                    pvalue_pearsonr = np.nan
+                    pvalue_rdmr = np.nan
+                    normed_pearsonr = np.nan
+                    normed_rdmr = np.nan
+                else:
+                    # Pearsonr
+                    pearsonr, pvalue_pearsonr = scipy.stats.pearsonr(
+                        subject_voxel_data.mean(axis=-1), model_data.mean(axis=-1).cpu().numpy()
+                    )
+                    normed_pearsonr = \
+                        pearsonr / np.sqrt(subject_splithalf_pearsonr)
+                    # RDMr
+                    rdmr, pvalue_rdmr = rcutils.rdmr(
+                        subject_voxel_data, model_data, return_pvalue=True
+                    )
+                    normed_rdmr = \
+                        rdmr / np.sqrt(subject_splithalf_rdmr)
+                # Save results
+                all_correlations_csv_list.append({
+                    **row_params,
+                    'metric_type': 'pearsonr',
+                    'metric_normed': normed_pearsonr,
+                    'metric_raw': pearsonr,
+                    'metric_pvalue': pvalue_pearsonr,
+                    'system1_splithalf_metric': subject_splithalf_pearsonr,
+                    'system2_splithalf_metric': pd.NA,
+                    'system1_info': {'tthreshold': fmri_tthreshold},
+                    'system2_info': model_info
+                })
+                all_correlations_csv_list.append({
+                    **row_params,
+                    'metric_type': 'rdmr',
+                    'metric_normed': normed_rdmr,
+                    'metric_raw': rdmr,
+                    'metric_pvalue': pvalue_rdmr,
+                    'system1_splithalf_metric': subject_splithalf_rdmr,
+                    'system2_splithalf_metric': pd.NA,
+                    'system1_info': {'tthreshold': fmri_tthreshold},
+                    'system2_info': model_info
+                })
+                all_correlations_csv = pd.DataFrame(all_correlations_csv_list)
+                all_correlations_csv.to_csv(
+                    all_correlations_csv_path, index=False
+                )
+
+    # Assert that threre are no None values left in the csv
+    for row in all_correlations_csv_list:
+        for key, value in row.items():
+            if value is None:
+                raise ValueError(f'Found None value in correlations csv for key: {key}, row: {row}')
 
 def main():
     """
