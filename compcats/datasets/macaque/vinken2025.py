@@ -3,7 +3,7 @@ Code to load the Vinken2025 macaque dataset
 Vinken, K., Sharma, S., & Livingstone, M. S. (2025). Mapping macaque to human cortex with natural scene responses. Proceedings of the National Academy of Sciences, 122(40), e2512619122.
 Data Link: https://osf.io/vh2pd/files/237u5
 """
-from typing import Union, Tuple
+from typing import Union, Tuple, Any
 import os
 import numpy as np
 import pandas as pd
@@ -60,7 +60,7 @@ def get_responses(
     froi: str,
     subset: int = 515,
     rthreshold: Union[int, float] = 0.4,
-    **kwargs: dict
+    **kwargs: Any
 ) -> Tuple[np.ndarray, pd.DataFrame]:
     """
     Get responses for Vinken2025 dataset
