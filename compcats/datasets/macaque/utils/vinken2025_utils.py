@@ -6,7 +6,8 @@ import pandas as pd
 
 from ...fmri.utils import nsd_ds_utils
 
-NSDID_MISSING = 16422
+NSDID_MISSING = 16421 # Paul has 1 missing stimulus
+IDX_MISSING = 194 # Index of missing stimulus in shared1000 set
 
 def process_mat_data(mat_path):
     """
@@ -68,17 +69,41 @@ def calculate_num_repetitions(stimdata):
             num_repetitions += 1
     return num_repetitions
 
+def check_data_preprocessed(vinken2025_dir):
+    """
+    Check if Vinken2025 data is processed
+    Args:
+        vinken2025_dir(str): Path to Vinken2025 dataset
+    Returns:
+        bool: True if processed data exists
+    """
+    # reliabilities_path = os.path.join(processed_dir, 'reliabilities.npy')
+    # responses_path = os.path.join(processed_dir, 'responses.npy')
+    # splithalfs_path = os.path.join(processed_dir, 'splithalfs.npy')
+    # stiminfo_path = os.path.join(processed_dir, 'stim_info.csv')
+    processed_dir = os.path.join(vinken2025_dir, 'vinken2025_processed')
+    if os.path.exists(processed_dir) and \
+        os.path.isfile(os.path.join(processed_dir, 'reliabilities.npy')) and \
+        os.path.isfile(os.path.join(processed_dir, 'responses.npy')) and \
+        os.path.isfile(os.path.join(processed_dir, 'splithalfs.npy')) and \
+        os.path.isfile(os.path.join(processed_dir, 'stim_info.csv')):
+        return processed_dir
+    return None
+
 def preprocess_vinken2025_data(vinken2025_dir, nsd_dir):
     """
     Preprocess Vinken2025 dataset
     Args:
         vinken2025_dir(str): Path to Vinken2025 dataset
     """
+    # Create processed directory
     processed_dir = os.path.join(vinken2025_dir, 'vinken2025_processed')
-    # Reuturn if preprocessed data exists
-    if os.path.exists(processed_dir):
-        return
-    os.makedirs(processed_dir, exist_ok=True)
+    # Check if already preprocessed
+    data_preprocessed = check_data_preprocessed(vinken2025_dir)
+    if data_preprocessed:
+        return processed_dir
+    print('Preprocessing Vinken2025 dataset...')
+    os.makedirs(processed_dir, exist_ok=False)
     # Check if raw data exists
     assert os.path.exists(vinken2025_dir), f'Download Vinken2025 dataset to {vinken2025_dir} first'
     # Stimuli info
@@ -111,6 +136,19 @@ def preprocess_vinken2025_data(vinken2025_dir, nsd_dir):
     for key, processed_mat in processed_mats.items():
         reliabilities[key] = processed_mat['reliabilities']
         resps = processed_mat['responses']
+        resps = np.swapaxes(resps, 0, 1) # shape: (num_stimuli, total_sessions_possible, num_units)
+        # If the monkey is paul, add a dummy response full of nans for the missing stimulus
+        # Add at index 194 (0-based) in shared1000 set
+        if processed_mat['monkey_name'] == 'PAUL':
+            num_units = resps.shape[2]
+            dummy_response = np.full((1, resps.shape[1], num_units), np.nan)
+            resps = np.insert(
+                resps,
+                IDX_MISSING,
+                dummy_response,
+                axis=0
+            )
+        breakpoint()
         responses[key] = resps
         stim_nreps = {}
         nsdids = processed_mat['nsdids']
@@ -118,7 +156,7 @@ def preprocess_vinken2025_data(vinken2025_dir, nsd_dir):
             if nsdid == NSDID_MISSING:
                 stim_nreps[nsdid] = 0
             else:
-                stim_data = resps[:, idx, :]
+                stim_data = resps[idx, :, :]
                 stim_nreps[nsdid] = calculate_num_repetitions(stim_data)
         # Add a column for number of repetitions in stim_info by matching nsdids
         for stim in stim_info:
@@ -135,6 +173,5 @@ def preprocess_vinken2025_data(vinken2025_dir, nsd_dir):
     np.save(splithalfs_path, splithalfs, allow_pickle=True)
     stim_info_df = pd.DataFrame(stim_info)
     stim_info_df.to_csv(stiminfo_path, index=False)
+    return processed_dir
 
-
-# Write function to get split-half reliabilities for each subject x froi
