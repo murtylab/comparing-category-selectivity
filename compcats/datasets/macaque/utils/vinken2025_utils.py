@@ -123,7 +123,6 @@ def preprocess_vinken2025_data(vinken2025_dir, nsd_dir):
     # Storing results
     reliabilities = {}
     responses = {}
-    splithalfs = {}
     # load all mat files
     mat_file_names = [f for f in os.listdir(vinken2025_dir) if f.endswith('.mat')]
     processed_mats = {}
@@ -162,7 +161,6 @@ def preprocess_vinken2025_data(vinken2025_dir, nsd_dir):
         for stim in stim_info:
             nsdid = stim['nsdid']
             stim['num_repetitions_' + processed_mat['monkey_name']] = stim_nreps.get(nsdid, 0)
-        splithalfs[key] = None # TODO: implement split-half reliabilities
     # Save processed data as npz and csv, the npy should be dictionary with keys from the processed_mats
     reliabilities_path = os.path.join(processed_dir, 'reliabilities.npy')
     responses_path = os.path.join(processed_dir, 'responses.npy')
@@ -170,7 +168,6 @@ def preprocess_vinken2025_data(vinken2025_dir, nsd_dir):
     stiminfo_path = os.path.join(processed_dir, 'stim_info.csv')
     np.save(reliabilities_path, reliabilities, allow_pickle=True)
     np.save(responses_path, responses, allow_pickle=True)
-    np.save(splithalfs_path, splithalfs, allow_pickle=True)
     stim_info_df = pd.DataFrame(stim_info)
     stim_info_df.to_csv(stiminfo_path, index=False)
     return processed_dir
