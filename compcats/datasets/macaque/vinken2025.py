@@ -234,7 +234,7 @@ def get_splithalf_reliability(
         splithalf_reliabilities_csv = pd.DataFrame(splihalf_relibilities_list)
         splithalf_reliabilities_csv.to_csv(
             splithalf_reliabilities_path,
-            index=True
+            index=False
         )
         # Return requested metric
         mean_reliability = splihalf_relibilities_list[-1][f'{metric}_mean']
