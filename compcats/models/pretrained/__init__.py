@@ -85,3 +85,7 @@ from .efficientnet import efficientnet_mnasnet
 
 # Swin Transformers
 from .swint import swint_mosaic
+
+# Neuromap
+from .neuromap import neuromap1_singlesubject
+from .neuromap import neuromap1_multisubject
