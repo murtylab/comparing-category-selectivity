@@ -1,6 +1,6 @@
 import warnings
 
-from compcats.datasets.fmri import nsd, murty185
+from compcats.datasets.fmri import nsd, murty185, nsdsynthetic
 from compcats.datasets.image import afhqv2, celebahq, ava
 from compcats.localizer import localizer
 from compcats.localizer import utils as localizer_utils
@@ -84,6 +84,30 @@ def get_dataset_activations(
             nsd_dataset = nsd.get_stimuli_dataset(dataset_dir, model.transforms, subset=subset)
             dataset_activations = model.generate_dataset_activations(
                 layers_list, nsd_dataset, save_dir, batch_size, device
+            )
+    elif dataset == 'nsdsynthetic':
+        subset = kwargs.get('subset', 'all')
+        save_dir = f'{models_dir}/{model.name}/nsdsynthetic'
+        dataset_name = nsdsynthetic.get_stimuli_dataset_name(
+            nsdsynthetic.extract_subset_type(subset)
+        )
+        # Check if dataset activations are already present
+        dataset_activations_present, _ = model.check_dataset_activations_present(
+            layers_list, dataset_name, save_dir
+        )
+        if dataset_activations_present:
+            dataset_activations = model.load_dataset_activations(
+                layers_list, dataset_name, save_dir
+            )
+            # Move activations to device
+            for k, v in dataset_activations.items():
+                dataset_activations[k] = v.to(device)
+        else:
+            nsdsynthetic_dataset = nsdsynthetic.get_stimuli_dataset(
+                dataset_dir, model.transforms, subset=subset
+            )
+            dataset_activations = model.generate_dataset_activations(
+                layers_list, nsdsynthetic_dataset, save_dir, batch_size, device
             )
     elif dataset == 'murty185':
         save_dir = f'{models_dir}/{model.name}/murty185'
