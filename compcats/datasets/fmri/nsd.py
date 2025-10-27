@@ -119,7 +119,9 @@ def get_betas(root_dir, subject, froi=None, tthreshold=0, subset=None, voxels=Fa
     if not voxels:
         if repetition_mean:
             betas = betas.reshape(betas.shape[0], -1) # Flatten the voxel dimensions
+            # Assertion to check for NaNs, there should be no NaNs after masking
+            assert not torch.isnan(betas).any(), 'NaNs found in betas after masking'
         else:
             betas = betas.reshape(betas.shape[0], betas.shape[1], -1) # Flatten the voxel dimensions
-        betas = betas.mean(axis=-1)
+        betas = betas.mean(dim=-1)
     return betas, ptid_nsdid_map
