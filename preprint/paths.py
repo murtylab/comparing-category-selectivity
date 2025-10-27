@@ -3,7 +3,6 @@ Save commonly used paths
 """
 # fMRI DATASETS
 NSD_DIR = '/Users/adipani3/datasets/nsd'
-NSDSYNTHETIC_DIR = None  # '/om2/user/alishd/datasets/nsdsynthetic'
 MURTY185_DIR = '/Users/adipani3/datasets/murty185'
 
 # Macaque Data
