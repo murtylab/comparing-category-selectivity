@@ -1,5 +1,5 @@
 """Code to load the NSD Synthetic dataset"""
-from typing import Any, Tuple, Union
+from typing import Any, Tuple
 import os
 import ast
 import h5py
@@ -140,7 +140,7 @@ def get_subset_stimuli(root_dir, subset_type, subject=None):
         processed_stimuli_file_name += 'nowords'
     processed_stimuli_file_name += 'stimuli.npy'
     if os.path.exists(f'{processed_stimuli_dir}/{processed_stimuli_file_name}'):
-        return torch.load(f'{processed_stimuli_dir}/{processed_stimuli_file_name}'), stim_info
+        return np.load(f'{processed_stimuli_dir}/{processed_stimuli_file_name}'), stim_info
     # Path to stimuli
     common_stimuli_path = f'{root_dir}/nsddata_stimuli/stimuli/nsdsynthetic/nsdsynthetic_stimuli.hdf5'
     subject_stimuli_path = f'{root_dir}/nsddata_stimuli/stimuli/nsdsynthetic/nsdsynthetic_colorstimuli_subj0{subject}.hdf5'
@@ -177,7 +177,7 @@ def get_subset_stimuli(root_dir, subset_type, subject=None):
     # Save stimuli
     stimuli_path = f'{processed_stimuli_dir}/{processed_stimuli_file_name}'
     # Save the stimuli
-    torch.save(stimuli, stimuli_path)
+    np.save(stimuli_path, stimuli)
     return stimuli, stim_info
 
 def get_subject_betas(root_dir, subject, subset_type, repetition_mean=True):
@@ -319,7 +319,7 @@ def get_stimuli_dataset_name(subset_type, subject=None):
     """
     Get dataset name
     Args:
-        subset(str): Subset of NSD dataset
+        subset_type(dict): Subset info
     """
     _check_subset_type(subset_type)
     nowords = subset_type['nowords']
@@ -346,7 +346,7 @@ class NSDSyntheticStimuli(Dataset):
     def __init__(self, root_dir, transform, subset=None, **kwargs):
         # Error handling
         self.subject = kwargs.get('subject', None)
-        self.subset_type = _extract_subset_type(subset)
+        self.subset_type = extract_subset_type(subset)
         _check_subset_type(self.subset_type)
         if not self.subset_type['shared_only'] and self.subject is None:
             raise ValueError('Subject must be specified if subset is not shared')
@@ -383,7 +383,7 @@ class NSDSyntheticStimuli(Dataset):
         image = self.transform(image)
         return image
 
-def _extract_subset_type(subset):
+def extract_subset_type(subset):
     """
     Convert subset arg to words
     """
@@ -444,7 +444,7 @@ def get_betas(root_dir, subject, froi=None, tthreshold=0, subset=None, voxels=Fa
     # Check for repetition mean
     repetition_mean = kwargs.get('repetition_mean', True)
     # Get subset info
-    subset_type = _extract_subset_type(subset)
+    subset_type = extract_subset_type(subset)
     # Get the betas
     betas = get_subject_betas(root_dir, subject, subset_type, repetition_mean)
     # Get stim info
