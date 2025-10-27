@@ -1,4 +1,5 @@
 """Code to load the NSD Synthetic dataset"""
+from typing import Any, Tuple, Union
 import os
 import ast
 import h5py
@@ -12,9 +13,11 @@ from torch.utils.data import Dataset
 from torchvision import transforms
 
 from .utils import nsd_ds_utils
+from ...utils import misc_utils, reliability_utils as relutils
 
 MAX_NUM_REPETITIONS = 10 # Max number of repetitions for any stimulus
 SUBSET_TYPE_KEYS = ['nowords', 'shared_only', 'ood_only', 'all']
+SPLITHALF_RELIABILITIES_CSV = 'splithalf_reliabilities.csv'
 
 def _check_subset_type(subset_type):
     """
@@ -473,3 +476,85 @@ def get_betas(root_dir, subject, froi=None, tthreshold=0, subset=None, voxels=Fa
     assert betas.shape[0] == len(subset_stimuli_info_csv), \
         f'Expected number of betas: {len(subset_stimuli_info_csv)}, got: {betas.shape[0]}'
     return betas, subset_stimuli_info_csv
+
+def get_splithalf_reliability(
+    root_dir: str,
+    metric: str,
+    subject: int,
+    froi: str,
+    tthreshold: int = 0,
+    subset: str = 'all',
+    **kwargs: Any
+) -> Tuple[float, np.ndarray]:
+    """
+    Get splithalf reliabilities for Vinken2025 dataset
+    Args:
+        root_dir(str): Root directory
+        metric(str): Reliability metric
+        monkey(int): Subject number
+        froi(str): froi name
+        subset(str): Subset of dataset
+    Returns:
+        np.ndarray: Splithalf reliabilities
+    """
+    metrics = ['pearsonr', 'rdmr']
+    preprocessed_dir = f'{root_dir}/nsdsynthetic_processed'
+    # Check if split-half reliabilities csv exists, if so load from there, else create empty list
+    splithalf_reliabilities_path = os.path.join(
+        preprocessed_dir,
+        SPLITHALF_RELIABILITIES_CSV
+    )
+    if os.path.isfile(splithalf_reliabilities_path):
+        splithalf_reliabilities_csv = pd.read_csv(splithalf_reliabilities_path)
+        splihalf_relibilities_list = splithalf_reliabilities_csv.to_dict(orient='records')
+    else:
+        splihalf_relibilities_list = []
+    # Check if the required froi-monket-subset-rthreshold combination exists in the csv
+    row_params = {
+        'froi': froi,
+        'subject': subject,
+        'subset': subset,
+        'tthreshold': tthreshold
+    }
+    row = misc_utils.check_row_present(
+        row_params, splihalf_relibilities_list
+    )
+    mean_reliability, reliabilities = None, None
+    if row is not None:
+        mean_reliability = row[f'{metric}_mean']
+        reliabilities = np.array(row[f'{metric}_all'])
+    else:
+        # root_dir, subject, froi=None, tthreshold=0, subset=None, voxels=False, **kwargs
+        betas, _ = get_betas(
+                root_dir,
+                subject,
+                froi,
+                subset=subset,
+                tthreshold=tthreshold,
+                voxels=True,
+                repetition_mean=False
+            )
+        computed_corrs = {}
+        for metric_name in metrics:
+            # pearson splithalf reliabilities
+            mean_reliability, reliabilities = relutils.get_neuron_population_splithalf_correlation(
+                betas,
+                metric=metric_name
+            )
+            computed_corrs[f'{metric_name}_mean'] = mean_reliability
+            computed_corrs[f'{metric_name}_all'] = reliabilities
+        # Save to list
+        splihalf_relibilities_list.append({
+            **row_params,
+            **computed_corrs
+        })
+        # Save to csv
+        splithalf_reliabilities_csv = pd.DataFrame(splihalf_relibilities_list)
+        splithalf_reliabilities_csv.to_csv(
+            splithalf_reliabilities_path,
+            index=False
+        )
+        # Return requested metric
+        mean_reliability = splihalf_relibilities_list[-1][f'{metric}_mean']
+        reliabilities = np.array(splihalf_relibilities_list[-1][f'{metric}_all'])
+    return mean_reliability, reliabilities
