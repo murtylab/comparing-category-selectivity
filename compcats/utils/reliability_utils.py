@@ -108,6 +108,55 @@ def _get_pearsonr_splithalf_correlarion_method3(voxel_data):
     corrected_corr = 2*max_corr/(1+max_corr)
     return corrected_corr
 
+def _get_pearsonr_splithalf_correlarion_method4(voxel_data):
+    """
+    Mean across remaining repetitions and then calculate correlation
+    Split each repetition into individual and take correlation across each individual and
+    mean of remaining repetitions
+    """
+    # Error handle
+    assert voxel_data.ndim == 2, 'Data must be 2D in the shape of n_stimuli, n_repetitions'
+    corrs_ijk = []
+    idx_combinations = [
+        (0, (1, 2)),
+        (1, (0, 2)),
+        (0, (1, 2))
+    ]
+    for (i, (j, k)) in idx_combinations:
+        di = voxel_data[:, i]
+        dj = voxel_data[:, j]
+        dk = voxel_data[:, k]
+        djk = (dj + dk)/2
+        corr_ijk = rcutils.pearsonr(di, djk)
+        corrected_corr_ijk = 2*corr_ijk/(1+corr_ijk)
+        corrs_ijk.append(corrected_corr_ijk)
+    return np.mean(corrs_ijk)
+
+def _get_pearsonr_splithalf_correlarion_method5(voxel_data):
+    """
+    Split each repetition into individual and take correlation across each individual and
+    mean of remaining repetitions, perform the spearman-brown correction and return the
+    maximum of the three correlations
+    """
+    # Error handle
+    assert voxel_data.ndim == 2, 'Data must be 2D in the shape of n_stimuli, n_repetitions'
+    corrs_ijk = []
+    idx_combinations = [
+        (0, (1, 2)),
+        (1, (0, 2)),
+        (0, (1, 2))
+    ]
+    for (i, (j, k)) in idx_combinations:
+        di = voxel_data[:, i]
+        dj = voxel_data[:, j]
+        dk = voxel_data[:, k]
+        djk = (dj + dk)/2
+        corr_ijk = rcutils.pearsonr(di, djk)
+        corr_ijk = 2*corr_ijk/(1+corr_ijk)
+        corrs_ijk.append(corr_ijk)
+    max_corr = np.max(corrs_ijk)
+    return max_corr
+
 ####################################################################################################
 # RDM SPLITHALF CORRELATION
 ####################################################################################################
@@ -202,7 +251,7 @@ def _get_rdm_splithalf_correlation_method3(subset_data):
 # VOXEL-AVERAGED PEARSON SPLITHALF CORRELATION
 ####################################################################################################
 def get_voxelmean_splithalf_correlation(subject_data, image_subset=..., method=3):
-    assert method in [1, 2, 3], 'Method must be 1, 2, or 3'
+    assert method in [1, 2, 3, 4, 5], 'Method must be 1, 2, 3, 4, or 5'
     # Convert to appropriate type
     subject_data = fix_type(subject_data)
     # Check dimensions
@@ -221,6 +270,10 @@ def get_voxelmean_splithalf_correlation(subject_data, image_subset=..., method=3
         corr = _get_pearsonr_splithalf_correlarion_method2(subset_data)
     elif method==3:
         corr = _get_pearsonr_splithalf_correlarion_method3(subset_data)
+    elif method==4:
+        corr = _get_pearsonr_splithalf_correlarion_method4(subset_data)
+    elif method==5:
+        corr = _get_pearsonr_splithalf_correlarion_method5(subset_data)
     if isinstance(corr, np.floating):
         corr = corr.item()
     return corr
@@ -269,6 +322,8 @@ def get_neuron_population_splithalf_correlation(
     # Set random state
     rng = np.random.default_rng(random_state)
     n_stimuli, n_repeats, n_electrodes = responses.shape
+    if isinstance(responses, torch.Tensor):
+        responses = responses.cpu().numpy()
 
     split_rs = []
     for _ in range(n_boot):
