@@ -104,6 +104,8 @@ def get_shared515_cocoids(root_dir):
     return common_cocoids
 
 def get_subset_stimuli(root_dir, subset=None):
+    assert subset in [None, 485, 515, 1000], \
+        'NSD subset length not implemented yet, only 485, 515, 1000 or None available'
     all_stimuli_dir = f'{root_dir}/nsddata_stimuli/stimuli/nsd'
     stimuli_file_name = 'nsd_stimuli.hdf5'
     processed_subset_dir = f'{root_dir}/nsd_processed/stimuli/nsd'
@@ -468,6 +470,8 @@ def get_subset_data(root_dir, subject, subset, **kwargs):
     Function to generate a PyTorch file with shared1000 betas
     """
     repetition_mean = kwargs.get('repetition_mean', True)
+    assert subset in [None, 485, 515, 1000], \
+        'NSD subset length not implemented yet, only 485, 515, 1000 or None available'
     if subset == 1000:
         return get_shared1000_data(root_dir, subject, repetition_mean)
     elif subset == 515:
