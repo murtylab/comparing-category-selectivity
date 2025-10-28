@@ -1,5 +1,5 @@
 """Code to load the NSD Synthetic dataset"""
-from typing import Any, Tuple
+from typing import Any, Tuple, Union
 import os
 import ast
 import h5py
@@ -16,7 +16,7 @@ from .utils import nsd_ds_utils
 from ...utils import misc_utils, reliability_utils as relutils
 
 MAX_NUM_REPETITIONS = 10 # Max number of repetitions for any stimulus
-SUBSET_TYPE_KEYS = ['nowords', 'shared_only', 'ood_only', 'all']
+SUBSET_TYPE_KEYS = ['nowords', 'shared_only', 'ood_only', 'natural_only','all']
 SPLITHALF_RELIABILITIES_CSV = 'splithalf_reliabilities.csv'
 
 def _check_subset_type(subset_type):
@@ -44,6 +44,9 @@ def _check_subset_type(subset_type):
     if subset_type['shared_only'] or subset_type['ood_only'] or subset_type['nowords']:
         if subset_type['all']:
             raise ValueError('If any of "shared_only", "ood_only", or "nowords" is True, "all" must be False')
+    # Only one of 'natural_only' or 'ood_only' can be True
+    if subset_type['natural_only'] and subset_type['ood_only']:
+        raise ValueError('Only one of "natural_only" or "ood_only" can be True')
 
 def get_subset_stimuli_info(root_dir, subset_type):
     """
@@ -61,6 +64,8 @@ def get_subset_stimuli_info(root_dir, subset_type):
         processed_stim_info_file_name += 'all'
     if subset_type['shared_only']:
         processed_stim_info_file_name += 'shared'
+    if subset_type['natural_only']:
+        processed_stim_info_file_name += 'natural'
     if subset_type['ood_only']:
         processed_stim_info_file_name += 'ood'
     if subset_type['nowords']:
@@ -101,6 +106,12 @@ def get_subset_stimuli_info(root_dir, subset_type):
         naturalistic_idxs = stim_info[stim_info['Image class'].str.contains('Natural scenes')].index
         stim_info = stim_info.drop(naturalistic_idxs)
         stim_info = stim_info.reset_index(drop=True)
+    if subset_type['natural_only']:
+        # Keep only naturalistic stimuli. i.e. keep rows with 'Natural scenes' substring \
+        # in 'Image class' column
+        naturalistic_idxs = stim_info[stim_info['Image class'].str.contains('Natural scenes')].index
+        stim_info = stim_info.loc[naturalistic_idxs]
+        stim_info = stim_info.reset_index(drop=True)
     if subset_type['nowords']:
         # Remove words from stimuli
         words_idxs = stim_info[stim_info['Image class'] == 'Single words'].index
@@ -111,7 +122,11 @@ def get_subset_stimuli_info(root_dir, subset_type):
     stim_info.to_csv(f'{processed_stimuli_dir}/{processed_stim_info_file_name}')
     return stim_info
 
-def get_subset_stimuli(root_dir, subset_type, subject=None):
+def get_subset_stimuli(
+    root_dir: str,
+    subset_type: Union[dict, str],
+    subject: Union[int, None] = None
+):
     """
     Get subset of stimuli
     Args:
@@ -123,6 +138,8 @@ def get_subset_stimuli(root_dir, subset_type, subject=None):
     processed_stimuli_dir = f'{root_dir}/nsdsynthetic_processed'
     processed_stimuli_file_name = ''
     # Error handling
+    if isinstance(subset_type, str):
+        subset_type = extract_subset_type(subset_type)
     if subject is not None:
         assert subject in range(1, 9), 'Invalid subject'
         processed_stimuli_dir += f'/subj0{subject}'
@@ -134,11 +151,13 @@ def get_subset_stimuli(root_dir, subset_type, subject=None):
         processed_stimuli_file_name += 'all'
     if subset_type['shared_only']:
         processed_stimuli_file_name += 'shared'
+    if subset_type['natural_only']:
+        processed_stimuli_file_name += 'natural'
     if subset_type['ood_only']:
         processed_stimuli_file_name += 'ood'
     if subset_type['nowords']:
         processed_stimuli_file_name += 'nowords'
-    processed_stimuli_file_name += 'stimuli.npy'
+    processed_stimuli_file_name += '_stimuli.npy'
     if os.path.exists(f'{processed_stimuli_dir}/{processed_stimuli_file_name}'):
         return np.load(f'{processed_stimuli_dir}/{processed_stimuli_file_name}'), stim_info
     # Path to stimuli
@@ -196,6 +215,8 @@ def get_subject_betas(root_dir, subject, subset_type, repetition_mean=True):
         processed_betas_file_name += 'all'
     if subset_type['shared_only']:
         processed_betas_file_name += 'shared'
+    if subset_type['natural_only']:
+        processed_betas_file_name += 'natural'
     if subset_type['ood_only']:
         processed_betas_file_name += 'ood'
     if subset_type['nowords']:
@@ -324,12 +345,15 @@ def get_stimuli_dataset_name(subset_type, subject=None):
     _check_subset_type(subset_type)
     nowords = subset_type['nowords']
     shared_only = subset_type['shared_only']
+    natural_only = subset_type['natural_only']
     ood_only = subset_type['ood_only']
     dataset_name = 'nsdsynthetic'
     if shared_only:
         dataset_name += 'shared'
     if ood_only:
         dataset_name += 'ood'
+    if natural_only:
+        dataset_name += 'natural'
     if nowords:
         dataset_name += 'nowords'
     if not shared_only and not nowords:
@@ -390,7 +414,7 @@ def extract_subset_type(subset):
     subset = subset.lower() if isinstance(subset, str) else None
     possible_subsets = [
         None, 'all', 'nowords', 'shared_nowords', 'shared',
-        'shared_ood_nowords'
+        'shared_ood_nowords', 'shared_natural_nowords'
     ]
     assert subset in possible_subsets, \
         f"Invalid subset, {subset}, possible options: {possible_subsets}"
@@ -398,6 +422,7 @@ def extract_subset_type(subset):
     nowords = False
     shared_only = False
     ood_only = False
+    natural_only = False
     if subset is None:
         subset = 'all'
     if subset == 'all':
@@ -408,10 +433,13 @@ def extract_subset_type(subset):
         nowords = True
     if 'ood' in subset:
         ood_only = True
+    if 'natural' in subset:
+        natural_only = True
     subset_type = {
         'nowords': nowords,
         'shared_only': shared_only,
         'ood_only': ood_only,
+        'natural_only': natural_only,
         'all': all_stimuli
     }
     _check_subset_type(subset_type)
