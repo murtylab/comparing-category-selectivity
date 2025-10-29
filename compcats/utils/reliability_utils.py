@@ -18,7 +18,7 @@ def fix_type(data):
 # VOXEL-WISE SPLITHALF CORRELATION
 ####################################################################################################
 def get_voxelwise_splithalf_correlation(subject_data, image_subset=..., method=3):
-    assert method in [1, 2, 3], 'Method must be 1, 2, or 3'
+    assert method in list(range(1, 6)), 'Method must be 1, 2, 3, 4, or 5'
     # Convert to appropriate type
     subject_data = fix_type(subject_data)
     # Check dimensions
@@ -34,6 +34,10 @@ def get_voxelwise_splithalf_correlation(subject_data, image_subset=..., method=3
             corr = _get_pearsonr_splithalf_correlarion_method2(voxel_data)
         elif method==3:
             corr = _get_pearsonr_splithalf_correlarion_method3(voxel_data)
+        elif method==4:
+            corr = _get_pearsonr_splithalf_correlarion_method4(voxel_data)
+        elif method==5:
+            corr = _get_pearsonr_splithalf_correlarion_method5(voxel_data)
         if isinstance(corr, np.floating):
             corr = corr.item()
         voxel_corrs.append(corr)
