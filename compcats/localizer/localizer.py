@@ -161,7 +161,7 @@ def get_froi_mask(
         layers_list = layers
     else:
         raise ValueError("layers should be a string or a list of strings")
-    
+
     # kwargs
     batch_size = kwargs.get('batch_size', None)
 
