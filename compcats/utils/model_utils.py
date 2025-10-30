@@ -49,7 +49,7 @@ def get_dataset_activations(
     # Get activations for different datasets
     if dataset == 'nsd':
         subset = kwargs.get('subset', None)
-        save_dir = f'{models_dir}/{model.name}/nsd'
+        save_dir = f'{models_dir}/{model.name}/nsd/activations'
         dataset_name = nsd.get_stimuli_dataset_name(subset=subset)
         # Check if dataset activations are already present
         dataset_activations_present, _ = model.check_dataset_activations_present(
@@ -87,7 +87,7 @@ def get_dataset_activations(
             )
     elif dataset == 'nsdsynthetic':
         subset = kwargs.get('subset', 'all')
-        save_dir = f'{models_dir}/{model.name}/nsdsynthetic'
+        save_dir = f'{models_dir}/{model.name}/nsdsynthetic/activations'
         dataset_name = nsdsynthetic.get_stimuli_dataset_name(
             nsdsynthetic.extract_subset_type(subset)
         )
@@ -110,7 +110,7 @@ def get_dataset_activations(
                 layers_list, nsdsynthetic_dataset, save_dir, batch_size, device
             )
     elif dataset == 'murty185':
-        save_dir = f'{models_dir}/{model.name}/murty185'
+        save_dir = f'{models_dir}/{model.name}/murty185/activations'
         murty185_dataset = murty185.get_stimuli_dataset(dataset_dir, model.transforms)
         dataset_activations = model.generate_dataset_activations(
             layers_list, murty185_dataset, save_dir, batch_size, device
@@ -141,7 +141,7 @@ def get_dataset_activations(
             dataset_dir, model.transforms
         )
         celebahq_dataset.name = 'celebahq'
-        save_dir = f'{models_dir}/{model.name}/{celebahq_dataset.name}'
+        save_dir = f'{models_dir}/{model.name}/{celebahq_dataset.name}/activations'
         dataset_activations = model.generate_dataset_activations(
             layers_list, celebahq_dataset, save_dir, batch_size, device
         )
@@ -150,7 +150,7 @@ def get_dataset_activations(
             dataset_dir, model.transforms
         )
         afhqv2_dataset.name = 'afhqv2'
-        save_dir = f'{models_dir}/{model.name}/{afhqv2_dataset.name}'
+        save_dir = f'{models_dir}/{model.name}/{afhqv2_dataset.name}/activations'
         dataset_activations = model.generate_dataset_activations(
             layers_list, afhqv2_dataset, save_dir, batch_size, device
         )
@@ -162,7 +162,7 @@ def get_dataset_activations(
             landscape_only=landscape_only,
             vanishing_point_images=vanishing_point_images
         )
-        save_dir = f'{models_dir}/{model.name}/{ava_dataset.name}'
+        save_dir = f'{models_dir}/{model.name}/{ava_dataset.name}/activations'
         dataset_activations = model.generate_dataset_activations(
             layers_list, ava_dataset, save_dir, batch_size, device
         )
