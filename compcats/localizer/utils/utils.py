@@ -1,6 +1,15 @@
-from compcats.datasets.localization import grillspector_localizer, \
+"""
+Utility functions for localizer datasets
+"""
+from typing import Union
+from tqdm import tqdm
+import torch
+
+from ...datasets.localization import grillspector_localizer, \
     kanwisher_localizer, konkle_localizer, vinken2023_localizer, kanwishergrayscale_localizer, \
     prince2024_localizer
+from ...utils import reliability_utils as relutils, responsecomparison_utils as rcutils
+
 # Constants
 DEFAULT_SH_METHOD = 3  # method for reliability calculation
 
@@ -82,3 +91,162 @@ def get_localizer_pref_nonpref_categories(dataset_name, froi):
     localizer_obj = localizer_module.get_localizer_dataset('', None)
     pref_categories, nonpref_categories = localizer_obj.get_pref_nonpref_categories(froi)
     return pref_categories, nonpref_categories
+
+def get_tuning_correlation_matrix(
+    responses1: torch.Tensor,
+    responses2: torch.Tensor,
+    reliabilities1: torch.Tensor,
+    reliabilities2: torch.Tensor,
+):
+    """
+    Compare tuning between two sets of responses using pearson correlation.
+    responses1: (num_images, num_units1)
+    responses2: (num_images, num_units2)
+    reliabilities1: (num_units1,)
+    reliabilities2: (num_units2,)
+    Returns:
+        correlations: (num_units1, num_units2)
+    """
+    assert responses1.ndim == 2, "responses1 must be 2-dimensional"
+    assert responses2.ndim == 2, "responses2 must be 2-dimensional"
+    assert responses1.shape[0] == responses2.shape[0], \
+        "Number of images in responses1 and responses2 must match"
+    assert reliabilities1.ndim == 1, "reliabilities1 must be 1-dimensional"
+    assert reliabilities2.ndim == 1, "reliabilities2 must be 1-dimensional"
+    assert responses1.shape[1] == reliabilities1.shape[0], \
+        "Number of units in responses1 and reliabilities1 must match"
+    assert responses2.shape[1] == reliabilities2.shape[0], \
+        "Number of units in responses2 and reliabilities2 must match"
+    correlations = torch.zeros((responses1.shape[1], responses2.shape[1]))
+    for j in tqdm(range(responses2.shape[1])):
+        for i in range(responses1.shape[1]):
+            corr = rcutils.pearsonr(
+                responses1[:, i], responses2[:, j]
+            )
+            # Reliability correction
+            corr /= torch.sqrt(reliabilities1[i] * reliabilities2[j])
+            correlations[i, j] = corr
+    return correlations
+
+def get_best_matching_units(
+    correlations_matrix: torch.Tensor
+):
+    """
+    For each unit in set 1, get the best matching unit in set 2 based on correlations.
+    correlations_matrix: (num_units1, num_units2)
+    Returns:
+        matched_voxel_indices: (num_voxels,)
+        best_matching_unit_indices: (num_voxels,)
+    """
+    assert correlations_matrix.ndim == 2, \
+        "correlations_matrix must be 2-dimensional"
+    assert correlations_matrix.shape[1] >= correlations_matrix.shape[0], \
+        "Number of units in set 2 must be greater than or equal to number of units in set 1"
+    # Control for NaNs using torch nan_to_num
+    correlations_matrix = torch.nan_to_num(
+        correlations_matrix, nan=float('-inf')
+    )
+    # Variables to store results
+    matched_voxel_indices = torch.full((correlations_matrix.shape[0],), -1, dtype=torch.long)
+    best_matching_unit_indices = torch.full((correlations_matrix.shape[0],), -1, dtype=torch.long)
+    best_matching_correlations = torch.full((correlations_matrix.shape[0],), float('-inf'), dtype=torch.float32)
+    # For each unit in set 1, find the best matching unit in set 2
+    for _ in range(correlations_matrix.shape[0]):
+        max_corr_coords = torch.unravel_index(
+            torch.argmax(correlations_matrix, dim=None),
+            correlations_matrix.shape
+        )
+        v1, u2 = max_corr_coords
+        max_corr = correlations_matrix[v1, u2]
+        matched_voxel_indices[v1] = v1
+        best_matching_unit_indices[v1] = u2
+        best_matching_correlations[v1] = max_corr
+        # Set the corresponding row and column to -inf to avoid re-selection
+        correlations_matrix[v1, :] = float('-inf')
+        correlations_matrix[:, u2] = float('-inf')
+    # Assert all voxels have been matched
+    assert (matched_voxel_indices != -1).all(), \
+        "Not all voxels have been matched"
+    assert (best_matching_unit_indices != -1).all(), \
+        "Not all best matching units have been assigned"
+    assert (best_matching_correlations != float('-inf')).all(), \
+        "Not all best matching correlations have been assigned"
+    return best_matching_unit_indices, best_matching_correlations
+
+def generate_tuningmatched_localizer_mask(
+    voxel_responses: torch.Tensor,
+    unit_responses: torch.Tensor,
+    reliability_threshold: float,
+    voxel_reliabilities: Union[torch.Tensor, None] = None,
+):
+    """
+    Generate tuning-matched localizer masks for one subjects and froi.
+    Args:
+        voxel_individualrepetition_responses(torch.Tensor): Voxel responses with shape
+            (num_images, num_repetitions, num_voxels)
+        unit_responses(torch.Tensor): Model unit responses with shape (num_images, ...)
+        reliability_threshold(float): Reliability threshold for voxels
+        voxel_reliabilities(torch.Tensor or None): Voxel reliabilities with shape (num_voxels,).
+            If None, will be computed from voxel_individualrepetition_responses.
+    Returns:
+        mask (torch.Tensor): Boolean mask of shape (...) indicating tuning-matched units
+        voxel_indices (torch.Tensor): Indices of voxels used for tuning-matching
+        unit_indices (torch.Tensor): Indices of units selected as tuning-matched, will have
+            the same shape as the number of voxels used for tuning-matching
+        correlations (torch.Tensor): Correlations of shape (num_voxels) indicating
+            best matching correlations
+    """
+    # Error handling
+    if voxel_reliabilities is None:
+        assert voxel_responses.ndim == 3, \
+            "voxel_responses must have shape (num_images, num_repetitions, num_voxels)"
+    else:
+        assert voxel_responses.ndim in [2, 3], \
+            "voxel_responses must have shape (num_images, num_voxels) or (num_images, num_repetitions, num_voxels)"
+        assert voxel_responses.shape[-1] == voxel_reliabilities.shape[0], \
+            "Number of voxels in voxel_responses and voxel_reliabilities must match"
+        assert voxel_reliabilities.ndim == 1, "voxel_reliabilities must have shape (num_voxels,)"
+    assert unit_responses.ndim >= 2, "unit_responses must have shape (num_images, ...)"
+    assert voxel_responses.shape[0] == unit_responses.shape[0], \
+        "Number of images in voxel_responses and unit_responses must match"
+
+    # Estimate voxel split-half reliabilities if not provided
+    if voxel_reliabilities is None:
+        voxel_reliabilities = torch.tensor(
+            relutils.get_voxelwise_splithalf_correlation(
+                voxel_responses, method=DEFAULT_SH_METHOD
+            )
+        )
+
+    # Mean across repetitions if needed
+    if voxel_responses.ndim == 3:
+        voxel_responses = voxel_responses.mean(dim=1)
+
+    # Get reliable voxel mask
+    voxel_reliability_mask = voxel_reliabilities >= reliability_threshold
+    voxel_indices = torch.where(voxel_reliability_mask)[0]
+    reliable_voxel_responses = voxel_responses[:, voxel_reliability_mask]
+    reliable_voxel_reliabilities = voxel_reliabilities[voxel_reliability_mask]
+
+    # Get tuning correlation matrix
+    correlations_matrix = get_tuning_correlation_matrix(
+        reliable_voxel_responses,
+        unit_responses.flatten(start_dim=1),
+        reliable_voxel_reliabilities,
+        torch.ones(unit_responses.shape[1:].numel()) # Assume all units have reliability of 1
+    )
+
+    # Get best matching units
+    best_matching_unit_indices, correlations = get_best_matching_units(
+        correlations_matrix
+    )
+
+    # Create mask for tuning-matched units with the same shape as unit_responses starting from dim 1
+    mask_shape = unit_responses.shape[1:]
+    tuningmatched_unit_mask = torch.zeros(mask_shape, dtype=torch.bool)
+    for unit_idx in best_matching_unit_indices:
+        # Convert flat index to multi-dimensional index
+        multi_dim_idx = torch.unravel_index(unit_idx, mask_shape)
+        tuningmatched_unit_mask[multi_dim_idx] = True
+
+    return tuningmatched_unit_mask, voxel_indices, best_matching_unit_indices, correlations
