@@ -6,6 +6,9 @@ import torch
 
 from . import utils
 
+CONTRAST_LOCALIZERS = utils.CONTRAST_LOCALIZERS
+TUNINGMATCHED_LOCALIZERS = ['nsd']
+
 def t_statistic(tensor1: torch.Tensor, tensor2: torch.Tensor) -> torch.Tensor:
     """
     Computes the t-statistic for the difference between two tensors.

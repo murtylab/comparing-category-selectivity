@@ -1,6 +1,17 @@
 from compcats.datasets.localization import grillspector_localizer, \
     kanwisher_localizer, konkle_localizer, vinken2023_localizer, kanwishergrayscale_localizer, \
     prince2024_localizer
+# Constants
+DEFAULT_SH_METHOD = 3  # method for reliability calculation
+
+CONTRAST_LOCALIZERS = [
+    'grillspector',
+    'kanwisher',
+    'konkle',
+    'kanwishergrayscale',
+    'vinken2023',
+    'prince2024'
+]
 
 def get_localizerdataset_module(dataset_name):
     """
