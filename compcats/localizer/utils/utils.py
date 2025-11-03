@@ -1,7 +1,9 @@
 """
 Utility functions for localizer datasets
 """
-from typing import Union
+import json
+import os
+from typing import List, Union, Dict
 from tqdm import tqdm
 import torch
 
@@ -92,6 +94,8 @@ def get_localizer_pref_nonpref_categories(dataset_name, froi):
     pref_categories, nonpref_categories = localizer_obj.get_pref_nonpref_categories(froi)
     return pref_categories, nonpref_categories
 
+
+# Tuning-matched localizer utilities
 def get_tuning_correlation_matrix(
     responses1: torch.Tensor,
     responses2: torch.Tensor,
@@ -173,7 +177,7 @@ def get_best_matching_units(
         "Not all best matching correlations have been assigned"
     return best_matching_unit_indices, best_matching_correlations
 
-def generate_tuningmatched_localizer_mask(
+def get_tuningmatched_localizer_mask(
     voxel_responses: torch.Tensor,
     unit_responses: torch.Tensor,
     reliability_threshold: float,
@@ -250,3 +254,102 @@ def generate_tuningmatched_localizer_mask(
         tuningmatched_unit_mask[multi_dim_idx] = True
 
     return tuningmatched_unit_mask, voxel_indices, best_matching_unit_indices, correlations
+
+def generate_tuningmatched_localizer_masks(
+    save_dir: str,
+    subjects_voxel_responses_repind: Dict[int, torch.Tensor],
+    model_unit_responses: torch.Tensor,
+    # Extra info
+    model_name: str,
+    layer: str,
+    subjects: List[int],
+    froi: str,
+    dataset_name: str,
+    subset: int,
+    tthreshold: float,
+    rthreshold: float,
+):
+    """
+    Generate tuning-matched localizer masks for a model, layer and froi.
+    Take in all subjects' individual repetition voxel responses and model unit
+    responses for the layer.
+    Generate tuning-matched localizer masks for each subject, save the dict as a torch file.
+    Save extra info like voxel indices, unit indices, correlations as a json file.
+    Args:
+        save_dir(str): Directory to save the tuning-matched localizer masks
+        subjects_voxel_responses_repind(dict): Dict of subject id to voxel responses with shape
+            (num_images, num_repetitions, num_voxels)
+        model_unit_responses(torch.Tensor): Model unit responses with shape (num_images, ...)
+        # Extra info
+        model_name(str): Name of the model
+        layer(str): Layer name
+        subjects(list): List of subject ids
+        froi(str): fROI name
+        dataset_name(str): Localizer dataset name
+        subset(int): Subset number
+        tthreshold(float): Threshold for tuning-matching based on correlation
+        rthreshold(float): Reliability threshold for voxels
+    """
+    mask_file_name = \
+        f'{model_name}_{layer}_{dataset_name}_{froi}_{tthreshold:.2f}_{rthreshold:.2f}.pt'
+    results_file_name = \
+        f'results_{model_name}_{layer}_{froi}_{dataset_name}_{tthreshold:.2f}_{rthreshold:.2f}.json'
+
+    # Get tuning-matched localizer masks for each subject
+    across_subjects_mask: Union[torch.Tensor, None] = None
+    subject_all_results = {}
+    for subj in subjects:
+        print(f'Generating tuning-matched localizer mask for subject {subj}...')
+        voxel_responses_repind = subjects_voxel_responses_repind[subj]
+        tuningmatched_mask, voxel_indices, unit_indices, correlations = \
+            get_tuningmatched_localizer_mask(
+                voxel_responses_repind,
+                model_unit_responses,
+                reliability_threshold=rthreshold
+            )
+        subject_all_results[str(subj)] = {
+            'mask': tuningmatched_mask,
+            'voxel_indices': voxel_indices,
+            'unit_indices': unit_indices,
+            'correlations': correlations
+        }
+        if across_subjects_mask is None:
+            across_subjects_mask = tuningmatched_mask.clone()
+        else:
+            across_subjects_mask |= tuningmatched_mask
+    # Add the across-subjects mask
+    subject_all_results['all'] = {
+        'mask': across_subjects_mask
+    }
+
+    # Save masks as torch file
+    assert os.path.exists(save_dir), f'Save dir {save_dir} does not exist'
+    torch.save(
+        subject_all_results,
+        os.path.join(save_dir, mask_file_name)
+    )
+
+    # Save extra info as json file
+    results = {
+        'model_name': model_name,
+        'layer': layer,
+        'froi': froi,
+        'dataset_name': dataset_name,
+        'subset': subset,
+        'tthreshold': tthreshold,
+        'rthreshold': rthreshold,
+        'subjects': subjects,
+        'subjects_results': {}
+    }
+    for subj in subjects:
+        subj_results = subject_all_results[str(subj)]
+        results['subjects_results'][str(subj)] = {
+            'voxel_indices': subj_results['voxel_indices'].tolist(),
+            'unit_indices': subj_results['unit_indices'].tolist(),
+            'correlations': subj_results['correlations'].tolist()
+        }
+    # Save as json
+    with open(os.path.join(save_dir, results_file_name), 'w', encoding='utf-8') as f:
+        json.dump(results, f, indent=4)
+
+    return subject_all_results

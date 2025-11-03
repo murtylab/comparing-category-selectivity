@@ -1,13 +1,19 @@
 """Localize fROIs"""
+from typing import Tuple
 import os
 import json
 import warnings
 import torch
 
+from ..datasets.fmri import nsd
+from ..utils import model_utils
 from . import utils
 
 CONTRAST_LOCALIZERS = utils.CONTRAST_LOCALIZERS
 TUNINGMATCHED_LOCALIZERS = ['nsd']
+RTHRESHOLD = 0.4  # Reliability threshold for voxel selection
+NSD_SUBSET_TUNINGMATCHED = 485  # NSD subset for tuning-matched localizer
+DEFAULT_SUBJECTS_TUNINGMATCHED = [1, 2, 5, 7]  # Default NSD subjects for tuning-matched localizer
 
 def t_statistic(tensor1: torch.Tensor, tensor2: torch.Tensor) -> torch.Tensor:
     """
@@ -147,8 +153,9 @@ def localize(model, layer, pref_datasets, nonpref_datasets, froi, dataset_name, 
     return froi_mask
 
 def get_froi_mask(
-        dataset_dir, dataset_name, models_dir, model, layers, froi, tthreshold, return_tvals=False,
-        **kwargs
+    dataset_dir, dataset_name, models_dir,
+    model, layers, froi, tthreshold, return_info=False,
+    **kwargs
 ):
     """
     Get indices for neurons corresponding to froi, localized
@@ -166,7 +173,27 @@ def get_froi_mask(
         raise ValueError("layers should be a string or a list of strings")
 
     # kwargs
+    # Batch size
     batch_size = kwargs.get('batch_size', None)
+    # Subjects for tuning-matched localizer
+    subjects = kwargs.get('subjects', DEFAULT_SUBJECTS_TUNINGMATCHED)
+    if isinstance(subjects, int):
+        subjects = [subjects]
+    assert set(subjects).issubset(set(DEFAULT_SUBJECTS_TUNINGMATCHED)), \
+        f"Subjects should be subset of {DEFAULT_SUBJECTS_TUNINGMATCHED}"
+    # Sort subjects
+    subjects = sorted(subjects)
+    # Reliability threshold for tuning-matched localizer
+    rthreshold = kwargs.get('rthreshold', RTHRESHOLD)
+
+    # Localizer type
+    localizer_type = None
+    if dataset_name in CONTRAST_LOCALIZERS:
+        localizer_type = 'contrast'
+    elif dataset_name in TUNINGMATCHED_LOCALIZERS:
+        localizer_type = 'tuningmatched'
+    else:
+        raise ValueError(f"{dataset_name} not in {CONTRAST_LOCALIZERS + TUNINGMATCHED_LOCALIZERS}")
 
     # Results
     results = {}
@@ -197,44 +224,126 @@ def get_froi_mask(
                 layers_list, nonpref_dataset, activations_dir, batch_size=batch_size
             )
         return True, pref_datasets, nonpref_datasets
+    subjects_voxel_nsd485_repind = {}
+    model_units_nsd485 = {}
+    def _generate_tuningmatched_activations() -> Tuple[dict, dict]:
+        subjects_voxel_nsd485_repind = {}
+        for subj in DEFAULT_SUBJECTS_TUNINGMATCHED:
+            voxel_responses_repind, _ = nsd.get_betas(
+                dataset_dir, subj, froi, tthreshold, subset=NSD_SUBSET_TUNINGMATCHED,
+                voxels=True, repetition_mean=False
+            )
+            subjects_voxel_nsd485_repind[subj] = voxel_responses_repind
+        model_units_nsd485 = model_utils.get_dataset_activations(
+            models_dir, dataset_dir, model, layers_list, 'nsd', subset=NSD_SUBSET_TUNINGMATCHED
+        )
+        # Tuning-matched localization is faster on cpu
+        model_units_nsd485 = {
+            layer: activations.cpu() for layer, activations in model_units_nsd485.items()
+        }
+        return subjects_voxel_nsd485_repind, model_units_nsd485
 
     for layer in layers_list:
         # Mask file name
-        mask_file = f'{model.name}_{layer}_{dataset_name}_{froi}_{tthreshold:.2f}.pt'
+        mask_file = f'{model.name}_{layer}_{dataset_name}_{froi}_{tthreshold:.2f}'
+        if localizer_type == 'tuningmatched':
+            mask_file += f'_{rthreshold:.2f}'
+        mask_file += '.pt'
         froi_dir = f'{root_dir}/{froi}/{layer}'
         os.makedirs(froi_dir, exist_ok=True)
         # Check if mask file is present
         if mask_file in os.listdir(froi_dir):
             mask = torch.load(f'{froi_dir}/{mask_file}')
-            if return_tvals:
-                warnings.warn("t-values not present in the saved mask file")
-                results[layer] = {
-                    'mask': mask,
-                    'all_contrast_tvals': None
-                }
-            else:
+            if localizer_type == 'tuningmatched':
+                # Mask will be a dict of subject masks
+                if subjects == DEFAULT_SUBJECTS_TUNINGMATCHED:
+                    key = 'all'
+                    mask = mask[key]
+                    if not return_info:
+                        mask = mask['mask']
+                elif len(subjects) == 1:
+                    key = str(subjects[0])
+                    mask = mask[key]
+                    if not return_info:
+                        mask = mask['mask']
+                else:
+                    if return_info:
+                        warnings.warn(
+                            'Extra information not returned when combining multiple subjects, ' \
+                            '   only mask will be returned'
+                        )
+                    # Combine masks of multiple subjects
+                    subject_masks = [mask[str(subj)]['mask'] for subj in subjects]
+                    # Stack across a new dimension and then take union across that dimension
+                    stacked_masks = torch.stack(subject_masks, dim=0)
+                    mask = torch.any(stacked_masks, dim=0)
+                # Store result
                 results[layer] = mask
+            elif localizer_type == 'contrast':
+                if return_info:
+                    warnings.warn("t-values not present in the saved mask file")
+                    results[layer] = {
+                        'mask': mask,
+                        'all_contrast_tvals': None
+                    }
+                else:
+                    results[layer] = mask
             continue
 
-        # Generate fROI mask if not present
-        # Generate activations
-        if not activations_generated:
-            activations_generated, pref_datasets, nonpref_datasets = _generate_activations()
+        # Localization
+        if localizer_type == 'contrast':
+            # Generate fROI mask if not present
+            # Generate activations
+            if not activations_generated:
+                activations_generated, pref_datasets, nonpref_datasets = _generate_activations()
 
-        # Localize the units in the layer
-        result = localize(model, layer, pref_datasets, nonpref_datasets, froi, \
-                                        dataset_name, activations_dir, froi_dir, tthreshold, \
-                                        return_tvals=return_tvals)
-        # result is froi_mask if return_tvals=False
-        # result is froi_mask, all_contrast_tvals if return_tvals=True
-        if return_tvals:
-            mask, all_contrast_tvals = result
-            results[layer] = {
-                'mask': mask,
-                'all_contrast_tvals': all_contrast_tvals
-            }
+            # Localize the units in the layer
+            result = localize(
+                model, layer, pref_datasets, nonpref_datasets, froi, dataset_name,
+                activations_dir, froi_dir, tthreshold, return_tvals=return_info, **kwargs
+            )
+            # result is froi_mask if return_info=False
+            # result is froi_mask, all_contrast_tvals if return_info=True
+            if return_info:
+                mask, all_contrast_tvals = result
+                results[layer] = {
+                    'mask': mask,
+                    'all_contrast_tvals': all_contrast_tvals
+                }
+            else:
+                results[layer] = result
+        elif localizer_type == 'tuningmatched':
+            # When generating the masks, do not pass reliability-subsetted voxel indices
+            # for future use cases
+            # Generate activations if not already done
+            if not activations_generated:
+                subjects_voxel_nsd485_repind, model_units_nsd485 = \
+                    _generate_tuningmatched_activations()
+                activations_generated = True
+            # Generate all subjects tuning-matched localizer masks
+            subjects_results = utils.generate_tuningmatched_localizer_masks(
+                save_dir=froi_dir,
+                subjects_voxel_responses_repind=subjects_voxel_nsd485_repind,
+                model_unit_responses=model_units_nsd485[layer],
+                model_name=model.name,
+                layer=layer,
+                subjects=DEFAULT_SUBJECTS_TUNINGMATCHED,
+                froi=froi,
+                dataset_name=dataset_name,
+                subset=NSD_SUBSET_TUNINGMATCHED,
+                tthreshold=tthreshold,
+                rthreshold=rthreshold
+            )
+            # Get the mask for specified subjects
+            key = str(subjects[0]) if len(subjects) == 1 else 'all'
+            subject_results = subjects_results[key]
+            # Choose only the mask if return_info is False
+            if return_info:
+                results[layer] = subject_results
+            else:
+                results[layer] = subject_results['mask']
         else:
-            results[layer] = result
+            raise ValueError(f"{localizer_type} not recognized")
 
     # Error handling
     if isinstance(layers, str):
