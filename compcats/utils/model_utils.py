@@ -173,8 +173,15 @@ def get_dataset_activations(
     if froi is not None and tthreshold is not None and froi_localizer is not None:
         froi_masks = localizer.get_froi_mask(
             froi_localizer_dir, froi_localizer, models_dir, \
-            model, layers_list, froi, tthreshold, batch_size=batch_size
+            model, layers_list, froi, tthreshold, batch_size=batch_size, **kwargs
         )
+        # If froi_masks is a dict with values as dicts, then only extract masks
+        # and leave out extra info like t-values or voxel indices
+        if isinstance(froi_masks, dict):
+            if isinstance(list(froi_masks.values())[0], dict):
+                for layer in layers_list:
+                    froi_masks[layer] = froi_masks[layer]['mask']
+        # Apply froi masks to dataset activations
         for layer in layers_list:
             froi_mask_layer = froi_masks[layer].to(device)
             if isinstance(dataset_activations[layer], dict):
