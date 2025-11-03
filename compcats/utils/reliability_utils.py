@@ -1,3 +1,4 @@
+from typing import Union, Any
 import numpy as np
 import torch
 
@@ -17,7 +18,11 @@ def fix_type(data):
 ####################################################################################################
 # VOXEL-WISE SPLITHALF CORRELATION
 ####################################################################################################
-def get_voxelwise_splithalf_correlation(subject_data, image_subset=..., method=3):
+def get_voxelwise_splithalf_correlation(
+    subject_data: Union[np.ndarray, torch.Tensor],
+    image_subset: Union[np.ndarray, torch.Tensor, Any] = ...,
+    method: int = 3,
+) -> np.ndarray:
     assert method in list(range(1, 6)), 'Method must be 1, 2, 3, 4, or 5'
     # Convert to appropriate type
     subject_data = fix_type(subject_data)
