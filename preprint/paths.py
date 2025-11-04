@@ -22,7 +22,7 @@ KONKLE_LOCALIZER_DIR = '/Users/adipani3/datasets/localizer_konkle/CompSearch'
 PRINCE2024_LOCALIZER_DIR = '/Users/adipani3/datasets/localizer_prince2024/Prince2024Localizer'
 
 # THINGS
-THINGS_DIR = None # '/om2/user/alishd/datasets/things/THINGS'
+THINGS_DIR = '/Users/adipani3/datasets/THINGS'
 
 # ImageNet
 IMAGENET_VAL_DIR = None # '/om/user/alishd/datasets/imagenet/val'
