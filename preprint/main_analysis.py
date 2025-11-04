@@ -46,6 +46,12 @@ BATCH_SIZE = 64  # Adjust based on GPU memory
 DEVICE = misc_utils.get_device()
 # DEVICE = torch.device('cpu')  # Forcing CPU for reproducibility in preprint results
 
+# Tuning-matched localizer parameters
+# Reliability threshold for tuning-matched localizer
+RTHRESHOLD = 0.0
+# Whether to enforce unique unit per voxel in tuning-matched localizer
+UNIQUE_UNIT_PER_VOXEL = False
+
 # Results dirs
 BEST_LAYERS_CSV_PATH = f'{RESULTS_DIR}/best_layers_nsd485_median_pearsonr.csv'
 LOCALIZATION_VALIDATION_CSV_PATH = f'{RESULTS_DIR}/localization_validation.csv'
@@ -286,6 +292,8 @@ def get_localizer_dir(localizer_name):
         return KONKLE_LOCALIZER_DIR
     elif localizer_name == 'prince2024':
         return PRINCE2024_LOCALIZER_DIR
+    elif localizer_name == 'nsd':
+        return NSD_DIR
     else:
         raise ValueError('Localizer not implemented')
 
@@ -361,12 +369,13 @@ def get_allmodels_nsd515_data(
         for model_name in get_model_names(model_type):
             model = get_model(model_name)
             layer = get_froi_models_layers(model_froi, fmri_froi)[model_name]
+            print(f'Getting model data: {model_name}, layer: {layer}, model_froi: {model_froi}, fmri_froi: {fmri_froi}')
             model_froi_activations = model_utils.get_dataset_activations(
                 MODELS_DIR, NSD_DIR, model, layer, dataset='nsd', \
                 subset=subset, \
                 froi=model_froi, tthreshold=tthreshold, froi_localizer=localizer, \
                 froi_localizer_dir=get_localizer_dir(localizer), batch_size=BATCH_SIZE,
-                device=DEVICE
+                device=DEVICE, rthreshold=RTHRESHOLD, unique_unit_per_voxel=UNIQUE_UNIT_PER_VOXEL
             )
             if unitmean:
                 model_froi_activations = model_froi_activations.mean(axis=-1)
@@ -947,14 +956,14 @@ def run_analysis_nsd515modelsubjectcorrelations():
     model_fmri_frois_all = model_fmri_frois_core + model_fmri_frois_extended
 
     # Variables
-    model_fmri_frois = model_fmri_frois_all
+    model_fmri_frois = model_fmri_frois_core
     fmri_frois = list({i[1] for i in model_fmri_frois})
     tthreshold = 3 if model_type == 'random' else 7
     # Subjects
     subjects = [1, 2, 3, 4, 5, 6, 7, 8]
     subset = 515
     # Models
-    model_localizer = 'grillspector'
+    model_localizer = 'nsd'
 
     # Storing results
     modelsubject_correlations_csv_path = MODELSUBJECT_CORRELATIONS_NSD515_CSV_PATH
