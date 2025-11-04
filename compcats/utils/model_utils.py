@@ -1,13 +1,14 @@
 import warnings
 
 from compcats.datasets.fmri import nsd, murty185, nsdsynthetic
-from compcats.datasets.image import afhqv2, celebahq, ava
+from compcats.datasets.image import afhqv2, celebahq, ava, things
 from compcats.localizer import localizer
 from compcats.localizer import utils as localizer_utils
 from compcats.utils import misc_utils
 
 # Device
 DEVICE = misc_utils.get_device()
+DEFAULT_NUM_WORKERS = 1
 
 def get_dataset_activations(
     models_dir, dataset_dir, \
@@ -36,6 +37,7 @@ def get_dataset_activations(
         warnings.warn("Device is set to CPU but GPU is available. Consider using GPU for faster computation.")
     else:
         device = DEVICE
+    num_workers = kwargs.get('num_workers', DEFAULT_NUM_WORKERS)
 
     # Error handling
     dataset = dataset.lower()
@@ -113,7 +115,7 @@ def get_dataset_activations(
         save_dir = f'{models_dir}/{model.name}/murty185/activations'
         murty185_dataset = murty185.get_stimuli_dataset(dataset_dir, model.transforms)
         dataset_activations = model.generate_dataset_activations(
-            layers_list, murty185_dataset, save_dir, batch_size, device
+            layers_list, murty185_dataset, save_dir, batch_size, device, num_workers=num_workers
         )
     elif dataset == 'localizer':
         imgclass_activations = {} # Store activations for different classes
@@ -130,7 +132,8 @@ def get_dataset_activations(
         # Generate activations for all image classes
         for imageclass, imageclass_dataset in imageclass_datasets.items():
             imgclass_activations[imageclass] = model.generate_dataset_activations(
-                layers_list, imageclass_dataset, save_dir, batch_size, device
+                layers_list, imageclass_dataset, save_dir, batch_size, device,
+                num_workers=num_workers
             )
         for layer in layers_list:
             dataset_activations[layer] = {}
@@ -143,7 +146,7 @@ def get_dataset_activations(
         celebahq_dataset.name = 'celebahq'
         save_dir = f'{models_dir}/{model.name}/{celebahq_dataset.name}/activations'
         dataset_activations = model.generate_dataset_activations(
-            layers_list, celebahq_dataset, save_dir, batch_size, device
+            layers_list, celebahq_dataset, save_dir, batch_size, device, num_workers=num_workers
         )
     elif dataset == 'afhqv2':
         afhqv2_dataset = afhqv2.get_val_dataset(
@@ -152,7 +155,7 @@ def get_dataset_activations(
         afhqv2_dataset.name = 'afhqv2'
         save_dir = f'{models_dir}/{model.name}/{afhqv2_dataset.name}/activations'
         dataset_activations = model.generate_dataset_activations(
-            layers_list, afhqv2_dataset, save_dir, batch_size, device
+            layers_list, afhqv2_dataset, save_dir, batch_size, device, num_workers=num_workers
         )
     elif dataset == 'ava':
         landscape_only = kwargs.get('landscape_only', True)
@@ -164,7 +167,15 @@ def get_dataset_activations(
         )
         save_dir = f'{models_dir}/{model.name}/{ava_dataset.name}/activations'
         dataset_activations = model.generate_dataset_activations(
-            layers_list, ava_dataset, save_dir, batch_size, device
+            layers_list, ava_dataset, save_dir, batch_size, device, num_workers=num_workers
+        )
+    elif dataset == 'things':
+        save_dir = f'{models_dir}/{model.name}/things/activations'
+        things_dataset = things.get_stimuli_dataset(
+            dataset_dir, model.transforms
+        )
+        dataset_activations = model.generate_dataset_activations(
+            layers_list, things_dataset, save_dir, batch_size, device, num_workers=num_workers
         )
     else:
         raise ValueError(f'{dataset} unknown dataset')

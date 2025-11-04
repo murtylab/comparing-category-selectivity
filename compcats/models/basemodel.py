@@ -257,13 +257,16 @@ class BaseModel(torch.nn.Module):
         return activations
 
     def generate_dataset_activations(self, layers, dataset, save_dir=None, \
-                                     batch_size=768, device='cuda'):
+                                     batch_size=768, device='cuda', num_workers=1):
         """
         Function to generate activations for a dataset
         Args:
             layer(str): Layer name
             dataset(torch.utils.data.Dataset): Dataset
             save_dir(str): Directory to save activations without the layer name
+            batch_size(int): Batch size
+            device(str): Device to use
+            num_workers(int): Number of workers to use for data loading
         """
         # Error handling
         if batch_size is None:
@@ -335,7 +338,9 @@ class BaseModel(torch.nn.Module):
         # Set device
         self.to(device)
         # Create a DataLoader to iterate over the dataset
-        dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=False)
+        dataloader = torch.utils.data.DataLoader(
+            dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers
+        )
         # Turn on evaluation mode
         self.eval()
         # Generate activations
