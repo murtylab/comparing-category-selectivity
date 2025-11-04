@@ -376,4 +376,7 @@ def generate_tuningmatched_localizer_masks(
     with open(os.path.join(save_dir, results_file_name), 'w', encoding='utf-8') as f:
         json.dump(results, f, indent=4)
 
+    # Print save info
+    print(f'Saving fROI for {model_name} ({layer}, {froi}): {save_dir}/{mask_file_name}')
+
     return subject_all_results
