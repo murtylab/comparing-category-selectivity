@@ -133,7 +133,8 @@ def get_tuning_correlation_matrix(
     return correlations
 
 def get_best_matching_units(
-    correlations_matrix: torch.Tensor
+    correlations_matrix: torch.Tensor,
+    unique_unit_per_voxel: bool = False,
 ):
     """
     For each unit in set 1, get the best matching unit in set 2 based on correlations.
@@ -155,19 +156,27 @@ def get_best_matching_units(
     best_matching_unit_indices = torch.full((correlations_matrix.shape[0],), -1, dtype=torch.long)
     best_matching_correlations = torch.full((correlations_matrix.shape[0],), float('-inf'), dtype=torch.float32)
     # For each unit in set 1, find the best matching unit in set 2
-    for _ in range(correlations_matrix.shape[0]):
-        max_corr_coords = torch.unravel_index(
-            torch.argmax(correlations_matrix, dim=None),
-            correlations_matrix.shape
-        )
-        v1, u2 = max_corr_coords
-        max_corr = correlations_matrix[v1, u2]
-        matched_voxel_indices[v1] = v1
-        best_matching_unit_indices[v1] = u2
-        best_matching_correlations[v1] = max_corr
-        # Set the corresponding row and column to -inf to avoid re-selection
-        correlations_matrix[v1, :] = float('-inf')
-        correlations_matrix[:, u2] = float('-inf')
+    if unique_unit_per_voxel:
+        for _ in range(correlations_matrix.shape[0]):
+            max_corr_coords = torch.unravel_index(
+                torch.argmax(correlations_matrix, dim=None),
+                correlations_matrix.shape
+            )
+            v1, u2 = max_corr_coords
+            max_corr = correlations_matrix[v1, u2]
+            matched_voxel_indices[v1] = v1
+            best_matching_unit_indices[v1] = u2
+            best_matching_correlations[v1] = max_corr
+            # Set the corresponding row and column to -inf to avoid re-selection
+            correlations_matrix[v1, :] = float('-inf')
+            correlations_matrix[:, u2] = float('-inf')
+    else:
+        # Use torch.argmax to get best matching units
+        best_matching_unit_indices = torch.argmax(correlations_matrix, dim=1)
+        best_matching_correlations = correlations_matrix[
+            torch.arange(correlations_matrix.shape[0]), best_matching_unit_indices
+        ]
+        matched_voxel_indices = torch.arange(correlations_matrix.shape[0])
     # Assert all voxels have been matched
     assert (matched_voxel_indices != -1).all(), \
         "Not all voxels have been matched"
@@ -182,6 +191,7 @@ def get_tuningmatched_localizer_mask(
     unit_responses: torch.Tensor,
     reliability_threshold: float,
     voxel_reliabilities: Union[torch.Tensor, None] = None,
+    unique_unit_per_voxel: bool = False,
 ):
     """
     Generate tuning-matched localizer masks for one subjects and froi.
@@ -214,13 +224,19 @@ def get_tuningmatched_localizer_mask(
     assert voxel_responses.shape[0] == unit_responses.shape[0], \
         "Number of images in voxel_responses and unit_responses must match"
 
-    # Estimate voxel split-half reliabilities if not provided
-    if voxel_reliabilities is None:
-        voxel_reliabilities = torch.tensor(
-            relutils.get_voxelwise_splithalf_correlation(
-                voxel_responses, method=DEFAULT_SH_METHOD
+    # Estimate voxel split-half reliabilities if not provided and reliability_threshold > 0
+    # If reliability_threshold is 0, ignore reliability filtering by
+    # setting voxel_reliabilities to all ones
+    if reliability_threshold > 0:
+        if voxel_reliabilities is None:
+            voxel_reliabilities = torch.tensor(
+                relutils.get_voxelwise_splithalf_correlation(
+                    voxel_responses, method=DEFAULT_SH_METHOD
+                )
             )
-        )
+    else:
+        # Override voxel_reliabilities to all ones
+        voxel_reliabilities = torch.ones(voxel_responses.shape[-1])
 
     # Mean across repetitions if needed
     if voxel_responses.ndim == 3:
@@ -242,7 +258,8 @@ def get_tuningmatched_localizer_mask(
 
     # Get best matching units
     best_matching_unit_indices, correlations = get_best_matching_units(
-        correlations_matrix
+        correlations_matrix,
+        unique_unit_per_voxel=unique_unit_per_voxel
     )
 
     # Create mask for tuning-matched units with the same shape as unit_responses starting from dim 1
@@ -268,6 +285,7 @@ def generate_tuningmatched_localizer_masks(
     subset: int,
     tthreshold: float,
     rthreshold: float,
+    unique_unit_per_voxel: bool = False,
 ):
     """
     Generate tuning-matched localizer masks for a model, layer and froi.
@@ -289,11 +307,15 @@ def generate_tuningmatched_localizer_masks(
         subset(int): Subset number
         tthreshold(float): Threshold for tuning-matching based on correlation
         rthreshold(float): Reliability threshold for voxels
+        unique_unit_per_voxel(bool): Whether to enforce unique unit per voxel matching within a subject
+    Returns:
+        subject_all_results(dict): Dict of subject id to tuning-matched localizer mask and extra info
     """
+    suffix = '_uniqueunitpervoxel' if unique_unit_per_voxel else ''
     mask_file_name = \
-        f'{model_name}_{layer}_{dataset_name}_{froi}_{tthreshold:.2f}_{rthreshold:.2f}.pt'
+        f'{model_name}_{layer}_{dataset_name}_{froi}_{tthreshold:.2f}_{rthreshold:.2f}{suffix}.pt'
     results_file_name = \
-        f'results_{model_name}_{layer}_{froi}_{dataset_name}_{tthreshold:.2f}_{rthreshold:.2f}.json'
+        f'results_{model_name}_{layer}_{froi}_{dataset_name}_{tthreshold:.2f}_{rthreshold:.2f}{suffix}.json'
 
     # Get tuning-matched localizer masks for each subject
     across_subjects_mask: Union[torch.Tensor, None] = None
@@ -305,7 +327,8 @@ def generate_tuningmatched_localizer_masks(
             get_tuningmatched_localizer_mask(
                 voxel_responses_repind,
                 model_unit_responses,
-                reliability_threshold=rthreshold
+                reliability_threshold=rthreshold,
+                unique_unit_per_voxel=unique_unit_per_voxel,
             )
         subject_all_results[str(subj)] = {
             'mask': tuningmatched_mask,
@@ -338,6 +361,7 @@ def generate_tuningmatched_localizer_masks(
         'subset': subset,
         'tthreshold': tthreshold,
         'rthreshold': rthreshold,
+        'unique_unit_per_voxel': unique_unit_per_voxel,
         'subjects': subjects,
         'subjects_results': {}
     }

@@ -185,6 +185,8 @@ def get_froi_mask(
     subjects = sorted(subjects)
     # Reliability threshold for tuning-matched localizer
     rthreshold = kwargs.get('rthreshold', RTHRESHOLD)
+    # Unique unit per voxel matching
+    unique_unit_per_voxel = kwargs.get('unique_unit_per_voxel', False)
 
     # Localizer type
     localizer_type = None
@@ -247,7 +249,8 @@ def get_froi_mask(
         # Mask file name
         mask_file = f'{model.name}_{layer}_{dataset_name}_{froi}_{tthreshold:.2f}'
         if localizer_type == 'tuningmatched':
-            mask_file += f'_{rthreshold:.2f}'
+            suffix = '_uniqueunitpervoxel' if unique_unit_per_voxel else ''
+            mask_file += f'_{rthreshold:.2f}{suffix}'
         mask_file += '.pt'
         froi_dir = f'{root_dir}/{froi}/{layer}'
         os.makedirs(froi_dir, exist_ok=True)
@@ -332,7 +335,8 @@ def get_froi_mask(
                 dataset_name=dataset_name,
                 subset=NSD_SUBSET_TUNINGMATCHED,
                 tthreshold=tthreshold,
-                rthreshold=rthreshold
+                rthreshold=rthreshold,
+                unique_unit_per_voxel=unique_unit_per_voxel
             )
             # Get the mask for specified subjects
             key = str(subjects[0]) if len(subjects) == 1 else 'all'
