@@ -807,14 +807,15 @@ def run_analysis_localizationvalidation():
             # Run localization validation
             froi_localizer_dir = get_localizer_dir(froi_localizer)
             validation_localizer_dir = get_localizer_dir(validation_localizer)
-            tvalue, pvalue = \
+            validation_category_normality_pvalues, tvalues, t_pvalues, uvalues, u_pvalues = \
                 analysis_localizationvalidation.model_layer_froi_localization_validation(
                     model, model_froi_layer, froi, tthreshold, froi_localizer, froi_localizer_dir, \
                     MODELS_DIR, validation_localizer, validation_localizer_dir, \
                     batch_size=BATCH_SIZE, generate_layers=model_all_layers
                 )
             # Get t-values for original localizer
-            localization_tvalue, localization_pvalue = \
+            localization_category_normality_pvalues, localization_tvalues, \
+                localization_t_pvalues, localization_uvalues, localization_u_pvalues = \
                 analysis_localizationvalidation.model_layer_froi_localization_validation(
                     model, model_froi_layer, froi, tthreshold, froi_localizer, froi_localizer_dir, \
                     MODELS_DIR, froi_localizer, froi_localizer_dir, \
@@ -823,18 +824,24 @@ def run_analysis_localizationvalidation():
             # Save results
             localization_validation_csv_list.append({
                 **row_params,
-                'validation_tvalue': tvalue,
-                'validation_pvalue': pvalue,
-                'localization_tvalue': localization_tvalue,
-                'localization_pvalue': localization_pvalue
+                'validation_uvalues': uvalues,
+                'validation_u_pvalues': u_pvalues,
+                'localization_uvalues': localization_uvalues,
+                'localization_u_pvalues': localization_u_pvalues,
+                'validation_tvalues': tvalues,
+                'validation_t_pvalues': t_pvalues,
+                'localization_tvalues': localization_tvalues,
+                'localization_t_pvalues': localization_t_pvalues,
+                'validation_normality_pvalues': validation_category_normality_pvalues,
+                'localization_normality_pvalues': localization_category_normality_pvalues,
             })
             localization_validation_csv = pd.DataFrame(localization_validation_csv_list)
             localization_validation_csv.to_csv(localization_validation_csv_path, index=False)
 
         # Delete validation localizer activations to save space
-        misc_utils.delete_activations(
-            f'{MODELS_DIR}/{model_name}/{validation_localizer}/activations', model_all_layers
-        )
+        # misc_utils.delete_activations(
+        #     f'{MODELS_DIR}/{model_name}/{validation_localizer}/activations', model_all_layers
+        # )
 
 # Analysis: subject-subject correlations
 def run_analysis_nsd515subjectsubjectcorrelations():
