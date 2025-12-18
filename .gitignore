@@ -1,14 +1,11 @@
 **/.DS_Store
 
 # Folders to ignore
-**/preprint/*models*/*
-**/preprint/wandb/*
-**/preprint/results/*
-**/preprint/logs/*
-**/preprint/dev/*
-**/generate_data/*
-**/misc/*
-**/.vscode/*
+preprint
+projects
+generate_data
+misc
+.vscode
 
 # Ignore torch and numpy files
 *.pt
