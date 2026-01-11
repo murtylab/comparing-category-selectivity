@@ -8,9 +8,15 @@ import pandas as pd
 import torch
 
 # Analysis files
-import analysis_layersweep
-import analysis_localizationvalidation
-import paths
+try:
+    import analysis_layersweep
+    import analysis_localizationvalidation
+    import paths
+except ImportError:
+    # If absolute imports fail, try relative imports
+    from . import analysis_layersweep
+    from . import analysis_localizationvalidation
+    from . import paths
 
 from compcats.models import *
 from compcats.datasets.fmri import nsd, murty185, nsdsynthetic
