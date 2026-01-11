@@ -20,6 +20,7 @@ KONKLE_LOCALIZER_DIR = '/Users/adipani3/datasets/localizer_konkle/CompSearch'
 # '/net/vast-storage/scratch/vast/sinha/alishd/datasets/\
 # localizer_konkle/CompSearch'
 PRINCE2024_LOCALIZER_DIR = '/Users/adipani3/datasets/localizer_prince2024/Prince2024Localizer'
+VINKEN2023_LOCALIZER_DIR = '/Users/adipani3/datasets/vinkenetal2023'
 
 # THINGS
 THINGS_DIR = '/Users/adipani3/datasets/THINGS'
