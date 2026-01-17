@@ -2,9 +2,13 @@
 ViT-B/32 DreamSim 
 https://github.com/ssundaram21/dreamsim
 """
-import dreamsim
 from torch import nn
 import torch
+try:
+    import dreamsim
+except ImportError:
+    # These libraries are optional, silently handle import error
+    pass
 
 from ...basemodel import BaseModel
 from ...utils import transform_utils, layer_utils

@@ -2,8 +2,12 @@
 ViT-B/16 SigLIP2
 https://huggingface.co/timm/ViT-B-16-SigLIP2
 """
-from open_clip import create_model_from_pretrained
 from torch import nn
+try:
+    from open_clip import create_model_from_pretrained
+except ImportError:
+    # These libraries are optional, silently handle import error
+    pass
 
 from ...basemodel import BaseModel
 from ...utils import transform_utils, layer_utils

@@ -3,7 +3,11 @@ ViT-B/16 EVA02
 https://github.com/baaivision/EVA/tree/master/EVA-02
 """
 from torch import nn
-import open_clip
+try:
+    import open_clip
+except ImportError:
+    # These libraries are optional, silently handle import error
+    pass
 
 from ...basemodel import BaseModel
 from ...utils import transform_utils, layer_utils

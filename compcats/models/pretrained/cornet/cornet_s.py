@@ -4,7 +4,11 @@ https://github.com/dicarlolab/CORnet
 """
 import torch
 from torch import nn
-from cornet.cornet_s import CORnet_S, HASH
+try:
+    from cornet.cornet_s import CORnet_S, HASH
+except ImportError:
+    # These libraries are optional, silently handle import error
+    pass
 
 from ...basemodel import BaseModel
 from ...utils import transform_utils, layer_utils, download_utils

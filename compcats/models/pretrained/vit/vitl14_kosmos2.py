@@ -3,7 +3,11 @@ ViT-L/14 KOSMOS-2
 https://huggingface.co/docs/transformers/en/model_doc/kosmos-2
 """
 from torch import nn
-from transformers import Kosmos2ForConditionalGeneration
+try:
+    from transformers import Kosmos2ForConditionalGeneration
+except ImportError:
+    # These libraries are optional, silently handle import error
+    pass
 
 from ...basemodel import BaseModel
 from ...utils import transform_utils, layer_utils
