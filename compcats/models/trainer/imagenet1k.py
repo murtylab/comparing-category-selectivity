@@ -274,6 +274,11 @@ class ImageNet1kTrainer:
             'epoch': 0,
             'resolution': self.resolution_schedule[0]
         })
+        # Save the untrained model checkpoint
+        torch.save(
+            self.model,
+            log_folder / f'{self.model.name}_epoch0.pt'
+        )
         for epoch in range(1, epochs+1):
             # Run one epoch of training
             start_train_loop_time = time.time()
