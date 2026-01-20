@@ -262,13 +262,16 @@ class BaseArchitecture(torch.nn.Module):
         return activations
 
     def generate_dataset_activations(self, layers, dataset, save_dir=None, \
-                                     batch_size=768, device='cuda'):
+                                     batch_size=768, device='cuda', num_workers=1):
         """
         Function to generate activations for a dataset
         Args:
             layer(str): Layer name
             dataset(torch.utils.data.Dataset): Dataset
             save_dir(str): Directory to save activations without the layer name
+            batch_size(int): Batch size
+            device(str): Device to use
+            num_workers(int): Number of workers to use for data loading
         """
         # Error handling
         if batch_size is None:
@@ -284,6 +287,8 @@ class BaseArchitecture(torch.nn.Module):
             layers_list = [layers]
         else:
             layers_list = layers
+        if len(dataset) == 0:
+            raise ValueError('Dataset is empty')
         if not torch.cuda.is_available() and not torch.backends.mps.is_available() and device != 'cpu':
             warnings.warn('CUDA not available but was specified. Moving to CPU.')
             device = 'cpu'
@@ -314,9 +319,16 @@ class BaseArchitecture(torch.nn.Module):
                 layer_dir = f'{save_dir}/{layer}'
                 activations_file_name = f'{self.name}_{layer}_{dataset.name}.pt'
                 if layer not in layers_to_generate:
-                    layer_activations = torch.load(f'{layer_dir}/{activations_file_name}')
-                    layer_activations = layer_activations.to(device)
-                    activations[layer] = layer_activations
+                    file_path = f'{layer_dir}/{activations_file_name}'
+                    try:
+                        layer_activations = torch.load(file_path)
+                        layer_activations = layer_activations.to(device)
+                        activations[layer] = layer_activations
+                    except (FileNotFoundError, RuntimeError, EOFError, OSError) as e:
+                        print(f'Tried loading activations from {file_path} but failed ({e}), adding to generation list.')
+                        # If additional unexpected exceptions need handling, add them to the tuple above.
+                        layers_to_generate.append(layer)
+                        os.makedirs(layer_dir, exist_ok=True)
                 else:
                     os.makedirs(layer_dir, exist_ok=True)
 
@@ -331,13 +343,18 @@ class BaseArchitecture(torch.nn.Module):
         # Set device
         self.to(device)
         # Create a DataLoader to iterate over the dataset
-        dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=False)
+        dataloader = torch.utils.data.DataLoader(
+            dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers
+        )
         # Turn on evaluation mode
         self.eval()
         # Generate activations
         with torch.no_grad():
             for batch in tqdm(dataloader):
                 # Send images to device
+                if isinstance(batch, (list, tuple)):
+                    # Ignore targets if present
+                    batch = batch[0]
                 batch = batch.to(device)
                 # Forward pass
                 outputs_batch_layers = self.get_activations(batch, layers_to_generate)
@@ -352,7 +369,7 @@ class BaseArchitecture(torch.nn.Module):
                         activations[layer] = layer_output
                 # Empty cache
                 del outputs_batch_layers, batch
-                torch.cuda.empty_cache()
+                misc_utils.clear_memory(device)
 
         # Store activations
         if save_dir:
@@ -364,7 +381,19 @@ class BaseArchitecture(torch.nn.Module):
 
         # Move activations to device
         for layer in layers_to_generate:
-            activations[layer] = activations[layer].to(device)
+            try:
+                activations[layer] = activations[layer].to(device)
+            except Exception as e:
+                err_msg = str(e)
+                if 'CUDA out of memory' in err_msg or 'MPS out of memory' in err_msg or 'resource temporarily unavailable' in err_msg:
+                    print(f"{device.upper()} error when loading activations for layer {layer}. Keeping activations on CPU and returning.")
+                    device = 'cpu'
+                    # Ensure all activations are on CPU
+                    for l in activations.keys():
+                        activations[l] = activations[l].cpu()
+                    return activations
+                else:
+                    raise e
 
         # Return activations
         if isinstance(layers, str):
