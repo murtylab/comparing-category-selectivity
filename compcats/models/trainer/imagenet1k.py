@@ -77,7 +77,7 @@ class ImageNet1kTrainer:
             initial_lr=self.args.lr.lr
         )
         # Setup logger
-        self.val_meters, self.log_folder, self.start_time = self._initialize_logger(
+        self.train_meters, self.val_meters, self.log_folder, self.start_time = self._initialize_logger(
             self.args.data.output_dir, self.args.model.architecture, self.uid,
             self.args.data.device, self.num_classes, self.args
         )
@@ -239,6 +239,15 @@ class ImageNet1kTrainer:
         return optimizer, train_loss, val_loss
 
     def _initialize_logger(self, folder, arch_name, uid, device, num_classes, args):
+        train_meters = {
+            'top_1': torchmetrics.Accuracy(
+                task='multiclass', num_classes=num_classes, top_k=1
+            ).to(device),
+            'top_5': torchmetrics.Accuracy(
+                task='multiclass', num_classes=num_classes, top_k=5
+            ).to(device),
+            'loss': MeanScalarMetric().to(device)
+        }
         val_meters = {
             'top_1': torchmetrics.Accuracy(
                 task='multiclass', num_classes=num_classes, top_k=1
@@ -261,7 +270,7 @@ class ImageNet1kTrainer:
         with open(log_folder / 'params.json', 'w+', encoding='utf-8') as handle:
             json.dump(logging_utils.nestednamespace_to_dict(args), handle, indent=4)
 
-        return val_meters, log_folder, start_time
+        return train_meters, val_meters, log_folder, start_time
 
     def _train(self, epochs, log_folder):
         """
@@ -340,6 +349,10 @@ class ImageNet1kTrainer:
             with autocast(self.device):
                 output = self.model(images)
                 loss_train = self.train_loss(output, target)
+                # Calculate accuracy
+                for k in ['top_1', 'top_5']:
+                    self.train_meters[k](output, target)
+                self.train_meters['loss'](loss_train)
             wandb.log(
                 {
                     "global_step": self.global_step,
@@ -352,6 +365,18 @@ class ImageNet1kTrainer:
             self.scaler.step(self.optimizer)
             self.scaler.update()
             ### Training end
+        # Compute stats over the entire training set
+        train_epoch_stats = {k: m.compute().item() for k, m in self.train_meters.items()}
+        wandb.log(
+            {
+                "epoch": epoch,
+                'train_top_1': train_epoch_stats['top_1'],
+                'train_top_5': train_epoch_stats['top_5'],
+                'train_loss_epoch': train_epoch_stats['loss'],
+            }
+        )
+        # Reset meters
+        _ = [meter.reset() for meter in self.train_meters.values()]
 
     def _val_loop(self):
         model = self.model
