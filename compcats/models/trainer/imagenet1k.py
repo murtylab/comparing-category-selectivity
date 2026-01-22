@@ -36,6 +36,11 @@ class ImageNet1kTrainer:
         # Args
         self.args = args
         self.uid = str(uuid4())
+        # Change wandb run name
+        model_abbrev = architectures.ARCH_ABBEREVIATIONS[self.args.model.architecture]
+        wandb.run.name = f"{model_abbrev}_{self.args.seed.global_seed}_{self.args.seed.model_seed}_{self.uid[:2]}"
+        # Add architecture, global seed and model seed to uid
+        self.uid = f"arch={self.args.model.architecture}_gseed={self.args.seed.global_seed}_mseed={self.args.seed.model_seed}_uid={self.uid}"
         print(f'\nUID: {self.uid}\n')
         # Add identifiers
         self.args.identifier = Namespace()
@@ -122,6 +127,7 @@ class ImageNet1kTrainer:
             self._eval_and_log()
         else:
             self._train(self.args.training.epochs, self.log_folder)
+        return self.log_folder
 
     def _create_lr_schedule(self, lr_schedule_type, initial_lr, epochs, **kwargs):
         assert lr_schedule_type == 'cyclic', "Only cyclic LR schedule is implemented"
@@ -260,7 +266,7 @@ class ImageNet1kTrainer:
 
         # Logging
         log_folder = (
-            Path(folder)/ args.project.name / args.project.experiment / arch_name / str(uid)
+            Path(folder)/ args.project.name / args.project.experiment / str(uid)
         ).absolute()
         log_folder.mkdir(parents=True)
         # Start time
