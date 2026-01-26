@@ -62,6 +62,7 @@ UNIQUE_UNIT_PER_VOXEL = False
 BEST_LAYERS_CSV_PATH = f'{RESULTS_DIR}/best_layers_nsd485_median_pearsonr.csv'
 LOCALIZATION_VALIDATION_CSV_PATH = f'{RESULTS_DIR}/localization_validation.csv'
 SUBJECTSUBJECT_CORRELATIONS_NSD515_CSV_PATH = f'{RESULTS_DIR}/subjectsubject_correlations_nsd515.csv'
+FROIFROI_CORRELATIONS_NSD515_CSV_PATH = f'{RESULTS_DIR}/froifroi_correlations_nsd515.csv'
 MODELSUBJECT_CORRELATIONS_NSD515_CSV_PATH = f'{RESULTS_DIR}/modelsubject_correlations_nsd515.csv'
 LOCALIZEREFFECT_CSV_PATH = f'{RESULTS_DIR}/localizer_effect_correlations_nsd515.csv'
 TTHRESHOLDEFFECT_CSV_PATH = f'{RESULTS_DIR}/tthreshold_effect_correlations_nsd515.csv'
@@ -848,6 +849,107 @@ def run_analysis_localizationvalidation():
         # misc_utils.delete_activations(
         #     f'{MODELS_DIR}/{model_name}/{validation_localizer}/activations', model_all_layers
         # )
+
+# Analysis: froi-froi correlations
+def run_analysis_nsd515froifroicorrelations():
+    """
+    Analysis: Froi-froi correlations, univariate pearsonr and multivariate RDMr
+    Also normalized by split-half correlations
+    """
+    # Define frois
+    frois_core = ['FFA', 'PPA', 'EBA']
+    frois_all = frois_core + ['OFA', 'OPA', 'RSC', 'FBA', 'VWFA', 'OVWFA']
+
+    # Variables
+    frois = frois_all
+    tthreshold = 7
+    subjects = [1, 2, 3, 4, 5, 6, 7, 8]
+    subset = 515
+
+    # Storing results
+    froifroi_correlations_csv_path = FROIFROI_CORRELATIONS_NSD515_CSV_PATH
+    if os.path.exists(froifroi_correlations_csv_path):
+        froifroi_correlations_csv = pd.read_csv(froifroi_correlations_csv_path)
+        froifroi_correlations_csv_list = froifroi_correlations_csv.to_dict('records')
+    else:
+        froifroi_correlations_csv_list = []
+
+    print('Getting all subjects NSD515 data')
+    subjects_voxel_data, subjects_splithalf_pearsonrs, subjects_splithalf_rdmrs = \
+            get_allsubjects_nsd515_data(frois, tthreshold, tensors=True)
+    print('Running froi-froi correlations')
+    for fidx1, froi1 in enumerate(frois):
+        for _, froi2 in enumerate(frois[fidx1:]):
+            print(f'Running froi-froi correlations for froi1: {froi1}, froi2: {froi2}')
+            for _, subject1 in enumerate(subjects):
+                for _, subject2 in enumerate(subjects):
+                    if subject1 == subject2:
+                        # Skip same subject, regardless of frois
+                        continue
+                    row_params = {
+                        'fmri_froi1': froi1,
+                        'fmri_froi2': froi2,
+                        'subject1': subject1,
+                        'subject2': subject2,
+                        'fmri_tthreshold': tthreshold,
+                        'fmri_dataset': f'nsd{subset}',
+                    }
+                    # Check if row is present
+                    if misc_utils.check_row_present(row_params, froifroi_correlations_csv_list):
+                        continue
+                    # Run subject-subject correlation
+                    subject1_voxel_data = subjects_voxel_data[froi1][subject1]
+                    subject2_voxel_data = subjects_voxel_data[froi2][subject2]
+                    # split-half pearsonrs
+                    subject1_splithalf_pearsonr = subjects_splithalf_pearsonrs[froi1][subject1]
+                    subject2_splithalf_pearsonr = subjects_splithalf_pearsonrs[froi2][subject2]
+                    # split-half rdmrs
+                    subject1_splithalf_rdmr = subjects_splithalf_rdmrs[froi1][subject1]
+                    subject2_splithalf_rdmr = subjects_splithalf_rdmrs[froi2][subject2]
+                    if subject1_voxel_data is None or \
+                        subject2_voxel_data is None or \
+                        np.isnan(subject1_splithalf_pearsonr) or \
+                        np.isnan(subject2_splithalf_pearsonr) or \
+                        np.isnan(subject1_splithalf_rdmr) or \
+                        np.isnan(subject2_splithalf_rdmr):
+                        # Set to nan
+                        pearsonr = np.nan
+                        rdmr = np.nan
+                        pvalue_pearsonr = np.nan
+                        pvalue_rdmr = np.nan
+                        normed_pearsonr = np.nan
+                        normed_rdmr = np.nan
+                    else:
+                        # Pearsonr
+                        pearsonr, pvalue_pearsonr = scipy.stats.pearsonr(
+                            subject1_voxel_data.mean(axis=-1), subject2_voxel_data.mean(axis=-1)
+                        )
+                        normed_pearsonr = \
+                            pearsonr / np.sqrt(subject1_splithalf_pearsonr * subject2_splithalf_pearsonr)
+                        # RDMr
+                        rdmr, pvalue_rdmr = rcutils.rdmr(
+                            subject1_voxel_data, subject2_voxel_data, return_pvalue=True
+                        )
+                        normed_rdmr = \
+                            rdmr / np.sqrt(subject1_splithalf_rdmr * subject2_splithalf_rdmr)
+                    # Save results
+                    froifroi_correlations_csv_list.append({
+                        **row_params,
+                        'normed_pearsonr': normed_pearsonr,
+                        'pearsonr': pearsonr,
+                        'normed_rdmr': normed_rdmr,
+                        'rdmr': rdmr,
+                        'pvalue_rdmr': pvalue_rdmr,
+                        'pvalue_pearsonr': pvalue_pearsonr,
+                        'subject1_froi1_splithalf_pearsonr': subject1_splithalf_pearsonr,
+                        'subject2_froi2_splithalf_pearsonr': subject2_splithalf_pearsonr,
+                        'subject1_froi1_splithalf_rdmr': subject1_splithalf_rdmr,
+                        'subject2_froi2_splithalf_rdmr': subject2_splithalf_rdmr
+                    })
+                    froifroi_correlations_csv = pd.DataFrame(froifroi_correlations_csv_list)
+                    froifroi_correlations_csv.to_csv(
+                        froifroi_correlations_csv_path, index=False
+                    )
 
 # Analysis: subject-subject correlations
 def run_analysis_nsd515subjectsubjectcorrelations():
@@ -2112,6 +2214,10 @@ def main():
             help='Run NSD515 subject-subject correlations'
     )
     parser.add_argument(
+        '--nsd515froifroicorrelations', action='store_true', \
+            help='Run NSD515 froi-froi correlations'
+    )
+    parser.add_argument(
         '--nsd515modelsubjectcorrelations', action='store_true', \
             help='Run NSD515 model-subject univariate correlations'
     )
@@ -2139,6 +2245,8 @@ def main():
         run_analysis_localizationvalidation()
     if args.nsd515subjectsubjectcorrelations:
         run_analysis_nsd515subjectsubjectcorrelations()
+    if args.nsd515froifroicorrelations:
+        run_analysis_nsd515froifroicorrelations()
     if args.nsd515modelsubjectcorrelations:
         run_analysis_nsd515modelsubjectcorrelations()
     if args.nsd515localizereffect:
