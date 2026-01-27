@@ -1,4 +1,4 @@
-from typing import Union, Any
+from typing import Union, Any, Optional
 import numpy as np
 import torch
 
@@ -296,7 +296,7 @@ def get_neuron_population_splithalf_correlation(
     metric: str = "pearsonr",
     n_boot: int = 100,
     spearman_brown: bool = True,
-    random_state: int | None = 42,
+    random_state: Optional[int] = 42
 ):
     """
     Estimate population-level split-half reliability across stimuli for macaque data.
