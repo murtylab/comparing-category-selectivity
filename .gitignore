@@ -4,7 +4,7 @@
 preprint
 projects
 generate_data
-misc
+misc/*
 .vscode
 
 # Ignore torch and numpy files
