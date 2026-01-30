@@ -17,7 +17,7 @@ def fit_eval_mapper(
     y_train: np.ndarray,
     x_test: np.ndarray,
     y_test: np.ndarray,
-    metric: str = "pearsonr"
+    metric: str = "population_pearsonr"
 ):
     """
     Fit an encoding model to training data and evaluate it on both training and test data.
@@ -27,7 +27,9 @@ def fit_eval_mapper(
         y_train(np.ndarray): Training responses (num_samples x num_output_features)
         x_test(np.ndarray): Test data (num_samples x num_input_features)
         y_test(np.ndarray): Test responses (num_samples x num_output_features)
-        metric(str): Metric to evaluate the model. Options are 'pearsonr', 'rdmr', or 'all'.
+        metric(str): Metric to evaluate the model. 
+            Options are 'voxelwise_pearsonr', 'population_pearsonr',
+            'population_rdmr', or 'all'.
     Returns:
         encoder(sklearn.base.BaseEstimator): Trained encoding model
         train_metrics(dict/float): Training metrics
@@ -58,7 +60,7 @@ def fit_mapper(
     return encoder
 
 # Get performance of a trained model on a dataset
-def eval_encoder(encoder, x_test, y_test, metric="pearsonr"):
+def eval_encoder(encoder, x_test, y_test, metric="population_pearsonr"):
     """
     Evaluate a trained encoding model on a test dataset.
     """
@@ -66,25 +68,46 @@ def eval_encoder(encoder, x_test, y_test, metric="pearsonr"):
     if not hasattr(encoder, "predict"):
         raise ValueError("Encoder is not fitted. Please fit the encoder first.")
     # Error handling for the metrics
-    assert metric in ["pearsonr", "rdmr", "all"], \
-        "Invalid metric specified. Use 'pearsonr' or 'rdmr' or 'all'."
+    allowed_metrics = [
+        'voxelwise_pearsonr',
+        'population_pearsonr',
+        'population_rdmr',
+        'population_all',
+        'all'
+    ] # TODO: Implement: population all
+    assert metric in allowed_metrics, \
+        f"Invalid metric specified. Allowed={allowed_metrics}"
     if isinstance(encoder, str):
         raise ValueError("Encoder should be a trained model, not a string.")
     if isinstance(metric, str):
         metric = [metric.lower()]
     if "all" in metric:
-        metric = ["pearsonr", "rdmr"]
+        metric = [
+            'voxelwise_pearsonr',
+            'population_pearsonr',
+            'population_rdmr',
+        ]
     # Predict the test data
     y_pred_test = encoder.predict(x_test)
     # Initialize the dictionary to store the results
     test_metrics = {}
     # Calculate the metrics
-    if "pearsonr" in metric:
-        test_metrics['pearsonr'], _ = scipy_stats.pearsonr(y_test, y_pred_test)
-    if "rdmr" in metric:
-        test_metrics['rdmr'] = rcutils.rdmr(
+    if "population_pearsonr" in metric:
+        test_metrics['population_pearsonr'], _ = scipy_stats.pearsonr(y_test, y_pred_test)
+    if "population_rdmr" in metric:
+        test_metrics['population_rdmr'] = rcutils.rdmr(
             torch.tensor(y_test), torch.tensor(y_pred_test)
         )
+    if "voxelwise_pearsonr" in metric:
+        test_metrics['voxelwise_pearsonr'] = []
+        n_vox = y_test.shape[1]
+        r = np.full(n_vox, np.nan)
+        for v in range(n_vox):
+            yt, yp = y_test[:, v], y_pred_test[:, v]
+            # Skip dead / constant voxels
+            if np.std(yt) < 1e-8 or np.std(yp) < 1e-8:
+                continue
+            r[v], _ = scipy_stats.pearsonr(yt, yp)
     # Error handling for the metrics
     if len(metric) == 1:
         test_metrics = test_metrics[metric[0]]
