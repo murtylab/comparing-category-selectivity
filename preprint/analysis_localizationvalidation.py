@@ -89,6 +89,12 @@ def model_layer_froi_localization_validation(
     tvalues, t_pvalues = [], []
     uvalues, u_pvalues = [], []
     for nonpref_activation in nonpref_activations:
+        if np.isnan(nonpref_activation).all():
+            tvalues.append(float('nan'))
+            t_pvalues.append(float('nan'))
+            uvalues.append(float('nan'))
+            u_pvalues.append(float('nan'))
+            continue
         tvalue, pvalue = scipy.stats.ttest_ind(
             pref_activations, nonpref_activation, equal_var=False, nan_policy='raise', \
             alternative='greater'
