@@ -84,7 +84,7 @@ def spearmanr(vector1, vector2, return_pvalue=False):
         # Step 3: Compute Spearman's rank correlation
         n = vector1.size(0)
         # rho = 1 - (6 * torch.sum(d ** 2)) / (n * (n ** 2 - 1))
-        rho = 1 - (6.0 * torch.sum(d.to(torch.float64) ** 2)) / (float(n) * (float(n)**2 - 1))
+        rho = 1 - (6.0 * torch.sum(d.to(torch.float32) ** 2)) / (float(n) * (float(n)**2 - 1))
         rho = rho.item()
         assert -1 <= rho <= 1, f"Invalid Spearman correlation: {rho}"
 
