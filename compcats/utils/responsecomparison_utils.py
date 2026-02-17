@@ -3,8 +3,13 @@ from typing import Dict, Union, Tuple
 import numpy as np
 from scipy.stats import spearmanr as scipy_spearmanr
 from sklearn.model_selection import KFold
-import ot # POT: Python Optimal Transport
 import torch
+
+try:
+    import ot # POT: Python Optimal Transport
+except ImportError:
+    # These libraries are optional, silently handle import error
+    pass
 
 def pearsonr(vector1, vector2, return_pvalue=False):
     """
