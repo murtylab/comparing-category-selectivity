@@ -72,6 +72,7 @@ def eval_encoder(encoder, x_test, y_test, metric="population_pearsonr"):
         'voxelwise_pearsonr',
         'population_pearsonr',
         'population_rdmr',
+        'population_zrdmr',
         'population_all',
         'all'
     ] # TODO: Implement: population all
@@ -82,11 +83,7 @@ def eval_encoder(encoder, x_test, y_test, metric="population_pearsonr"):
     if isinstance(metric, str):
         metric = [metric.lower()]
     if "all" in metric:
-        metric = [
-            'voxelwise_pearsonr',
-            'population_pearsonr',
-            'population_rdmr',
-        ]
+        metric = list(set(allowed_metrics) - set(['all']))
     # Predict the test data
     y_pred_test = encoder.predict(x_test)
     # Initialize the dictionary to store the results
@@ -96,6 +93,10 @@ def eval_encoder(encoder, x_test, y_test, metric="population_pearsonr"):
         test_metrics['population_pearsonr'], _ = scipy_stats.pearsonr(y_test, y_pred_test)
     if "population_rdmr" in metric:
         test_metrics['population_rdmr'] = rcutils.rdmr(
+            torch.tensor(y_test), torch.tensor(y_pred_test)
+        )
+    if "population_zrdmr" in metric:
+        test_metrics['population_zrdmr'] = rcutils.zrdmr(
             torch.tensor(y_test), torch.tensor(y_pred_test)
         )
     if "voxelwise_pearsonr" in metric:
