@@ -169,19 +169,15 @@ def _get_pearsonr_splithalf_correlarion_method5(voxel_data):
 ####################################################################################################
 # RDM SPLITHALF CORRELATION
 ####################################################################################################
-def get_rdm_splithalf_correlation(subject_data, image_subset=..., method=3, zscored=False):
+def get_rdm_splithalf_correlation(subject_data, image_subset=..., method=3, rdm_type='erdmr'):
     assert method in [1, 2, 3], 'Method must be 1, 2, or 3'
+    rdm_type = rdm_type.lower()
+    rdm_func = rcutils.get_rdm_function(rdm_type)
     # Convert to appropriate type
     subject_data = fix_type(subject_data)
     # Check dimensions
     assert subject_data.ndim == 3 and subject_data.shape[1]==3, \
         'Data must be 3D in the shape of n_stimuli, n_repetitions=3, n_voxels'
-    # Decide rdm function based on zscoring
-    rdm_func = None
-    if zscored:
-        rdm_func = rcutils.zrdmr
-    else:
-        rdm_func = rcutils.rdmr
     # Subset data
     subset_data = subject_data[image_subset, :, :]
     # RDM Correlations
@@ -195,7 +191,7 @@ def get_rdm_splithalf_correlation(subject_data, image_subset=..., method=3, zsco
         corr = corr.item()
     return corr
 
-def _get_rdm_splithalf_correlation_method1(subset_data, rdm_func=rcutils.rdmr):
+def _get_rdm_splithalf_correlation_method1(subset_data, rdm_func):
     # Error handle
     assert subset_data.ndim == 3, \
         'Data must be 3D in the shape of n_stimuli, n_repetitions, n_voxels'
@@ -214,7 +210,7 @@ def _get_rdm_splithalf_correlation_method1(subset_data, rdm_func=rcutils.rdmr):
     # Spearman-Brown correction
     return 2*np.mean(corrs_ij)/(1+np.mean(corrs_ij))
 
-def _get_rdm_splithalf_correlation_method2(subset_data, rdm_func=rcutils.rdmr):
+def _get_rdm_splithalf_correlation_method2(subset_data, rdm_func):
     # Error handle
     assert subset_data.ndim == 3, \
         'Data must be 3D in the shape of n_stimuli, n_repetitions, n_voxels'
@@ -235,7 +231,7 @@ def _get_rdm_splithalf_correlation_method2(subset_data, rdm_func=rcutils.rdmr):
     # Spearman-Brown correction
     return 2*np.mean(corrs_ijk)/(1+np.mean(corrs_ijk))
 
-def _get_rdm_splithalf_correlation_method3(subset_data, rdm_func=rcutils.rdmr):
+def _get_rdm_splithalf_correlation_method3(subset_data, rdm_func):
     """
     Split each repetition into individual and take correlation across each individual and
     mean of remaining repetitions, perform the spearman-brown correction and return the
