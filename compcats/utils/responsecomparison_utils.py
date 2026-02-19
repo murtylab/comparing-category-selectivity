@@ -30,9 +30,14 @@ def pearsonr(vector1, vector2, return_pvalue=False):
         correlation = torch.corrcoef(torch.vstack((vector1, vector2)))[0, 1].item()
     return correlation
 
+# For backward compatibility with old code that calls rdmr, erdmr, etc. directly
 def rdmr(matrix1, matrix2, return_pvalue=False):
+    return rdmr(matrix1, matrix2, return_pvalue=return_pvalue)
+
+def erdmr(matrix1, matrix2, return_pvalue=False):
     """
     Calculate correlation between two RDMs
+    Distance: Euclidean distance
     Args:
         matrix1 (torch.Tensor): n_samples n_dimensions
         matrix2 (torch.Tensor): n_samples n_dimensions
