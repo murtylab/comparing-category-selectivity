@@ -16,7 +16,7 @@ def get_rdm_function(rdm_type: str):
     methods = {
         'rdmr': rdmr, # Legacy, Euclidean RDM with no z-scoring
         'erdmr': erdmr, # Euclidean RDM with optional z-scoring
-        'zrdmr': zerdmr, # Euclidean RDM with z-scoring
+        'zerdmr': zerdmr, # Euclidean RDM with z-scoring
         'crdmr': crdmr, # Correlation-based RDM with Spearman comparison
         'mrdmr': mrdmr, # Mahalanobis-based RDM with Spearman comparison
     }
@@ -43,9 +43,9 @@ def pearsonr(vector1, vector2, return_pvalue=False):
         correlation = torch.corrcoef(torch.vstack((vector1, vector2)))[0, 1].item()
     return correlation
 
-# For backward compatibility with old code that calls rdmr, erdmr, etc. directly
+# Legacy: For backward compatibility with old code that calls rdmr -> erdmr
 def rdmr(matrix1, matrix2, return_pvalue=False):
-    return rdmr(matrix1, matrix2, return_pvalue=return_pvalue)
+    return erdmr(matrix1, matrix2, return_pvalue=return_pvalue)
 
 def erdmr(matrix1, matrix2, return_pvalue=False):
     """
@@ -131,7 +131,7 @@ def crdmr(matrix1, matrix2, return_pvalue=False):
         # 2. Row-wise L2-Normalization
         # We use a slightly higher eps for stability in fMRI data
         norm = torch.norm(centered, p=2, dim=1, keepdim=True)
-        normalized = centered / (norm + 1e-9)
+        normalized = centered / (norm + 1e-8)
         # 3. Matrix multiplication to get Pearson Correlation (r)
         # Resulting matrix is [n_stimuli, n_stimuli]
         correlation_matrix = torch.mm(normalized, normalized.t())
@@ -179,7 +179,7 @@ def mrdmr(matrix1, matrix2, shrinkage=0.1, return_pvalue=False):
     assert matrix1.shape[0] == matrix2.shape[0], "Both must have the same number of stimuli"
 
     # Local function to compute Mahalanobis RDM
-    def _mahalanobis_rdm(matrix, shrinkage=0.1):
+    def _mahalanobis_rdm(matrix, shrinkage=0.5):
         """
         Computes a Mahalanobis Distance RDM.
         Args:
@@ -210,7 +210,7 @@ def mrdmr(matrix1, matrix2, shrinkage=0.1, return_pvalue=False):
         # L, V = Eigendecomposition(Cov) -> Cov^-1/2 = V @ diag(1/sqrt(L)) @ V.T
         L, V = torch.linalg.eigh(shrunk_cov)
         # Ensure eigenvalues are positive for stability
-        L = torch.clamp(L, min=1e-9)
+        L = torch.clamp(L, min=1e-8)
         whitening_op = V @ torch.diag(1.0 / torch.sqrt(L)) @ V.t()
         
         whitened_matrix = centered_data @ whitening_op
@@ -218,6 +218,9 @@ def mrdmr(matrix1, matrix2, shrinkage=0.1, return_pvalue=False):
         # 5. Compute Euclidean distance on whitened data
         # This is mathematically equivalent to Mahalanobis distance
         rdm = torch.cdist(whitened_matrix, whitened_matrix, p=2)
+
+        # Clamp to ensure numerical stability (distance should be non-negative)
+        rdm = torch.clamp(rdm, min=1e-8)
         return rdm
 
     with torch.no_grad():
