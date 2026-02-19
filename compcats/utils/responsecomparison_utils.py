@@ -11,6 +11,19 @@ except ImportError:
     # These libraries are optional, silently handle import error
     pass
 
+def get_rdm_function(rdm_type: str):
+    """Dynamic lookup for RDM functions."""
+    methods = {
+        'rdmr': rdmr, # Legacy, Euclidean RDM with no z-scoring
+        'erdmr': erdmr, # Euclidean RDM with optional z-scoring
+        'zrdmr': zerdmr, # Euclidean RDM with z-scoring
+        'crdmr': crdmr, # Correlation-based RDM with Spearman comparison
+        'mrdmr': mrdmr, # Mahalanobis-based RDM with Spearman comparison
+    }
+    if rdm_type not in methods:
+        raise ValueError(f"Method {rdm_type} not found. Available: {list(methods.keys())}")
+    return methods[rdm_type]
+
 def pearsonr(vector1, vector2, return_pvalue=False):
     """
     Calculate Pearson correlation between two tensors
