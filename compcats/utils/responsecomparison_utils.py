@@ -54,6 +54,33 @@ def rdmr(matrix1, matrix2, return_pvalue=False):
     # Otherwise, it is just rho
     return result
 
+def zrdmr(matrix1, matrix2, return_pvalue=False):
+    """
+    Calculate correlation between two RDMs, where RDMs are z-scored before correlation calculation
+    Args:
+        matrix1 (torch.Tensor): n_samples n_dimensions
+        matrix2 (torch.Tensor): n_samples n_dimensions
+    Returns:
+        rho (float): Spearman's rank correlation
+    """
+    if not torch.is_tensor(matrix1) or not torch.is_tensor(matrix2):
+        raise ValueError('Input must be tensors')
+    assert matrix1.ndim == 2 and matrix2.ndim == 2, 'Input must be 2D tensors'
+    assert matrix1.size(0) == matrix2.size(0), 'Matrices must have the same number of samples'
+    # Z-score the matrices along the sample dimension
+    matrix1 = (matrix1 - matrix1.mean(dim=0, keepdim=True)) / (matrix1.std(dim=0, keepdim=True) + 1e-8)
+    matrix2 = (matrix2 - matrix2.mean(dim=0, keepdim=True)) / (matrix2.std(dim=0, keepdim=True) + 1e-8)
+    with torch.no_grad():
+        rsa1 = torch.cdist(matrix1, matrix1, p=2) / matrix1.size(0)
+        rsa1 = rsa1[torch.tril(torch.ones_like(rsa1), diagonal=-1).bool()].flatten()
+        rsa2 = torch.cdist(matrix2, matrix2, p=2) / matrix2.size(0)
+        rsa2 = rsa2[torch.tril(torch.ones_like(rsa2), diagonal=-1).bool()].flatten()
+        result = spearmanr(rsa1, rsa2, return_pvalue=return_pvalue)
+        del rsa1, rsa2
+    # Result is a tuple of rho and p-value if return_pvalue is True
+    # Otherwise, it is just rho
+    return result
+
 def spearmanr(vector1, vector2, return_pvalue=False):
     """
     Calculate Spearman's rank correlation between two tensors
