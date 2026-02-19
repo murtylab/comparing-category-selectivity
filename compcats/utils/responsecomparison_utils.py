@@ -81,6 +81,149 @@ def zrdmr(matrix1, matrix2, return_pvalue=False):
     # Otherwise, it is just rho
     return result
 
+def crdmr(matrix1, matrix2, return_pvalue=False):
+    """
+    Compare two activations using Correlation-based RDMs and Spearman Rank.
+    Distance: 1 - Pearson correlation
+    Args:
+        matrix1 (torch.Tensor): n_samples n_dimensions
+        matrix2 (torch.Tensor): n_samples n_dimensions
+    Returns:
+        rho (float): Spearman's rank correlation
+    """
+    if not (torch.is_tensor(matrix1) and torch.is_tensor(matrix2)):
+        raise ValueError('Input must be tensors')
+    assert matrix1.ndim == 2 and matrix2.ndim == 2, 'Input must be 2D tensors'
+    assert matrix1.shape[0] == matrix2.shape[0], "Both must have the same number of stimuli"
+
+    # Local function to compute 1 - Pearson Correlation RDM
+    def _compute_correlation_rdm(matrix):
+        """
+        Computes a 1 - Pearson Correlation RDM using matrix operations.
+        Args:
+            matrix (torch.Tensor): [n_stimuli, n_features]
+        Returns:
+            rdm (torch.Tensor): [n_stimuli, n_stimuli]
+        """
+        # 1. Row-wise Centering (Subtract mean of each stimulus pattern)
+        # This is the 'r' in Pearson correlation logic.
+        row_mean = matrix.mean(dim=1, keepdim=True)
+        centered = matrix - row_mean
+        # 2. Row-wise L2-Normalization
+        # We use a slightly higher eps for stability in fMRI data
+        norm = torch.norm(centered, p=2, dim=1, keepdim=True)
+        normalized = centered / (norm + 1e-9)
+        # 3. Matrix multiplication to get Pearson Correlation (r)
+        # Resulting matrix is [n_stimuli, n_stimuli]
+        correlation_matrix = torch.mm(normalized, normalized.t())
+        # 4. Convert to distance: 1 - r 
+        # Clamping to [0, 2] handles floating point errors where r might be 1.000001
+        rdm = 1 - correlation_matrix
+        return torch.clamp(rdm, min=0.0, max=2.0)
+
+    with torch.no_grad():
+        # --- PREPROCESSING: Voxel-wise/Unit-wise Z-scoring ---
+        # Calculate std first to check for dead features
+        std1 = matrix1.std(dim=0, keepdim=True)
+        std2 = matrix2.std(dim=0, keepdim=True)
+        # Only normalize features that actually vary to avoid NaNs
+        matrix1 = (matrix1 - matrix1.mean(dim=0, keepdim=True)) / (std1 + 1e-8)
+        matrix2 = (matrix2 - matrix2.mean(dim=0, keepdim=True)) / (std2 + 1e-8)
+        # --- RDM CALCULATION ---
+        rsa1 = _compute_correlation_rdm(matrix1)
+        rsa2 = _compute_correlation_rdm(matrix2)
+        # --- COMPARISON ---
+        # Extract lower triangle (excluding diagonal)
+        mask = torch.tril(torch.ones_like(rsa1), diagonal=-1).bool()
+        rsa1 = rsa1[mask]
+        rsa2 = rsa2[mask]
+        result = spearmanr(rsa1, rsa2, return_pvalue=return_pvalue)
+        # Free up memory before heavy Spearman calculation
+        del rsa1, rsa2, matrix1, matrix2
+    # Result is a tuple of rho and p-value if return_pvalue is True
+    # Otherwise, it is just rho
+    return result
+
+def mrdmr(matrix1, matrix2, shrinkage=0.1, return_pvalue=False):
+    """
+    Compare two activations using Mahalanobis-based RDMs and Spearman Rank.
+    Distance: Mahalanobis distance with Ledoit-Wolf shrinkage for covariance estimation
+    Args:
+        matrix1 (torch.Tensor): n_samples n_dimensions
+        matrix2 (torch.Tensor): n_samples n_dimensions
+    Returns:
+        rho (float): Spearman's rank correlation
+    """
+    if not (torch.is_tensor(matrix1) and torch.is_tensor(matrix2)):
+        raise ValueError('Input must be tensors')
+    assert matrix1.ndim == 2 and matrix2.ndim == 2, 'Input must be 2D tensors'
+    assert matrix1.shape[0] == matrix2.shape[0], "Both must have the same number of stimuli"
+
+    # Local function to compute Mahalanobis RDM
+    def _mahalanobis_rdm(matrix, shrinkage=0.1):
+        """
+        Computes a Mahalanobis Distance RDM.
+        Args:
+            matrix (torch.Tensor): [n_stimuli, n_features]
+            shrinkage (float): Ledoit-Wolf-style shrinkage to ensure the 
+                            covariance matrix is invertible.
+        Returns:
+            rdm (torch.Tensor): [n_stimuli, n_stimuli]
+        """
+        n_stimuli, n_features = matrix.shape
+        
+        # 1. Center the features (column-wise)
+        centered_data = matrix - matrix.mean(dim=0, keepdim=True)
+        
+        # 2. Compute Covariance Matrix [n_features, n_features]
+        # We use the stimuli as observations to estimate the spatial covariance
+        cov = (centered_data.t() @ centered_data) / (n_stimuli - 1)
+        
+        # 3. Regularization (Shrinkage)
+        # Necessary if features > stimuli, which is almost always true for fMRI
+        # It pulls the covariance matrix toward a diagonal matrix (identity * mean variance)
+        eye = torch.eye(n_features, device=matrix.device)
+        mean_var = torch.trace(cov) / n_features
+        shrunk_cov = (1 - shrinkage) * cov + shrinkage * mean_var * eye
+        
+        # 4. Whiten the Data
+        # We use the inverse square root of the covariance matrix: centered @ Cov^-1/2
+        # L, V = Eigendecomposition(Cov) -> Cov^-1/2 = V @ diag(1/sqrt(L)) @ V.T
+        L, V = torch.linalg.eigh(shrunk_cov)
+        # Ensure eigenvalues are positive for stability
+        L = torch.clamp(L, min=1e-9)
+        whitening_op = V @ torch.diag(1.0 / torch.sqrt(L)) @ V.t()
+        
+        whitened_matrix = centered_data @ whitening_op
+        
+        # 5. Compute Euclidean distance on whitened data
+        # This is mathematically equivalent to Mahalanobis distance
+        rdm = torch.cdist(whitened_matrix, whitened_matrix, p=2)
+        return rdm
+
+    with torch.no_grad():
+        # Step 1: Pre-normalize (Voxel-wise Z-score) 
+        # Though Mahalanobis is scale-invariant, this helps numerical stability
+        matrix1 = (matrix1 - matrix1.mean(0)) / (matrix1.std(0) + 1e-8)
+        matrix2 = (matrix2 - matrix2.mean(0)) / (matrix2.std(0) + 1e-8)
+
+        # Step 2: Compute Mahalanobis RDMs
+        rsa1 = _mahalanobis_rdm(matrix1, shrinkage=shrinkage)
+        rsa2 = _mahalanobis_rdm(matrix2, shrinkage=shrinkage)
+
+        # Step 3: Comparison
+        mask = torch.tril(torch.ones_like(rsa1), diagonal=-1).bool()
+        rsa1 = rsa1[mask]
+        rsa2 = rsa2[mask]
+        
+        # Step 4: Spearman correlation on the RDM vectors
+        result = spearmanr(rsa1, rsa2, return_pvalue=return_pvalue)
+
+        # Free up memory before heavy Spearman calculation
+        del rsa1, rsa2, matrix1, matrix2
+        
+    return result
+
 def spearmanr(vector1, vector2, return_pvalue=False):
     """
     Calculate Spearman's rank correlation between two tensors
