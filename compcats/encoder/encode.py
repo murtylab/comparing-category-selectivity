@@ -29,7 +29,7 @@ def fit_eval_mapper(
         y_test(np.ndarray): Test responses (num_samples x num_output_features)
         metric(str): Metric to evaluate the model. 
             Options are 'voxelwise_pearsonr', 'population_pearsonr',
-            'population_rdmr', or 'all'.
+            'population_erdmr', or 'all'.
     Returns:
         encoder(sklearn.base.BaseEstimator): Trained encoding model
         train_metrics(dict/float): Training metrics
@@ -68,11 +68,10 @@ def eval_encoder(encoder, x_test, y_test, metric="population_pearsonr"):
     if not hasattr(encoder, "predict"):
         raise ValueError("Encoder is not fitted. Please fit the encoder first.")
     # Error handling for the metrics
-    allowed_metrics = [
+    allowed_metrics = [ # TODO: Enable other RDM comparison types
         'voxelwise_pearsonr',
         'population_pearsonr',
-        'population_rdmr',
-        'population_zrdmr',
+        'population_erdmr',
         'population_all',
         'all'
     ] # TODO: Implement: population all
@@ -83,6 +82,7 @@ def eval_encoder(encoder, x_test, y_test, metric="population_pearsonr"):
     if isinstance(metric, str):
         metric = [metric.lower()]
     if "all" in metric:
+        raise NotImplementedError("The 'all' metric option is not implemented yet.")
         metric = list(set(allowed_metrics) - set(['all']))
     # Predict the test data
     y_pred_test = encoder.predict(x_test)
@@ -91,12 +91,8 @@ def eval_encoder(encoder, x_test, y_test, metric="population_pearsonr"):
     # Calculate the metrics
     if "population_pearsonr" in metric:
         test_metrics['population_pearsonr'], _ = scipy_stats.pearsonr(y_test, y_pred_test)
-    if "population_rdmr" in metric:
-        test_metrics['population_rdmr'] = rcutils.rdmr(
-            torch.tensor(y_test), torch.tensor(y_pred_test)
-        )
-    if "population_zrdmr" in metric:
-        test_metrics['population_zrdmr'] = rcutils.zrdmr(
+    if "population_erdmr" in metric:
+        test_metrics['population_erdmr'] = rcutils.erdmr(
             torch.tensor(y_test), torch.tensor(y_pred_test)
         )
     if "voxelwise_pearsonr" in metric:
