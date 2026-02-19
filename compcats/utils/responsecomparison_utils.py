@@ -72,9 +72,10 @@ def erdmr(matrix1, matrix2, return_pvalue=False):
     # Otherwise, it is just rho
     return result
 
-def zrdmr(matrix1, matrix2, return_pvalue=False):
+def zerdmr(matrix1, matrix2, return_pvalue=False):
     """
     Calculate correlation between two RDMs, where RDMs are z-scored before correlation calculation
+    Distance: (z-scored) Euclidean distance
     Args:
         matrix1 (torch.Tensor): n_samples n_dimensions
         matrix2 (torch.Tensor): n_samples n_dimensions
