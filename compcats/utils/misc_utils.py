@@ -7,11 +7,15 @@ import json
 import pandas as pd
 import torch
 
+_NULL = "__NULL__"  # sentinel value to treat all null-likes as the same in check_row_present
+
 # csv utils
 def check_row_present(row_params, results_list):
     """
     Check if a row (dict) is already present in a list of results.
     Handles nested dicts/lists by comparing their JSON representations.
+    Match rows treating None / NaN / pd.NA / missing as equivalent.
+    Also handles nested dicts/lists.
 
     Args:
         row_params (dict): Row parameters.
@@ -21,8 +25,11 @@ def check_row_present(row_params, results_list):
         dict | None: The matching row dict if found, otherwise None.
     """
     def normalize(v):
-        """Convert values to a canonical comparable form."""
-        # Convert dicts/lists recursively to sorted JSON strings
+        # Treat all null-likes the same
+        if pd.isna(v):
+            return _NULL
+        
+        # Canonicalize nested structures
         if isinstance(v, (dict, list)):
             try:
                 return json.dumps(v, sort_keys=True)
@@ -31,9 +38,13 @@ def check_row_present(row_params, results_list):
         return v
 
     for row in results_list:
-        if all(normalize(row_params[key]) == normalize(row.get(key, None))
-               for key in row_params):
-            return row  # Return the full matching row
+        if all(
+            normalize(row_params.get(key, None)) ==
+            normalize(row.get(key, None))
+            for key in row_params
+        ):
+            return row
+
     return None
 
 def to_csv(data: List[Dict[Union[str, int, float], Any]], path: str) -> None:
