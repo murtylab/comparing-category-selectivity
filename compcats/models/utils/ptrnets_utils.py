@@ -199,7 +199,7 @@ def load_state_dict_from_google_drive(
             extraced_name = members[0].filename
             cached_file = os.path.join(model_dir, extraced_name)
 
-    print(cached_file)
+    # print(cached_file)
     map_location = map_location or "cpu"
     return torch.load(cached_file, map_location=map_location)
 

@@ -295,7 +295,7 @@ def _model(
     width_mult: int,
     normalized_inputs: bool,
     use_data_parallel: bool,
-    progress: bool = True,
+    progress: bool = False,
 ) -> torch.nn.Module:
     model = ResNet(
         block=block,
@@ -318,7 +318,7 @@ def simclr_resnet50x1(
     pretrained: bool = False,
     normalized_inputs: bool = True,
     use_data_parallel: bool = False,
-    progress: bool = True,
+    progress: bool = False,
 ) -> torch.nn.Module:
     r"""
     Simclr resnet50 backbone. Chen, T., Kornblith, S., Norouzi, M., & Hinton, G. (2020).
@@ -345,7 +345,7 @@ def simclr_resnet50x2(
     pretrained: bool = False,
     normalized_inputs: bool = True,
     use_data_parallel: bool = False,
-    progress: bool = True,
+    progress: bool = False,
 ) -> torch.nn.Module:
     r"""
     Simclr resnet50 backbone with twice the width. Chen, T., Kornblith, S., Norouzi, M., & Hinton, G. (2020).
@@ -372,7 +372,7 @@ def simclr_resnet50x4(
     pretrained: bool = False,
     normalized_inputs: bool = True,
     use_data_parallel: bool = False,
-    progress: bool = True,
+    progress: bool = False,
 ) -> torch.nn.Module:
     r"""
     Simclr resnet50 backbone with four times the width. Chen, T., Kornblith, S., Norouzi, M., & Hinton, G. (2020).
