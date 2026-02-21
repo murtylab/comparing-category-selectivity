@@ -2,6 +2,7 @@
 ViT-B/14 trained using DINOv2
 https://github.com/facebookresearch/dinov2
 """
+import warnings
 import torch
 from torch import nn
 
@@ -44,7 +45,12 @@ class ViTB14DINOv2(BaseModel):
         """
         Load ViT-B/14 trained using DINOv2
         """
-        model = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitb14', verbose=False)
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                message="xFormers is not available"
+            )
+            model = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitb14', verbose=False)
         self.transforms = transform_utils.get_clip_transforms()
         model_name = 'vitb14dinov2'
         return model, model_name
