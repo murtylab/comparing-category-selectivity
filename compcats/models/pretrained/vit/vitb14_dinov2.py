@@ -44,7 +44,7 @@ class ViTB14DINOv2(BaseModel):
         """
         Load ViT-B/14 trained using DINOv2
         """
-        model = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitb14')
+        model = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitb14', verbose=False)
         self.transforms = transform_utils.get_clip_transforms()
         model_name = 'vitb14dinov2'
         return model, model_name
