@@ -2,6 +2,7 @@
 ResNet-50 TopoNet
 https://github.com/toponets/toponets
 """
+import warnings
 from torch import nn
 
 try:
@@ -56,7 +57,9 @@ class ResNet50TopoNet(BaseModel):
         self.DEFAULT_TAU = 30
         # Forcing integer value
         self.tau = int(self.kwargs.get('tau', self.DEFAULT_TAU))
-        model = toponets.resnet50(tau=self.tau, checkpoint_path = f"resnet50_tau_{self.tau}.pt")
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            model = toponets.resnet50(tau=self.tau, checkpoint_path = f"resnet50_tau_{self.tau}.pt")
         resnet_utils.fix_resnet_blocks_name_relus(model)
         model_name = f'resnet50toponettau{self.tau}'
         return model, model_name
