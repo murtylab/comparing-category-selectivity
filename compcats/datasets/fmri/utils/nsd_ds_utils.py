@@ -44,8 +44,7 @@ def get_subject_cocoids(root_dir, subject):
 
 def get_subject_nsdids(root_dir, subject):
     # Estimate number of trials for a subject
-    betas_dir = f'{root_dir}/nsddata_betas/ppdata/subj0{subject}/func1pt8mm/betas_fithrf_GLMdenoise_RR/'
-    subject_nsessions = len(glob.glob(f'{betas_dir}/betas_session*.hdf5'))
+    subject_nsessions = SUBJECTS_NSESSIONS[subject]
     subject_ntrials = subject_nsessions*750
     # Get related stimuli coco ids
     stim_info_csv_path = f'{root_dir}/nsddata/experiments/nsd/nsd_stim_info_merged.csv'
@@ -90,6 +89,31 @@ def get_subset_nsdids(root_dir, subset):
     # Sort nsdids
     subset_nsdids.sort()
     return subset_nsdids
+
+def get_subject_specific_nsdids(root_dir, subject):
+    """
+    Get NSD IDs of stimuli that have at least one repetition for a subject and 
+    are not in shared1000 subset, these will be used for subject-specific analyses.
+    These NSD IDs were actually collected
+    Args:
+        root_dir (str): The root directory containing the NSD dataset.
+        subject (int): The subject number.
+    """
+    stim_info_csv_path = f'{root_dir}/nsddata/experiments/nsd/nsd_stim_info_merged.csv'
+    all_info_df = pd.read_csv(stim_info_csv_path)
+    shared1000_nsdids = get_subset_nsdids(root_dir, 1000)
+    rep_columns = [f'subject{subject}_rep{i}' for i in range(3)]
+    all_info_df[f'subject{subject}_total_reps'] = (
+        (
+            (all_info_df[rep_columns] > 0) &
+            (all_info_df[rep_columns] <= SUBJECTS_NSESSIONS[subject]*750)
+        ).sum(axis=1)
+    )
+    all_info_df = all_info_df[
+        (all_info_df[f'subject{subject}_total_reps'] > 0) & 
+        (~all_info_df['nsdId'].isin(shared1000_nsdids))
+    ]
+    return list(all_info_df['nsdId'])
 
 def get_shared515_cocoids(root_dir):
     common_cocoids = None
