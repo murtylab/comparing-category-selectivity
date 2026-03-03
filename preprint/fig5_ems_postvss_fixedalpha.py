@@ -4,6 +4,7 @@ import pandas as pd
 import sklearn.linear_model
 import torch
 import sklearn
+import celer
 
 from compcats.datasets.fmri import nsd
 from compcats.utils import model_utils, misc_utils, responsecomparison_utils as rc_utils
@@ -189,9 +190,11 @@ for froi in frois:
                 def _get_mapping_object(mapper, alpha, seed):
                     if mapper == 'l1pos':
                         # Use L1 positive mapping
-                        mapping = sklearn.linear_model.Lasso(
-                            alpha=alpha, positive=True, random_state=seed
-                        )
+                        # mapping = sklearn.linear_model.Lasso(
+                        #     alpha=alpha, positive=True, random_state=seed
+                        # )
+                        # Use Celer for faster L1 optimization
+                        mapping = celer.Lasso(alpha=alpha, positive=True)
                     elif mapper == 'ridge':
                         # Use Ridge regression mapping
                         mapping = sklearn.linear_model.Ridge(alpha=alpha, random_state=seed)
