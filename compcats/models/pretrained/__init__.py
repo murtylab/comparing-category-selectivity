@@ -12,6 +12,7 @@ from .alexnet import alexnet_barlowtwins
 from .alexnet import alexnet_ipcl
 from .alexnet import alexnet_random
 from .alexnet import alexnet_mosaic
+from .alexnet import alexnet_vonenet
 
 # ResNet-18s
 from .resnet import resnet18_imagenet1kv1
@@ -37,6 +38,7 @@ from .resnet import resnet50_sinthenin
 from .resnet import resnet50_ecoset
 from .resnet import resnet50_cessl
 from .resnet import resnet50_blur
+from .resnet import resnet50_vonenet
 
 # ResNet-101s
 from .resnet import resnet101_imagenet1kv1
@@ -57,6 +59,7 @@ from .squeezenet import squeezenet_mosaic
 # CORNets
 from .cornet import cornet_s
 from .cornet import cornet_z
+from .cornet import cornet_svonenet
 
 # ConvNeXts
 from .convnext import convnext_imagenet1kv1
