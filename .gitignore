@@ -16,6 +16,7 @@
 *.pth.tar
 *.torch
 *.npy
+*.mat
 
 # Ignore figures
 *.pdf
