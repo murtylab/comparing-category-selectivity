@@ -81,7 +81,7 @@ def _get_pearsonr_splithalf_correlarion_method2(voxel_data):
     idx_combinations = [
         (0, (1, 2)),
         (1, (0, 2)),
-        (0, (1, 2))
+        (2, (0, 1))
     ]
     for (i, (j, k)) in idx_combinations:
         di = voxel_data[:, i]
@@ -104,7 +104,7 @@ def _get_pearsonr_splithalf_correlarion_method3(voxel_data):
     idx_combinations = [
         (0, (1, 2)),
         (1, (0, 2)),
-        (0, (1, 2))
+        (2, (0, 1))
     ]
     for (i, (j, k)) in idx_combinations:
         di = voxel_data[:, i]
@@ -129,7 +129,7 @@ def _get_pearsonr_splithalf_correlarion_method4(voxel_data):
     idx_combinations = [
         (0, (1, 2)),
         (1, (0, 2)),
-        (0, (1, 2))
+        (2, (0, 1))
     ]
     for (i, (j, k)) in idx_combinations:
         di = voxel_data[:, i]
@@ -153,7 +153,7 @@ def _get_pearsonr_splithalf_correlarion_method5(voxel_data):
     idx_combinations = [
         (0, (1, 2)),
         (1, (0, 2)),
-        (0, (1, 2))
+        (2, (0, 1))
     ]
     for (i, (j, k)) in idx_combinations:
         di = voxel_data[:, i]
@@ -217,7 +217,7 @@ def _get_rdm_splithalf_correlation_method2(subset_data):
     idx_combinations = [
         (0, (1, 2)),
         (1, (0, 2)),
-        (0, (1, 2))
+        (2, (0, 1))
     ]
     for (i, (j, k)) in idx_combinations:
         di = subset_data[:, i, :]
@@ -243,7 +243,7 @@ def _get_rdm_splithalf_correlation_method3(subset_data):
     idx_combinations = [
         (0, (1, 2)),
         (1, (0, 2)),
-        (0, (1, 2))
+        (2, (0, 1))
     ]
     for (i, (j, k)) in idx_combinations:
         di = subset_data[:, i, :]
