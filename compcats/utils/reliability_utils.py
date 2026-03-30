@@ -422,6 +422,18 @@ def get_neuron_wise_splithalf_correlation(
     if isinstance(responses, torch.Tensor):
         responses = responses.cpu().numpy()
 
+    # Assert that all valid reps are before invalid reps (i.e., no NaNs in the middle)
+    for eidx in range(n_electrodes):
+        for sidx in range(n_stimuli):
+            first_invalid_rep_idx = np.min(np.where(np.isnan(responses[eidx, sidx, :]))[0]) if np.any(np.isnan(responses[eidx, sidx, :])) else n_repeats
+            last_valid_rep_idx = np.max(np.where(~np.isnan(responses[eidx, sidx, :]))[0]) if len(np.where(~np.isnan(responses[eidx, sidx, :]))[0]) > 0 else -1
+            assert first_invalid_rep_idx == n_repeats or last_valid_rep_idx < first_invalid_rep_idx, "Invalid NaN placement in responses"
+    # Reduce n_repeats if needed to the max number of valid repetitions
+    max_n_reps = np.max([np.sum(~np.isnan(responses[electrode_idx, stim, :])) for electrode_idx in range(n_electrodes) for stim in range(n_stimuli)])
+    if max_n_reps < n_repeats:
+        responses = responses[:, :, :max_n_reps]
+        print(f"Reducing number of repeats from {n_repeats} to {max_n_reps} for split-half reliability estimation")
+
     electrode_reliabilities = []
     for electrode_idx in range(n_electrodes):
         electrode_responses = responses[electrode_idx]
