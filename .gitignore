@@ -17,6 +17,7 @@
 *.torch
 *.npy
 *.mat
+*.joblib
 
 # Ignore figures
 *.pdf
