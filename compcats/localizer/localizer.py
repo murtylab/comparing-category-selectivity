@@ -11,7 +11,7 @@ from . import utils
 
 CONTRAST_LOCALIZERS = utils.CONTRAST_LOCALIZERS
 TUNINGMATCHED_LOCALIZERS = ['nsd']
-RTHRESHOLD = 0.4  # Reliability threshold for voxel selection
+RTHRESHOLD = 0  # Reliability threshold for voxel selection
 NSD_SUBSET_TUNINGMATCHED = 485  # NSD subset for tuning-matched localizer
 DEFAULT_SUBJECTS_TUNINGMATCHED = [1, 2, 5, 7]  # Default NSD subjects for tuning-matched localizer
 
