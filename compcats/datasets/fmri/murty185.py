@@ -20,10 +20,17 @@ from torchvision import transforms
 
 LABELS = ['bodies'] * 25 + ['faces'] * 25 + ['objects'] * 25 + ['scenes'] * 25 + \
     ['bodies'] * 25 + ['scenes'] * 25 + ['objects'] * 35
+# Face labels: human vs. animal faces
 FACE_LABELS = ['human_faces'] * 12 + ['animal_faces'] + ['human_faces'] + ['animal_faces'] * 4 + \
     ['human_faces'] * 4 + ['animal_faces'] + ['human_faces'] * 2
 LABELS_FACES_ANNOTATED = ['bodies'] * 25 + FACE_LABELS + ['objects'] * 25 + ['scenes'] * 25 + \
     ['bodies'] * 25 + ['scenes'] * 25 + ['objects'] * 35
+# Body part labels
+# BODYPART_LABELS = [
+#     'foot', 'torso', 'hand', 'hand', 'hand', 'torso', ''
+# ]
+# LABELS_BODYPARTS_ANNOTATED = BODYPART_LABELS[:25] + ['faces'] * 25 + ['objects'] * 25 + \
+#     ['scenes'] * 25 + BODYPART_LABELS[25:] + ['scenes'] * 25 + ['objects'] * 35
 
 def download_murty185_dataset(dir):
     # Skip download if already exists
