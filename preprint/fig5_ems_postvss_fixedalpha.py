@@ -10,6 +10,19 @@ from compcats.datasets.fmri import nsd
 from compcats.utils import model_utils, misc_utils, responsecomparison_utils as rc_utils
 from compcats.localizer import  localizer
 
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    "--alpha",
+    type=float,
+    default=0.01,
+    required=False,
+    help="Mapper alpha (default: 0.01)"
+)
+
+args = parser.parse_args()
+
 import main_analysis as ma
 import paths
 
@@ -54,6 +67,9 @@ alpha_dict = {
     'l1pos': 0.01,
     # 'l1pos': 0.1
 }
+# Overwrite l1pos alpha with command line argument if provided
+if args.alpha is not None:
+    alpha_dict['l1pos'] = args.alpha
 
 # Dev
 # version = 0
