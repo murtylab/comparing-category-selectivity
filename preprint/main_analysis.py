@@ -391,7 +391,7 @@ def get_allmodels_nsd515_data(
             models_data[(model_froi, fmri_froi)][model_name] = model_froi_activations
     return models_data
 
-def get_humandata_layersweep(subjects, frois, tthreshold, subset):
+def get_humandata_layersweep(subjects, frois, tthreshold, subset, metric='pearsonr'):
     """
     Get NSD mean of voxels, mean of repetitions data for specified subjects
     Args:
@@ -399,31 +399,39 @@ def get_humandata_layersweep(subjects, frois, tthreshold, subset):
         frois (list): List of frois
         tthreshold (float): Threshold for t-values
         subset (int): Subset of NSD dataset
+        metric (str): Metric to use for split-half correlations
     """
     subjects_data = {}
-    splithalf_pearsonrs = {}
+    splithalf_correlations = {}
+    voxels_flag = False if metric == 'pearsonr' else True
     # Get subject froi mean-repetition mean-voxels data
     for froi in frois:
         subjects_data[froi] = {}
+        splithalf_correlations[froi] = {}
         for subject in subjects:
             subject_data, _ = nsd.get_betas(
                 NSD_DIR, subject, froi=froi, tthreshold=tthreshold, \
-                subset=subset, voxels=False, repetition_mean=True
+                subset=subset, voxels=voxels_flag, repetition_mean=True
             )
             subjects_data[froi][subject] = subject_data.to(DEVICE)
+            if metric == 'pearsonr':
+                splithalf_correlation_ = reliability_utils.get_voxelmean_splithalf_correlation(
+                    subject_data
+                )
+            else:
+                splithalf_correlation_ = reliability_utils.get_rdm_splithalf_correlation(
+                    subject_data
+                )
+            splithalf_correlations[froi][subject] = splithalf_correlation_
     # Get subject froi split-half correlations
-    for froi in frois:
-        splithalf_pearsonrs[froi] = {}
-        for subject in subjects:
-            subject_data, _ = nsd.get_betas(
-                NSD_DIR, subject, froi=froi, tthreshold=tthreshold, \
-                subset=subset, voxels=False, repetition_mean=False
-            )
-            splithalf_pearsonr_ = reliability_utils.get_voxelmean_splithalf_correlation(
-                subject_data
-            )
-            splithalf_pearsonrs[froi][subject] = splithalf_pearsonr_
-    return subjects_data, splithalf_pearsonrs
+    # for froi in frois:
+        
+    #     for subject in subjects:
+    #         subject_data, _ = nsd.get_betas(
+    #             NSD_DIR, subject, froi=froi, tthreshold=tthreshold, \
+    #             subset=subset, voxels=voxels_flag, repetition_mean=False
+    #         )
+    return subjects_data, splithalf_correlations
 
 def get_allsubjects_murty185_data(frois):
     """
