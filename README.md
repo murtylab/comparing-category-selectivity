@@ -1,6 +1,12 @@
 # comparing-category-selectivity
 Comparing category-selectivity in ANN and humans
 
+## Install the latest release
+```bash
+pip install git+https://github.com/compcats/comparing-category-selectivity.git@v0.1.3
+```
+
+
 ## Citation
 ```
 @article{dipani2026category,
