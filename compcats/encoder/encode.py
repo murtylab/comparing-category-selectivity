@@ -96,7 +96,6 @@ def eval_encoder(encoder, x_test, y_test, metric="population_pearsonr"):
             torch.tensor(y_test), torch.tensor(y_pred_test)
         )
     if "voxelwise_pearsonr" in metric:
-        test_metrics['voxelwise_pearsonr'] = []
         n_vox = y_test.shape[1]
         r = np.full(n_vox, np.nan)
         for v in range(n_vox):
@@ -105,6 +104,7 @@ def eval_encoder(encoder, x_test, y_test, metric="population_pearsonr"):
             if np.std(yt) < 1e-8 or np.std(yp) < 1e-8:
                 continue
             r[v], _ = scipy_stats.pearsonr(yt, yp)
+        test_metrics['voxelwise_pearsonr'] = r
     # Error handling for the metrics
     if len(metric) == 1:
         test_metrics = test_metrics[metric[0]]
